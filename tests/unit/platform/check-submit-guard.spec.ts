@@ -308,6 +308,23 @@ describe('findBusyViolations — the half-converted state the compiler cannot se
         const src = `${IMPORT}\n// submit-guard-allow-no-busy:\nconst { submit } = useGuardedSubmit();\n`;
         expect(findBusyViolations(src)).toHaveLength(1);
     });
+
+    // ⚠️ A CRLF WORKING TREE ONCE BLINDED THIS RULE TO EVERY HATCH IN THE REPO.
+    // ALLOW_NO_BUSY anchors on `$`, and `.` does not match \r (a line terminator
+    // in JS), so the reason group stopped short of the \r and `$` could not
+    // match. All eight hatches in `app/` read as absent and the gate failed on
+    // already-converted call sites — but only on Windows, because CI checks out
+    // LF. `.gitattributes` normalises hooks and shell scripts, not .tsx, so the
+    // two line endings are both real inputs and the rule is tested on both.
+    it('honours the escape hatch on a CRLF checkout', () => {
+        const src = `${IMPORT}\r\n// submit-guard-allow-no-busy: the row swaps to a sent state on the reply.\r\nconst { submit } = useGuardedSubmit();\r\n`;
+        expect(findBusyViolations(src)).toEqual([]);
+    });
+
+    it('still rejects a bare escape hatch on a CRLF checkout', () => {
+        const src = `${IMPORT}\r\n// submit-guard-allow-no-busy:\r\nconst { submit } = useGuardedSubmit();\r\n`;
+        expect(findBusyViolations(src)).toHaveLength(1);
+    });
 });
 
 describe('findBusyViolations — the non-destructured consumer shape', () => {

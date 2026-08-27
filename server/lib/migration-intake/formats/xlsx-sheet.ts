@@ -5,13 +5,15 @@ import { readZipEntry } from './zip';
  * The parts of the workbook format this reader names.
  *
  * ⚠️ LITERAL-USE CLASSIFICATION: PUBLIC STANDARD VALUE. The archive path of the
- * first worksheet and the element that holds its rows are both named by the
- * published spreadsheet specification, not by any product.
+ * first worksheet, the element that holds its rows, and the cell-type attribute
+ * value marking a shared-string reference are all named by the published
+ * spreadsheet specification, not by any product.
  */
 const OOXML = {
     firstWorksheet: 'xl/worksheets/sheet1.xml',
     sharedStrings: 'xl/sharedStrings.xml',
     sheetData: '<sheetData',
+    sharedStringType: 's',
 } as const;
 
 /**
@@ -91,7 +93,7 @@ export async function readXlsxSheet(bytes: Uint8Array): Promise<string[][] | nul
             const type = attrs.match(/\bt="([a-zA-Z]+)"/)?.[1] ?? '';
             const raw = cellXml[2]!.match(/<v>([\s\S]*?)<\/v>/)?.[1] ?? '';
             while (cells.length < index) cells.push('');
-            cells[index] = type === 's' ? (sharedStrings[Number(raw)] ?? '') : decodeCellText(raw);
+            cells[index] = type === OOXML.sharedStringType ? (sharedStrings[Number(raw)] ?? '') : decodeCellText(raw);
         }
         width = Math.max(width, cells.length);
         rows.push(cells);

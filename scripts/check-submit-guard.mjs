@@ -285,7 +285,13 @@ export function isBusyRuleConsumer(source) {
 export function findBusyViolations(source) {
     if (!isBusyRuleConsumer(source)) return [];
     const stripped = stripComments(source);
-    const lines = source.split('\n');
+    // The trailing \r of a CRLF checkout is dropped before the hatch is read.
+    // ALLOW_NO_BUSY anchors on `$`, and `.` does not match \r (a line
+    // terminator in JS), so on a CRLF working tree the reason group stops short
+    // of the \r and `$` cannot match — every escape hatch in the repo read as
+    // absent, and the gate failed on eight already-converted call sites. That
+    // is a Windows-only red: CI checks out LF and saw none of it.
+    const lines = source.split('\n').map((l) => l.replace(/\r$/, ''));
     const out = [];
     for (const m of stripped.matchAll(DESTRUCTURE)) {
         const line = countNewlines(stripped.slice(0, m.index)) + 1;
