@@ -27,6 +27,9 @@ import {
     setValue as bindingSetValue,
     toggleCanned as bindingToggleCanned,
     setDefectFields as bindingSetDefectFields,
+    setCannedChoices as bindingSetCannedChoices,
+    setCannedComment as bindingSetCannedComment,
+    setCannedFlagged as bindingSetCannedFlagged,
     appendPhoto as bindingAppendPhoto,
     appendNote as bindingAppendNote,
     addCustomDefect as bindingAddCustomDefect,
@@ -84,6 +87,27 @@ export interface CollabFindingsApi {
         itemId: string,
         cannedId: string,
         patch: { location?: string | null; trade?: string | null; deadline?: string | null; timeframe?: string | null },
+    ) => void;
+    setCannedChoices: (
+        sectionId: string,
+        itemId: string,
+        tabName: string,
+        cannedId: string,
+        selectedChoices: string[],
+    ) => void;
+    setCannedComment: (
+        sectionId: string,
+        itemId: string,
+        tabName: string,
+        cannedId: string,
+        comment: string,
+    ) => void;
+    setCannedFlagged: (
+        sectionId: string,
+        itemId: string,
+        tabName: string,
+        cannedId: string,
+        flagged: boolean,
     ) => void;
     insertComment: (
         sectionId: string,
@@ -187,6 +211,39 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
         patch: { location?: string | null; trade?: string | null; deadline?: string | null; timeframe?: string | null },
     ): void => {
         bindingSetDefectFields(doc, sectionId, itemId, cannedId, patch as Record<string, unknown>, unit);
+        setDirty(true);
+    };
+
+    const setCannedChoices = (
+        sectionId: string,
+        itemId: string,
+        tabName: string,
+        cannedId: string,
+        selectedChoices: string[],
+    ): void => {
+        bindingSetCannedChoices(doc, sectionId, itemId, tabName as 'information' | 'limitations' | 'defects', cannedId, selectedChoices, unit);
+        setDirty(true);
+    };
+
+    const setCannedComment = (
+        sectionId: string,
+        itemId: string,
+        tabName: string,
+        cannedId: string,
+        comment: string,
+    ): void => {
+        bindingSetCannedComment(doc, sectionId, itemId, tabName as 'information' | 'limitations' | 'defects', cannedId, comment, unit);
+        setDirty(true);
+    };
+
+    const setCannedFlagged = (
+        sectionId: string,
+        itemId: string,
+        tabName: string,
+        cannedId: string,
+        flagged: boolean,
+    ): void => {
+        bindingSetCannedFlagged(doc, sectionId, itemId, tabName as 'information' | 'limitations' | 'defects', cannedId, flagged, unit);
         setDirty(true);
     };
 
@@ -325,6 +382,9 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
         setItemValue,
         toggleCannedComment,
         setDefectFields,
+        setCannedChoices,
+        setCannedComment,
+        setCannedFlagged,
         insertComment,
         cloneLast,
         batchSetRating,

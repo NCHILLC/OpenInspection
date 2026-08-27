@@ -17,6 +17,7 @@ function renderPanel(onOpenLibrary?: (tab: "information" | "limitations" | "defe
       selectedItem={item}
       activeSection={0}
       editingItem="i1"
+      sections={[]}
       updateSections={() => {}}
       addCannedToItem={() => {}}
       removeCannedFromItem={() => {}}
@@ -59,6 +60,7 @@ describe("ItemCommentsPanel — defect-category chip (Step 4b)", () => {
         selectedItem={itemWithCategory}
         activeSection={0}
         editingItem="i2"
+        sections={[]}
         updateSections={() => {}}
         addCannedToItem={() => {}}
         removeCannedFromItem={() => {}}
@@ -73,6 +75,7 @@ describe("ItemCommentsPanel — defect-category chip (Step 4b)", () => {
         selectedItem={itemWithCategory}
         activeSection={0}
         editingItem="i2"
+        sections={[]}
         updateSections={() => {}}
         addCannedToItem={() => {}}
         removeCannedFromItem={() => {}}

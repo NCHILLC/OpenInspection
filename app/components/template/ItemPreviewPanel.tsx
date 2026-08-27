@@ -7,9 +7,21 @@ export interface ItemPreviewPanelProps {
    *  lookup (keyed by name AND id) so the defects-tab chip renders its
    *  configured color here too, not just muted. */
   categoryColor?: Map<string, string>;
+  /** Tenant's defect categories (id/name) — resolves a defect's stored
+   *  `category` (which may be a canonical id or a legacy seed name) to a
+   *  human-readable label. Without this, an id-stored category renders as a
+   *  raw uuid in the chip. */
+  categories?: Array<{ id: string; name: string }>;
 }
 
-export function ItemPreviewPanel({ selectedItem, categoryColor }: ItemPreviewPanelProps) {
+function resolveCategoryLabel(category: string | undefined, categories?: Array<{ id: string; name: string }>): string | undefined {
+  if (!category) return undefined;
+  return categories?.find((cat) => cat.id === category)?.name
+    ?? categories?.find((cat) => cat.name.toLowerCase() === category.toLowerCase())?.name
+    ?? category;
+}
+
+export function ItemPreviewPanel({ selectedItem, categoryColor, categories }: ItemPreviewPanelProps) {
   return (
     <div className="space-y-2">
       <p className="text-[13px] font-bold text-ih-fg-1">{selectedItem.label}</p>
@@ -37,7 +49,7 @@ export function ItemPreviewPanel({ selectedItem, categoryColor }: ItemPreviewPan
                     interactive={false}
                     selected={false}
                     title={c.title}
-                    category={tab === "defects" ? c.category : undefined}
+                    category={tab === "defects" ? resolveCategoryLabel(c.category, categories) : undefined}
                     categoryColor={tab === "defects" ? categoryColor?.get(c.category ?? "") : undefined}
                     bodySlot={c.comment ? <p className="text-[11px] mt-0.5 leading-relaxed text-ih-fg-3">{c.comment}</p> : null}
                   />

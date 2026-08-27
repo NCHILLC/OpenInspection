@@ -38,6 +38,7 @@ const CannedInfoCommentSchema = z.object({
     comment: z.string().describe('TODO describe comment field for the OpenInspection MCP integration'),
     default: z.boolean().describe('TODO describe default field for the OpenInspection MCP integration'),
     abbrev:  z.string().max(12).optional().describe('TODO describe abbrev field for the OpenInspection MCP integration'),
+    choices: z.array(z.string()).optional().describe('Checklist-style answer options for this comment.'),
 }).strict();
 
 const CannedDefectSchema = z.object({
@@ -49,6 +50,8 @@ const CannedDefectSchema = z.object({
     photos:   z.array(z.string()).describe('TODO describe photos field for the OpenInspection MCP integration'),
     default:  z.boolean().describe('TODO describe default field for the OpenInspection MCP integration'),
     abbrev:   z.string().max(12).optional().describe('TODO describe abbrev field for the OpenInspection MCP integration'),
+    recommendedContractorTypeId: z.string().min(1).optional().describe('Soft ref to contractor_types.id.'),
+    choices: z.array(z.string()).optional().describe('Checklist-style answer options for this comment.'),
 }).strict();
 
 const ItemTabsSchema = z.object({

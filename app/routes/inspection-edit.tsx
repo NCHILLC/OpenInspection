@@ -1614,6 +1614,54 @@ export default function InspectionEditPage() {
  );
  }
  }}
+ onChoicesChange={(tabName, cannedId, selectedChoices) => {
+ if (state.activeItemId && state.currentSection) {
+ findings.setCannedChoices(
+ state.currentSection.id,
+ state.activeItemId,
+ tabName,
+ cannedId,
+ selectedChoices,
+ );
+ }
+ }}
+ onCommentChange={(tabName, cannedId, comment) => {
+ if (state.activeItemId && state.currentSection) {
+ findings.setCannedComment(
+ state.currentSection.id,
+ state.activeItemId,
+ tabName,
+ cannedId,
+ comment,
+ );
+ }
+ }}
+ onFlagChange={(tabName, cannedId, flagged) => {
+ if (state.activeItemId && state.currentSection) {
+ findings.setCannedFlagged(
+ state.currentSection.id,
+ state.activeItemId,
+ tabName,
+ cannedId,
+ flagged,
+ );
+ }
+ }}
+ onDuplicateCanned={(entry) => {
+ if (state.activeItemId && state.currentSection) {
+ const d = makeCustomDefect({
+ title: entry.title,
+ comment: entry.comment,
+ category: entry.category,
+ });
+ if (d) {
+ findings.addCustomDefect(state.currentSection.id, state.activeItemId, {
+ ...d,
+ comment: d.comment ?? "",
+ });
+ }
+ }
+ }}
  onItemAttribute={handleItemAttribute}
  onCloneLast={handleCloneLast}
  cloneDefaultScope={inspectionPrefs.cloneDefault}

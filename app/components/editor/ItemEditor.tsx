@@ -95,6 +95,15 @@ interface ItemEditorProps {
  defectStates?: Map<string, DefectFieldsValue>;
  locationSuggestions?: string[];
  onDefectFields?: (cannedId: string, patch: Partial<DefectFieldsValue>) => void;
+ /** Checks/unchecks one of a comment's `choices`. Works across all three tabs. */
+ onChoicesChange?: (tab: CannedTabId, cannedId: string, selectedChoices: string[]) => void;
+ /** Overrides this comment's text for the inspection. Works across all three tabs. */
+ onCommentChange?: (tab: CannedTabId, cannedId: string, comment: string) => void;
+ /** Toggles the "needs follow-up" flag. Works across all three tabs. */
+ onFlagChange?: (tab: CannedTabId, cannedId: string, flagged: boolean) => void;
+ /** Seeds a new custom defect pre-filled from an existing canned defect
+  *  (defects-tab only — see CannedCommentTabs.tsx for why). */
+ onDuplicateCanned?: (entry: CannedDefect) => void;
  missingFields?: Map<string, { location: boolean; trade: boolean }>;
  /** Track H (IA-7) — the EFFECTIVE tenant/inspection policy: which defect
   *  fields are required at publish. Drives the proactive red asterisk on
@@ -173,6 +182,10 @@ export function ItemEditor({
  defectStates,
  locationSuggestions,
  onDefectFields,
+ onChoicesChange,
+ onCommentChange,
+ onFlagChange,
+ onDuplicateCanned,
  missingFields,
  requiredDefectFields,
  categoryColor,
@@ -280,6 +293,39 @@ export function ItemEditor({
  return included;
  };
 
+ // Which of the active tab's comments' `choices` are checked — mirrors
+ // getIncludedSet's read of `result.tabs[tabName]` state entries, but keyed
+ // by cannedId → selectedChoices rather than cannedId → included.
+ const getSelectedChoicesMap = (tabName: CannedTabId): Map<string, string[]> => {
+ const map = new Map<string, string[]>();
+ const stateEntries = ((result.tabs as Record<string, Array<{ cannedId: string; selectedChoices?: string[] }>> | undefined)?.[tabName]) || [];
+ for (const s of stateEntries) {
+ if (Array.isArray(s.selectedChoices)) map.set(s.cannedId, s.selectedChoices);
+ }
+ return map;
+ };
+
+ // Same read pattern as getSelectedChoicesMap, for the two other per-comment
+ // state fields the row-icon cluster needs: the inspector's text override and
+ // the "needs follow-up" flag. Both apply across all three tabs.
+ const getCommentOverrideMap = (tabName: CannedTabId): Map<string, string> => {
+ const map = new Map<string, string>();
+ const stateEntries = ((result.tabs as Record<string, Array<{ cannedId: string; comment?: string | null }>> | undefined)?.[tabName]) || [];
+ for (const s of stateEntries) {
+ if (typeof s.comment === "string" && s.comment.length > 0) map.set(s.cannedId, s.comment);
+ }
+ return map;
+ };
+
+ const getFlaggedMap = (tabName: CannedTabId): Map<string, boolean> => {
+ const map = new Map<string, boolean>();
+ const stateEntries = ((result.tabs as Record<string, Array<{ cannedId: string; flagged?: boolean }>> | undefined)?.[tabName]) || [];
+ for (const s of stateEntries) {
+ if (s.flagged) map.set(s.cannedId, true);
+ }
+ return map;
+ };
+
  const rawTabEntries = (tabs[activeTab] || []) as Array<CannedInfoComment | CannedDefect>;
  // B-20: the Defects tab is searchable — canned libraries grow long and the
  // inspector is hunting for "water stain" with one thumb on a roof.
@@ -288,6 +334,9 @@ export function ItemEditor({
  ? filterCannedEntries(rawTabEntries, defectQuery)
  : rawTabEntries;
  const includedSet = getIncludedSet(activeTab);
+ const selectedChoicesByCannedId = getSelectedChoicesMap(activeTab);
+ const commentOverrideByCannedId = getCommentOverrideMap(activeTab);
+ const flaggedByCannedId = getFlaggedMap(activeTab);
 
  const levels = ratingLevels && ratingLevels.length > 0 ? ratingLevels : FALLBACK_LEVELS;
  // Normalised lookup: legacy stored values ('DEF') resolve onto the system's
@@ -551,6 +600,13 @@ export function ItemEditor({
  defectStates={defectStates}
  locationSuggestions={locationSuggestions}
  onDefectFields={onDefectFields}
+ selectedChoicesByCannedId={selectedChoicesByCannedId}
+ onChoicesChange={onChoicesChange}
+ commentOverrideByCannedId={commentOverrideByCannedId}
+ onCommentChange={onCommentChange}
+ flaggedByCannedId={flaggedByCannedId}
+ onFlagChange={onFlagChange}
+ onDuplicateCanned={onDuplicateCanned}
  missingFields={missingFields}
  requiredDefectFields={requiredDefectFields}
  defectPhotoChip={defectPhotoChip}

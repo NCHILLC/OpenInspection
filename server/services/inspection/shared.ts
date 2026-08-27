@@ -185,14 +185,38 @@ export const RECOMMENDATION_CATEGORY_LABELS = new Map<string, string>(
  * The surface that DOES have a request boundary (the template write) rejects
  * loudly instead; see `server/lib/validations/template.schema.ts`.
  */
+function sanitizeSelectedChoices(row: Record<string, unknown>): void {
+    if (!('selectedChoices' in row)) return;
+    const v = row.selectedChoices;
+    row.selectedChoices = Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+}
+
+/** Coerce the "needs follow-up" marker to a real boolean. No report meaning
+ *  yet — this is the only validation it needs. */
+function sanitizeFlagged(row: Record<string, unknown>): void {
+    if (!('flagged' in row)) return;
+    row.flagged = row.flagged === true;
+}
+
 export function sanitizeDefectStates(data: Record<string, unknown>): void {
     const validSlugs = new Set<string>(RECOMMENDATION_CATEGORY_IDS);
     for (const key of Object.keys(data)) {
         const entry = data[key] as {
-            tabs?: { defects?: unknown };
+            tabs?: { information?: unknown; limitations?: unknown; defects?: unknown };
             customComments?: { defects?: unknown };
         } | null | undefined;
         if (!entry || typeof entry !== 'object') continue;
+        // `selectedChoices` (checked answer-choice options) can appear on an
+        // information/limitations canned entry, not just a defect — those tabs
+        // otherwise have no sanitizer pass at all, so this is the only cleanup
+        // they get, and it's the same light coercion as the defects loop below.
+        for (const tabName of ['information', 'limitations'] as const) {
+            const rows = entry.tabs?.[tabName];
+            if (!Array.isArray(rows)) continue;
+            for (const r of rows as Array<Record<string, unknown>>) {
+                if (r && typeof r === 'object') { sanitizeSelectedChoices(r); sanitizeFlagged(r); }
+            }
+        }
         // Item-level estimate — no defect tab required to reach it.
         deleteRepairPriceKeys(entry);
         // A field-authored custom defect is a defect row too, and the repair
@@ -230,6 +254,8 @@ export function sanitizeDefectStates(data: Record<string, unknown>): void {
             if ('timeframe' in d) {
                 d.timeframe = isDefectTimeframe(d.timeframe) ? d.timeframe : null;
             }
+            sanitizeSelectedChoices(d);
+            sanitizeFlagged(d);
         }
     }
 }

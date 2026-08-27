@@ -66,6 +66,8 @@ export interface ResolvedDefect {
   effectiveTrade?: string | null;
   effectiveTimeframe?: string | null;
   defectPhotos?: ReportPhoto[];
+  /** Answer-choice options the inspector checked, if the template comment defines any. */
+  selectedChoices?: string[];
 }
 
 export interface ReportItem {

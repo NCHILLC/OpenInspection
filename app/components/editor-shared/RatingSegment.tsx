@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "../../../packages/shared-ui/src/cn";
+import { Icon } from "../../../packages/shared-ui/src/Icon";
 
 export type RatingTone = "ok" | "warn" | "bad" | "info" | "neutral";
 
@@ -22,6 +23,10 @@ export interface RatingOption {
    *  (batch mode) render every tile permanently in its assigned color, not
    *  just the currently-selected one. */
   color?: string;
+  /** Icon name (from @core/shared-ui's Icon). When present, renders icon-only
+   *  in place of the label/shortLabel text — e.g. a compact category/severity
+   *  picker where the tile's accessible name (aria-label) carries the label. */
+  icon?: string;
 }
 
 export interface RatingSegmentProps {
@@ -144,17 +149,18 @@ export function RatingSegment({
         // breakpoint, full label at `sm` and up — mirrors the pre-migration
         // RatingButtonRow behavior of abbreviating on narrow screens. When no
         // `shortLabel` is provided, just render the full label everywhere.
-        const text =
-          size === "sm" ? (
-            (r.shortLabel ?? r.label)
-          ) : r.shortLabel ? (
-            <>
-              <span className="sm:hidden">{r.shortLabel}</span>
-              <span className="hidden sm:inline">{r.label}</span>
-            </>
-          ) : (
-            r.label
-          );
+        const text = r.icon ? (
+          <Icon name={r.icon} size={16} />
+        ) : size === "sm" ? (
+          (r.shortLabel ?? r.label)
+        ) : r.shortLabel ? (
+          <>
+            <span className="sm:hidden">{r.shortLabel}</span>
+            <span className="hidden sm:inline">{r.label}</span>
+          </>
+        ) : (
+          r.label
+        );
         const title = r.hint ? `${r.label} (${r.hint})` : r.label;
         return (
           <button

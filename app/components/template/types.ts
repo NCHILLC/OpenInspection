@@ -25,6 +25,11 @@ export interface CannedComment {
   photos?: string[];
   /** Optional shortcode typed in the editor to fill this comment (≤ 12 chars). */
   abbrev?: string;
+  /** Findings-tab-only. Soft ref to contractorTypes.id. Unset = no recommendation. */
+  recommendedContractorTypeId?: string;
+  /** Checklist-style answer options for this comment (Spectora: "Multiple
+   *  Choice Options"). Optional; unset = no checklist. */
+  choices?: string[];
 }
 
 interface ItemOptions {

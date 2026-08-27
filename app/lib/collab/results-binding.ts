@@ -178,6 +178,54 @@ export function setDefectFields(
     upsertCanned(doc, findingKey(unitId, sectionId, itemId), 'defects', { cannedId, ...patch });
 }
 
+/**
+ * Set which of a canned comment's `choices` the inspector checked. Works for
+ * any tab — a comment's `choices` list is not defects-only.
+ */
+export function setCannedChoices(
+    doc: Y.Doc,
+    sectionId: string,
+    itemId: string,
+    tab: 'information' | 'limitations' | 'defects',
+    cannedId: string,
+    selectedChoices: string[],
+    unitId: string | null = null,
+): void {
+    upsertCanned(doc, findingKey(unitId, sectionId, itemId), tab, { cannedId, selectedChoices });
+}
+
+/**
+ * Override a canned comment's text for this inspection only. Works for any
+ * tab. An empty string clears the override back to the template default.
+ */
+export function setCannedComment(
+    doc: Y.Doc,
+    sectionId: string,
+    itemId: string,
+    tab: 'information' | 'limitations' | 'defects',
+    cannedId: string,
+    comment: string,
+    unitId: string | null = null,
+): void {
+    upsertCanned(doc, findingKey(unitId, sectionId, itemId), tab, { cannedId, comment });
+}
+
+/**
+ * Set a canned comment's "needs follow-up" flag. Works for any tab. No report
+ * meaning yet — visible and persisted only.
+ */
+export function setCannedFlagged(
+    doc: Y.Doc,
+    sectionId: string,
+    itemId: string,
+    tab: 'information' | 'limitations' | 'defects',
+    cannedId: string,
+    flagged: boolean,
+    unitId: string | null = null,
+): void {
+    upsertCanned(doc, findingKey(unitId, sectionId, itemId), tab, { cannedId, flagged });
+}
+
 /** Append (or merge) a photo attachment to the finding's photo array. */
 export function appendPhoto(
     doc: Y.Doc,

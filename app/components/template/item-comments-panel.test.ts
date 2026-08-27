@@ -1,5 +1,6 @@
+// @vitest-environment happy-dom
 import { describe, it, expect } from "vitest";
-import { renderToStaticMarkup } from "react-dom/server";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { createElement } from "react";
 import { ItemCommentsPanel } from "~/components/template/ItemCommentsPanel";
 
@@ -14,12 +15,13 @@ const item = {
   },
 };
 
-function html() {
-  return renderToStaticMarkup(
+function renderPanel() {
+  return render(
     createElement(ItemCommentsPanel, {
       selectedItem: item,
       activeSection: 0,
       editingItem: "i1",
+      sections: [{ id: "s1", title: "Roof", items: [item] }],
       updateSections: () => {},
       addCannedToItem: () => {},
       removeCannedFromItem: () => {},
@@ -29,38 +31,41 @@ function html() {
 
 describe("ItemCommentsPanel (behavior-preserving swap)", () => {
   it("renders the three tab groups with an + Add control each", () => {
-    const out = html();
-    for (const tab of ["information", "limitations", "defects"]) expect(out).toContain(tab);
-    expect((out.match(/\+ Add/g) || []).length).toBe(3);
+    const { container } = renderPanel();
+    for (const tab of ["information", "limitations", "defects"]) {
+      expect(container.textContent?.toLowerCase()).toContain(tab);
+    }
+    expect(screen.getAllByText("+ Add").length).toBe(3);
   });
 
-  it("renders an editable title input and a comment textarea for the defect entry", () => {
-    const out = html();
-    expect(out).toContain('value="Shingles lifted"');
-    expect(out).toContain("<textarea");
-    expect(out).toContain("Lifted at ridge.");
+  it("renders an editable title input, and reveals the comment textarea once expanded", () => {
+    renderPanel();
+    expect(screen.getByDisplayValue("Shingles lifted")).toBeTruthy();
+    expect(screen.queryByText("Lifted at ridge.")).toBeNull();
+    fireEvent.click(screen.getByLabelText("Expand comment"));
+    const textarea = screen.getByPlaceholderText("Comment text...") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("Lifted at ridge.");
   });
 
   it("keeps the delete control per entry", () => {
-    const out = html();
-    // '×' delete button (renders as the literal char in static markup)
-    expect(out).toContain("×");
-    expect(out).toContain("hover:text-ih-bad-fg");
+    renderPanel();
+    expect(screen.getByLabelText("Delete comment")).toBeTruthy();
   });
 
-  it("keeps the reorder controls and abbrev input added by the comment-UX plan", () => {
-    const out = html();
-    // reorder handles (▲▼) rendered with aria-labels
-    expect(out).toContain('aria-label="Move up"');
-    expect(out).toContain('aria-label="Move down"');
-    // abbrev round-trips into its input value
-    expect(out).toContain('value="shglft"');
+  it("keeps the reorder controls, and reveals the abbrev input once expanded", () => {
+    renderPanel();
+    expect(screen.getByLabelText("Move up")).toBeTruthy();
+    expect(screen.getByLabelText("Move down")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Expand comment"));
+    expect(screen.getByPlaceholderText("abbr")).toHaveProperty("value", "shglft");
   });
 
-  it("keeps the comment textarea + its text after the CannedCommentRow swap", () => {
+  it("keeps the comment textarea + its text after expanding", () => {
     // Guard: the CommentTypeahead wiring must not remove the editable textarea.
-    const out = html();
-    expect(out).toContain("<textarea");
-    expect(out).toContain("Lifted at ridge.");
+    renderPanel();
+    fireEvent.click(screen.getByLabelText("Expand comment"));
+    const textarea = screen.getByPlaceholderText("Comment text...") as HTMLTextAreaElement;
+    expect(textarea.tagName).toBe("TEXTAREA");
+    expect(textarea.value).toBe("Lifted at ridge.");
   });
 });

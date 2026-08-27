@@ -1,4 +1,5 @@
-import { TabStrip, Button } from "@core/shared-ui";
+import { useState, type MouseEvent } from "react";
+import { TabStrip, Button, Icon } from "@core/shared-ui";
 import { CannedCommentRow } from "../editor-shared/CannedCommentRow";
 import { DefectFieldsRow, type DefectFieldsValue } from "./DefectFieldsRow";
 import { RepairItemsPanel } from "./RepairItemsPanel";
@@ -23,6 +24,8 @@ export interface CannedInfoComment {
   title: string;
   comment: string;
   default: boolean;
+  /** Checklist-style answer options defined on the template comment. */
+  choices?: string[];
 }
 
 export interface CannedDefect {
@@ -33,6 +36,8 @@ export interface CannedDefect {
   comment: string;
   photos: string[];
   default: boolean;
+  /** Checklist-style answer options defined on the template comment. */
+  choices?: string[];
 }
 
 /** Track H — a tenant-library search hit (shape mirrors CommentEntry in
@@ -69,6 +74,22 @@ export interface CannedCommentTabsProps {
   defectStates?: Map<string, DefectFieldsValue>;
   locationSuggestions?: string[];
   onDefectFields?: (cannedId: string, patch: Partial<DefectFieldsValue>) => void;
+  /** Which of each comment's `choices` are currently checked, keyed by cannedId.
+   *  Applies across all three tabs (a comment's choices aren't defects-only). */
+  selectedChoicesByCannedId?: Map<string, string[]>;
+  onChoicesChange?: (tab: CannedTabId, cannedId: string, selectedChoices: string[]) => void;
+  /** This inspection's text override per comment, keyed by cannedId. Applies
+   *  across all three tabs. */
+  commentOverrideByCannedId?: Map<string, string>;
+  onCommentChange?: (tab: CannedTabId, cannedId: string, comment: string) => void;
+  /** "Needs follow-up" flag per comment, keyed by cannedId. Applies across all
+   *  three tabs. No report meaning yet — visible and persisted only. */
+  flaggedByCannedId?: Map<string, boolean>;
+  onFlagChange?: (tab: CannedTabId, cannedId: string, flagged: boolean) => void;
+  /** Seeds a new custom defect pre-filled from this canned defect. Defects-tab
+   *  only — the custom-comment system it reuses doesn't exist for
+   *  information/limitations. Absent → no duplicate icon. */
+  onDuplicateCanned?: (entry: CannedDefect) => void;
   missingFields?: Map<string, { location: boolean; trade: boolean }>;
   requiredDefectFields?: { location: boolean; trade: boolean };
 
@@ -135,6 +156,13 @@ export function CannedCommentTabs({
   defectStates,
   locationSuggestions,
   onDefectFields,
+  selectedChoicesByCannedId,
+  onChoicesChange,
+  commentOverrideByCannedId,
+  onCommentChange,
+  flaggedByCannedId,
+  onFlagChange,
+  onDuplicateCanned,
   missingFields,
   requiredDefectFields,
   defectPhotoChip,
@@ -165,6 +193,9 @@ export function CannedCommentTabs({
   onAttachRepairItem,
   onDetachRepairItem,
 }: CannedCommentTabsProps) {
+  // Which row's inline text-edit textarea is open — one at a time, tab-agnostic.
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+
   return (
     <div>
       {/* Tab strip (shared Design System component) */}
@@ -217,12 +248,37 @@ export function CannedCommentTabs({
               timeframe: st.timeframe ? DEFECT_TIMEFRAME_LABELS[st.timeframe] : null,
               ...attrVars,
             } : null;
+            const effectiveComment = commentOverrideByCannedId?.get(entry.id) ?? entry.comment;
+            const isFlagged = !!flaggedByCannedId?.get(entry.id);
+            const isEditing = editingCommentId === entry.id;
+            const stop = (fn: () => void) => (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); fn(); };
             return (
               <CannedCommentRow
                 key={entry.id}
                 as="label"
                 selected={isIncluded}
-                title={entry.title}
+                titleSlot={
+                  <span className="inline-flex items-center gap-1.5 flex-wrap">
+                    <span>{entry.title}</span>
+                    {isIncluded && (
+                      <span className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={stop(() => setEditingCommentId(isEditing ? null : entry.id))}
+                          aria-label={m.editor_canned_edit_comment_aria()}
+                          className="text-ih-fg-3 hover:text-ih-primary-text"
+                        ><Icon name="edit" size={13} /></button>
+                        {isDefectIncluded && defectPhotoChip({ kind: "canned", id: entry.id }, cannedDefectPhotoCount(entry.id))}
+                        <button
+                          type="button"
+                          onClick={stop(() => onFlagChange?.(activeTab, entry.id, !isFlagged))}
+                          aria-label={isFlagged ? m.editor_canned_unflag_aria() : m.editor_canned_flag_aria()}
+                          className={isFlagged ? "text-ih-bad-fg" : "text-ih-fg-3 hover:text-ih-fg-2"}
+                        ><Icon name="flag" size={13} /></button>
+                      </span>
+                    )}
+                  </span>
+                }
                 category={"category" in entry ? (entry as CannedDefect).category || undefined : undefined}
                 categoryColor={"category" in entry ? categoryColor?.get((entry as CannedDefect).category) : undefined}
                 leading={
@@ -233,25 +289,63 @@ export function CannedCommentTabs({
                     className="mt-0.5 w-4 h-4 rounded border-ih-border-strong text-ih-primary focus:ring-ih-primary/30"
                   />
                 }
+                trailing={
+                  isDefectIncluded && onDuplicateCanned ? (
+                    <button
+                      type="button"
+                      onClick={stop(() => onDuplicateCanned(entry as CannedDefect))}
+                      aria-label={m.editor_canned_duplicate_aria()}
+                      className="text-ih-fg-3 hover:text-ih-primary-text mt-0.5"
+                    ><Icon name="copy" size={14} /></button>
+                  ) : undefined
+                }
                 bodySlot={
-                  <p className={`text-[11px] mt-0.5 leading-relaxed ${isIncluded ? "text-ih-fg-3" : "text-ih-fg-4"}`}>
-                    {vars ? renderTemplate(entry.comment, vars) : entry.comment}
-                  </p>
+                  isEditing ? (
+                    <textarea
+                      defaultValue={effectiveComment}
+                      onBlur={(e) => { onCommentChange?.(activeTab, entry.id, e.target.value); setEditingCommentId(null); }}
+                      rows={2}
+                      autoFocus
+                      className="w-full mt-1 text-[11px] bg-transparent border border-ih-border rounded px-1 py-0.5 outline-none text-ih-fg-3"
+                    />
+                  ) : (
+                    <p className={`text-[11px] mt-0.5 leading-relaxed ${isIncluded ? "text-ih-fg-3" : "text-ih-fg-4"}`}>
+                      {vars ? renderTemplate(effectiveComment, vars) : effectiveComment}
+                    </p>
+                  )
                 }
               >
+                {isIncluded && entry.choices && entry.choices.length > 0 && (
+                  <div className="mt-1.5 space-y-1">
+                    {entry.choices.map((choice) => {
+                      const selected = selectedChoicesByCannedId?.get(entry.id) ?? [];
+                      const checked = selected.includes(choice);
+                      return (
+                        <label key={choice} className="flex items-center gap-2 text-[12px] text-ih-fg-3">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked ? selected.filter((c) => c !== choice) : [...selected, choice];
+                              onChoicesChange?.(activeTab, entry.id, next);
+                            }}
+                            className="w-3.5 h-3.5 rounded border-ih-border-strong text-ih-primary focus:ring-ih-primary/30"
+                          />
+                          {choice}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
                 {isDefectIncluded && (
-                  <>
-                    <DefectFieldsRow
-                      cannedId={entry.id}
-                      value={st!}
-                      locationSuggestions={locationSuggestions ?? []}
-                      onChange={onDefectFields ?? (() => {})}
-                      locationRequired={(requiredDefectFields?.location ?? false) || missingFields?.get(entry.id)?.location}
-                      tradeRequired={(requiredDefectFields?.trade ?? false) || missingFields?.get(entry.id)?.trade}
-                    />
-                    {/* FE-3 — photo pinned to THIS defect, not the item */}
-                    {defectPhotoChip({ kind: "canned", id: entry.id }, cannedDefectPhotoCount(entry.id))}
-                  </>
+                  <DefectFieldsRow
+                    cannedId={entry.id}
+                    value={st!}
+                    locationSuggestions={locationSuggestions ?? []}
+                    onChange={onDefectFields ?? (() => {})}
+                    locationRequired={(requiredDefectFields?.location ?? false) || missingFields?.get(entry.id)?.location}
+                    tradeRequired={(requiredDefectFields?.trade ?? false) || missingFields?.get(entry.id)?.trade}
+                  />
                 )}
               </CannedCommentRow>
             );

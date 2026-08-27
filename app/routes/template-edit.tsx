@@ -38,12 +38,14 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
   const token = await requireToken(context, request);
   const id = params.id;
   const api = createApi(context, { token });
-  const [res, defectCatRes] = await Promise.all([
+  const [res, defectCatRes, contractorTypesRes] = await Promise.all([
     api.inspections.templates[":id"].$get({ param: { id } }),
     // Authoring unification Plan-4 module K — the tenant's defect categories,
     // fetched ONCE here (seeded on first read) so the editor can build a
     // single name/id → color lookup for the defects-tab chip.
     api.defectCategories["defect-categories"].$get().catch(() => null),
+    // Findings-row Recommendation dropdown — the tenant's contractor types.
+    api.contractorTypes.index.$get().catch(() => null),
   ]);
   // A non-OK response previously fell through to an empty `{}`, which rendered a
   // section-less editor that looks blank ("the editor never opened"). Surface the
@@ -92,8 +94,14 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
     const defectCatBody = await defectCatRes.json() as { data?: Array<{ id: string; name: string; color: string }> };
     defectCategories = defectCatBody.data ?? [];
   }
+  // Findings-row Recommendation dropdown — the tenant's contractor types (id/name).
+  let contractorTypes: Array<{ id: string; name: string }> = [];
+  if (contractorTypesRes?.ok) {
+    const contractorTypesBody = await contractorTypesRes.json() as { data?: Array<{ id: string; name: string }> };
+    contractorTypes = contractorTypesBody.data ?? [];
+  }
   const defaultProfileId = (tpl?.defaultProfileId as string | null) ?? null;
-  return { id, name, version, schema, token, defectCategories, defaultProfileId };
+  return { id, name, version, schema, token, defectCategories, contractorTypes, defaultProfileId };
 }
 
 /* ------------------------------------------------------------------ */
@@ -130,11 +138,15 @@ export async function action({ request, params, context }: Route.ActionArgs) {
 // Serialize an information/limitations canned comment to its v2 wire shape.
 // (Defects carry extra fields and are serialized inline.)
 function serializeCanned(c: CannedComment): Record<string, unknown> {
-  return { id: c.id, title: c.title || "", comment: c.comment || "", default: !!c.default };
+  return {
+    id: c.id, title: c.title || "", comment: c.comment || "", default: !!c.default,
+    ...(c.abbrev ? { abbrev: c.abbrev } : {}),
+    ...(c.choices?.length ? { choices: c.choices } : {}),
+  };
 }
 
 export default function TemplateEditPage() {
-  const { id, name: initialName, version: initialVersion, schema: initial, defectCategories, defaultProfileId: initialDefaultProfileId } = useLoaderData<typeof loader>();
+  const { id, name: initialName, version: initialVersion, schema: initial, defectCategories, contractorTypes, defaultProfileId: initialDefaultProfileId } = useLoaderData<typeof loader>();
   // #106 - Save writes the whole template schema and bumps its version.
   const { fetcher, submit, busy: saving } = useGuardedSubmit();
 
@@ -365,6 +377,9 @@ export default function TemplateEditPage() {
                 id: c.id, title: c.title || "", category: c.category || "recommendation",
                 location: c.location || "", comment: c.comment || "",
                 photos: Array.isArray(c.photos) ? c.photos : [], default: !!c.default,
+                ...(c.abbrev ? { abbrev: c.abbrev } : {}),
+                ...(c.recommendedContractorTypeId ? { recommendedContractorTypeId: c.recommendedContractorTypeId } : {}),
+                ...(c.choices?.length ? { choices: c.choices } : {}),
               })),
             };
           } else if (it.type !== "boolean" && it.type !== "date" && it.options) {
@@ -611,16 +626,19 @@ export default function TemplateEditPage() {
                   selectedItem={selectedItem}
                   activeSection={activeSection}
                   editingItem={editingItem}
+                  sections={sections}
                   updateSections={updateSections}
                   addCannedToItem={addCannedToItem}
                   removeCannedFromItem={removeCannedFromItem}
                   onOpenLibrary={openCommentLibrary}
                   categoryColor={catColor}
+                  categories={defectCategories}
+                  contractorTypes={contractorTypes}
                 />
               )}
 
               {rightRail === "preview" && (
-                <ItemPreviewPanel selectedItem={selectedItem} categoryColor={catColor} />
+                <ItemPreviewPanel selectedItem={selectedItem} categoryColor={catColor} categories={defectCategories} />
               )}
             </div>
           </aside>

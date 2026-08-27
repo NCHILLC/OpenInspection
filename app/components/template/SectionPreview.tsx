@@ -17,7 +17,7 @@ export function SectionPreview({ section }: SectionPreviewProps) {
           <div className="mt-2">
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-ih-bg-muted text-ih-fg-2">{item.type}</span>
             {item.type === "rich" && item.ratingOptions && (
-              <div className="flex gap-1 mt-2">
+              <div className="flex flex-wrap gap-1 mt-2">
                 {item.ratingOptions.map((opt) => (
                   <span key={opt} className="text-[10px] px-2 py-0.5 rounded border border-ih-border text-ih-fg-3">{opt}</span>
                 ))}

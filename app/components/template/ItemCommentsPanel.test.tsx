@@ -26,13 +26,13 @@ function harness() {
   const rerender = (r: ReturnType<typeof render>) =>
     r.rerender(
       <ItemCommentsPanel
-        selectedItem={sections[0].items[0]} activeSection={0} editingItem="i1"
+        selectedItem={sections[0].items[0]} activeSection={0} editingItem="i1" sections={sections}
         updateSections={updateSections} addCannedToItem={() => {}} removeCannedFromItem={() => {}}
       />,
     );
   const r = render(
     <ItemCommentsPanel
-      selectedItem={sections[0].items[0]} activeSection={0} editingItem="i1"
+      selectedItem={sections[0].items[0]} activeSection={0} editingItem="i1" sections={sections}
       updateSections={updateSections} addCannedToItem={() => {}} removeCannedFromItem={() => {}}
     />,
   );
@@ -48,6 +48,8 @@ describe("ItemCommentsPanel reorder + abbrev", () => {
   });
   it("edits the abbrev shortcode", () => {
     const h = harness();
+    const expandButtons = screen.getAllByLabelText("Expand comment");
+    fireEvent.click(expandButtons[0]);
     const abbrevInputs = screen.getAllByPlaceholderText("abbr");
     fireEvent.change(abbrevInputs[0], { target: { value: "shg" } });
     expect(h.get()[0].items[0].tabs!.defects[0].abbrev).toBe("shg");

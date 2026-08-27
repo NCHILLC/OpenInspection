@@ -247,6 +247,20 @@ html[data-color-scheme="field"] {
   --ih-border-strong-color: #64748b;
 }
 
+/* `color-scheme: dark` above tells Chromium to paint a <select>'s expanded
+   <option> LIST with a dark UI — but doesn't reliably reach the individual
+   <option> rows in every Chromium build/version (this varied enough across
+   real installs that the color-scheme fix alone still left some users with a
+   white popup and near-invisible text on dark theme). Setting background/color
+   directly on <option> is old, universally-supported CSS and doesn't depend on
+   the browser's color-scheme popup implementation at all. */
+html[data-color-scheme="dark"] select option,
+html[data-color-scheme="field"] select option,
+.dark select option {
+  background-color: var(--ih-bg-card);
+  color: var(--ih-fg-1);
+}
+
 /* ── Utility classes from Design System §1.6 ── */
 .ih-eyebrow {
   font-size: 9px;

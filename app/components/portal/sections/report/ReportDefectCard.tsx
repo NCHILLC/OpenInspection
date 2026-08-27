@@ -55,6 +55,18 @@ export function ReportDefectCard({ item, mediaVisible, renderMediaTile, showPhot
                 {d.effectiveComment}
               </p>
             )}
+            {(d.selectedChoices ?? []).length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {(d.selectedChoices ?? []).map((choice) => (
+                  <span
+                    key={choice}
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-ih-bg-muted text-ih-fg-2"
+                  >
+                    {choice}
+                  </span>
+                ))}
+              </div>
+            )}
             {(d.effectiveTrade || d.effectiveTimeframe) && (
               <div
                 data-defect-meta

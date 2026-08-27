@@ -17,9 +17,9 @@ export function SectionAuthorHeader({ section, activeSection, renameSection, upd
         <input
           value={section.title}
           onChange={(e) => renameSection(activeSection, e.target.value)}
-          className="text-[18px] font-bold bg-transparent border-b-2 border-transparent focus:border-ih-primary outline-none flex-1 text-ih-fg-1"
+          className="text-[18px] font-bold bg-transparent border-b-2 border-transparent focus:border-ih-primary outline-none flex-1 min-w-0 text-ih-fg-1"
         />
-        <span className="text-[11px] text-ih-fg-3">{m.templates_row_items({ count: section.items.length })}</span>
+        <span className="text-[11px] text-ih-fg-3 shrink-0 whitespace-nowrap">{m.templates_row_items({ count: section.items.length })}</span>
       </div>
 
       {/* Section disclaimer */}

@@ -61,6 +61,11 @@ export interface CannedState {
     cannedId:  string;
     included:  boolean;
     comment?:  string | null;
+    /** Which of the template comment's `choices` the inspector checked. */
+    selectedChoices?: string[];
+    /** Inspector-set "needs follow-up" marker. No report meaning yet — visible
+     *  and persisted only. */
+    flagged?: boolean;
 }
 
 /**
@@ -134,6 +139,11 @@ export interface DefectState {
     trade?:            string | null;
     deadline?:         string | null;
     timeframe?:        string | null;
+    /** Which of the template comment's `choices` the inspector checked. */
+    selectedChoices?:  string[];
+    /** Inspector-set "needs follow-up" marker. No report meaning yet — visible
+     *  and persisted only. */
+    flagged?:          boolean;
 }
 
 // ─── Projection types ────────────────────────────────────────────────────────

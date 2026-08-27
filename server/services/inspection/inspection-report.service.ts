@@ -55,9 +55,9 @@ import type {
  * reference a function-local interface (TS4053/TS4055). No module imports them
  * by name — hence the tag for knip.
  */
-export interface CannedInfoComment { id: string; title: string; comment: string; default: boolean }
+export interface CannedInfoComment { id: string; title: string; comment: string; default: boolean; choices?: string[] }
 /** @declarationEmit see CannedInfoComment. */
-export interface CannedDefect      { id: string; title: string; category: string; location: string; comment: string; photos: string[]; default: boolean }
+export interface CannedDefect      { id: string; title: string; category: string; location: string; comment: string; photos: string[]; default: boolean; choices?: string[] }
 /** @declarationEmit see CannedInfoComment. */
 export interface ItemTabs          { information: CannedInfoComment[]; limitations: CannedInfoComment[]; defects: CannedDefect[] }
 
@@ -282,6 +282,7 @@ export class InspectionReportService extends InspectionSubService {
                     ...e,
                     included,
                     effectiveComment: override ?? e.comment,
+                    selectedChoices: st?.selectedChoices ?? [],
                 };
             });
         }
@@ -369,6 +370,7 @@ export class InspectionReportService extends InspectionSubService {
                         // may still hold the pair, and this is one of the reads
                         // that used to publish it.
                         recommendationId: st?.recommendationId ?? null,
+                        selectedChoices: st?.selectedChoices ?? [],
                     };
                 });
 
