@@ -10,8 +10,38 @@ import { readZipEntry } from './zip';
  */
 const OOXML = {
     firstWorksheet: 'xl/worksheets/sheet1.xml',
+    sharedStrings: 'xl/sharedStrings.xml',
     sheetData: '<sheetData',
 } as const;
+
+/**
+ * The workbook's shared-string table, resolved to plain text by position.
+ *
+ * ── Why this exists ──────────────────────────────────────────────────────
+ * The real export writes every value inline (`t="str"`) and this file has no
+ * `sharedStrings.xml` at all — `readZipEntry` answers null and this is `[]`.
+ * A workbook a person re-saved in Excel is a DIFFERENT writer: Excel pools
+ * repeated text into this table and points at it with `t="s"` cells whose
+ * `<v>` is an INDEX, not a value. A reader that only reads `<v>` literally
+ * sees `0`, `1`, `2`... where the header names were, which is indistinguishable
+ * from a workbook this reader has never seen the shape of.
+ *
+ * Each `<si>` entry can hold one plain `<t>`, or several `<r><t>` runs when the
+ * cell mixes formatting within one string — both are joined before decoding,
+ * because the runs are the ONE string split by formatting, not several.
+ */
+async function readSharedStrings(bytes: Uint8Array): Promise<string[]> {
+    const xml = await readZipEntry(bytes, OOXML.sharedStrings);
+    if (xml === null) return [];
+    const text = new TextDecoder().decode(xml);
+    const strings: string[] = [];
+    for (const siXml of text.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)) {
+        let joined = '';
+        for (const tXml of siXml[1]!.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)) joined += tXml[1]!;
+        strings.push(decodeCellText(joined));
+    }
+    return strings;
+}
 
 /**
  * The first worksheet of an XLSX, as rows of strings.
@@ -33,22 +63,35 @@ const OOXML = {
  *     so a single decode leaves an entity where a section name should be.
  *
  * Both are the exporting product's, not the format's, and neither is guessable.
+ *
+ * ── What an EDITED export taught this reader ────────────────────────────────
+ * A workbook opened and re-saved in Excel is not the same writer: Excel uses
+ * the shared-string table the real export leaves empty, and marks those cells
+ * `t="s"` with an index in place of a value. Resolving it is the one case this
+ * reader must handle even though the export itself never produces it — an
+ * operator editing the file in the one tool everyone has is not a hostile
+ * input, it is the expected way this file gets a template's comments retyped.
  */
 export async function readXlsxSheet(bytes: Uint8Array): Promise<string[][] | null> {
     const xml = await readZipEntry(bytes, OOXML.firstWorksheet);
     if (xml === null) return null;
     const text = new TextDecoder().decode(xml);
     if (!text.includes(OOXML.sheetData)) return null;
+    const sharedStrings = await readSharedStrings(bytes);
 
     const rows: string[][] = [];
     let width = 0;
     for (const rowXml of text.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)) {
         const cells: string[] = [];
-        for (const cellXml of rowXml[1]!.matchAll(/<c\b[^>]*r="([A-Z]+)\d+"[^>]*>([\s\S]*?)<\/c>/g)) {
-            const index = columnIndex(cellXml[1]!);
-            const value = cellXml[2]!.match(/<v>([\s\S]*?)<\/v>/)?.[1] ?? '';
+        for (const cellXml of rowXml[1]!.matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g)) {
+            const attrs = cellXml[1]!;
+            const ref = attrs.match(/\br="([A-Z]+)\d+"/)?.[1];
+            if (!ref) continue;
+            const index = columnIndex(ref);
+            const type = attrs.match(/\bt="([a-zA-Z]+)"/)?.[1] ?? '';
+            const raw = cellXml[2]!.match(/<v>([\s\S]*?)<\/v>/)?.[1] ?? '';
             while (cells.length < index) cells.push('');
-            cells[index] = decodeCellText(value);
+            cells[index] = type === 's' ? (sharedStrings[Number(raw)] ?? '') : decodeCellText(raw);
         }
         width = Math.max(width, cells.length);
         rows.push(cells);

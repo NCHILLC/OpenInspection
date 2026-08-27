@@ -249,6 +249,7 @@
   "settings_team_role_agent_desc": "No es un miembro del equipo ni ocupa una licencia. A los agentes se les da acceso a inspecciones individuales desde la sección Personas de esa inspección, y leen el informe mediante un enlace que no requiere cuenta.",
   "settings_team_cancel_invite": "Cancelar invitación",
   "settings_team_resend_invite": "Reenviar",
+  "settings_team_copy_invite_link": "Copiar enlace",
   "settings_team_invite_expires_in": "Vence en {days} d",
   "settings_team_invite_expired": "Venció hace {days} d",
   "settings_team_cancel_invite_title": "¿Cancelar esta invitación?",

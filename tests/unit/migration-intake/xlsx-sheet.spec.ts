@@ -96,6 +96,41 @@ describe('readXlsxSheet', () => {
         expect(rows![0][26]).toBe('z');
     });
 
+    it('resolves a SHARED-STRING cell against sharedStrings.xml', async () => {
+        // What Excel writes after a person edits and re-saves the real export:
+        // every value becomes a `t="s"` index into this table instead of an
+        // inline `t="str"` value. The real export never produces this shape —
+        // an edited one does, and it is not the operator's mistake.
+        const sheet = `<?xml version="1.0"?><worksheet><sheetData>
+<row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>
+</sheetData></worksheet>`;
+        const sharedStrings = `<?xml version="1.0"?><sst count="2" uniqueCount="2">
+<si><t>Section Name</t></si><si><t>Item Name</t></si></sst>`;
+        const bytes = await zipOf({
+            'xl/worksheets/sheet1.xml': sheet,
+            'xl/sharedStrings.xml': sharedStrings,
+        });
+        const rows = await readXlsxSheet(bytes);
+        expect(rows![0]).toEqual(['Section Name', 'Item Name']);
+    });
+
+    it('joins a shared string split across RICH-TEXT runs', async () => {
+        // One string can carry mixed formatting, which XLSX represents as
+        // several `<r><t>` runs inside one `<si>`. They are the same string,
+        // not several — joining them is what makes this one cell, not two.
+        const sheet = `<?xml version="1.0"?><worksheet><sheetData>
+<row r="1"><c r="A1" t="s"><v>0</v></c></row>
+</sheetData></worksheet>`;
+        const sharedStrings = `<?xml version="1.0"?><sst count="1" uniqueCount="1">
+<si><r><t>Decks, Balconies, Porches </t></r><r><t>&amp;amp; Steps</t></r></si></sst>`;
+        const bytes = await zipOf({
+            'xl/worksheets/sheet1.xml': sheet,
+            'xl/sharedStrings.xml': sharedStrings,
+        });
+        const rows = await readXlsxSheet(bytes);
+        expect(rows![0][0]).toBe('Decks, Balconies, Porches & Steps');
+    });
+
     it('returns null for bytes that are not a workbook', async () => {
         expect(await readXlsxSheet(new TextEncoder().encode('Name,Email\nA,b@c.test'))).toBeNull();
         expect(await readXlsxSheet(new Uint8Array([0x50, 0x4b, 0x03, 0x04]))).toBeNull();

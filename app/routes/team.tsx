@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLoaderData, useFetcher } from "react-router";
+import { useCopyClipboard } from "~/hooks/useCopyClipboard";
 import type { Route } from "./+types/team";
 import { requireToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
@@ -124,6 +125,7 @@ export default function TeamPage() {
   // and read as a failure. `resendFetcher` below is a <Form>, not a submit.
   const { submit: submitCancel, busy: cancelBusy } = useGuardedSubmit<{ ok?: boolean }>();
   const resendFetcher = useFetcher<{ ok?: boolean; resent?: boolean }>();
+  const { copied, copy } = useCopyClipboard();
   const [pendingCancel, setPendingCancel] = useState<{ token: string; email: string } | null>(null);
   const sessionCtx = useSessionContext();
   const [activeTab, setActiveTab] = useState("active");
@@ -260,6 +262,13 @@ export default function TeamPage() {
                       </span>
                       {canManage && (
                         <>
+                          <button
+                            type="button"
+                            onClick={() => copy(`${window.location.origin}/join?token=${member.token}`, member.token as string)}
+                            className="text-[12px] font-medium text-ih-fg-2 hover:underline"
+                          >
+                            {copied === member.token ? m.common_copied() : m.settings_team_copy_invite_link()}
+                          </button>
                           <resendFetcher.Form method="post" className="inline">
                             <input type="hidden" name="intent" value="resend-invite" />
                             <input type="hidden" name="token" value={member.token} />

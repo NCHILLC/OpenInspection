@@ -34,6 +34,32 @@ function sheetXml(rows: string[][]): string {
 const workbook = (rows: string[][]): Promise<Uint8Array> =>
     zipOf({ 'xl/worksheets/sheet1.xml': sheetXml(rows) });
 
+/**
+ * The file that reaches this adapter after an operator opens the export in
+ * Excel and re-saves it — to reorder rows or retype a comment, both ordinary
+ * things to do to a template. Excel pools the cell text into a shared-string
+ * table and points at it by index, which is a different shape from the export
+ * button's own file. This is not a corrupt or hostile input; it's the one an
+ * operator produces the moment they touch the file in the tool everyone has.
+ */
+function sharedStringWorkbook(rows: string[][]): Promise<Uint8Array> {
+    const strings: string[] = [];
+    const indexOf = (v: string): number => {
+        const found = strings.indexOf(v);
+        if (found >= 0) return found;
+        strings.push(v);
+        return strings.length - 1;
+    };
+    const cell = (v: string, col: number, row: number) =>
+        `<c r="${String.fromCharCode(65 + col)}${row}" t="s"><v>${indexOf(v)}</v></c>`;
+    const body = rows.map((r, i) =>
+        `<row r="${i + 1}">${r.map((v, c) => cell(v, c, i + 1)).join('')}</row>`).join('');
+    const sheet = `<?xml version="1.0"?><worksheet><sheetData>${body}</sheetData></worksheet>`;
+    const sst = `<?xml version="1.0"?><sst count="${strings.length}" uniqueCount="${strings.length}">`
+        + strings.map((s) => `<si><t>${s.replace(/&/g, '&amp;')}</t></si>`).join('') + '</sst>';
+    return zipOf({ 'xl/worksheets/sheet1.xml': sheet, 'xl/sharedStrings.xml': sst });
+}
+
 const THREE_ROWS = [
     HEADER,
     ['Roof', 'Covering', 'Worn', 'The covering is worn.', 'defect'],
@@ -172,5 +198,21 @@ describe('spectoraAdapter.convert — the real export', () => {
         expect(result.ok).toBe(false);
         if (result.ok) throw new Error('unreachable');
         expect(result.error.code).toBe('NO_SECTIONS');
+    });
+
+    it('reads a file an operator opened and RE-SAVED in Excel', async () => {
+        // Re-saving pools every value into a shared-string table instead of
+        // writing it inline — this is what broke before the reader resolved
+        // `t="s"` cells: the header stopped matching anything and this file
+        // was refused as NOT_AN_EXPORT even though it holds the real export's
+        // own rows, untouched except for the tool that wrote the bytes.
+        const result = await spectoraAdapter.convert(await sharedStringWorkbook(THREE_ROWS), { name: 'T' });
+        expect(result.ok).toBe(true);
+        if (!result.ok) throw new Error('unreachable');
+        const schema = result.bundle.templates[0]!.schema;
+        expect(schema.sections.map((s) => s.title)).toEqual(['Roof', 'Exterior']);
+        const roof = schema.sections.find((s) => s.title === 'Roof');
+        expect(roof?.items.find((i) => i.label === 'Covering')?.tabs?.defects.map((d) => d.title))
+            .toEqual(['Worn']);
     });
 });
