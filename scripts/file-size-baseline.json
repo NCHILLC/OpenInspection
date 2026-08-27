@@ -1,5 +1,5 @@
 {
-  "app/routes/inspection-edit.tsx": 2609,
+  "app/routes/inspection-edit.tsx": 2299,
   "app/routes/inspector-portal.tsx": 1302,
   "server/durable-objects/inspection-doc.ts": 945,
   "server/services/inspection/inspection-report.service.ts": 940,

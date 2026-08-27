@@ -4,7 +4,6 @@ import { INSPECTION_STATUS } from "~/lib/status";
 import { findRatingLevel, ratingAdvanceDecision } from "~/lib/rating-levels";
 import { makeCustomDefect } from "~/lib/custom-defects";
 import { useInspectionState, type InspectionSchema, type ItemFilter } from "~/hooks/useInspection";
-import { findingKey } from "~/hooks/findings/shared";
 import { useDisplayLocale } from "~/hooks/useSessionContext";
 import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
 import { useFindings, type AttachedRepairItem } from "~/hooks/useFindings";
@@ -12,15 +11,15 @@ import { usePhotoOps } from "~/hooks/usePhotoOps";
 import { useScopeLoader } from "~/hooks/useScopeLoader";
 import { useInspectionPrefs } from "~/hooks/useInspectionPrefs";
 import { pushToast } from "~/hooks/useToast";
-import { useKeyboard } from "~/hooks/useKeyboard";
+import { useEditorKeyboard } from "./inspection-edit/useEditorKeyboard";
+import { useEditorPhotoUpload } from "./inspection-edit/useEditorPhotoUpload";
 import { useCannedComments } from "~/hooks/useCannedComments";
 import { useUnsavedChanges } from "~/hooks/useUnsavedChanges";
 import { usePresence } from "~/hooks/usePresence";
 import { ThemeSegmentControl } from "~/components/sidebar/ThemeSegmentControl";
 import { useResultsDoc } from "~/lib/collab/use-results-doc";
 import { useMediaDrain } from "~/hooks/useMediaDrain";
-import { bindResultMap, appendPendingPhoto } from "~/lib/collab/results-binding";
-import { enqueueMedia } from "~/lib/collab/media-upload-queue";
+import { bindResultMap } from "~/lib/collab/results-binding";
 import { VersionHistoryPanel } from "~/components/collab/VersionHistoryPanel";
 import type { ResultsProjection } from "../../server/lib/collab/results-doc.types";
 import { SectionRail } from "~/components/editor-shared/SectionRail";
@@ -52,7 +51,6 @@ import { MediaViewer } from "~/components/media-studio/MediaViewer";
 import { PosterPicker } from "~/components/media-studio/PosterPicker";
 import { VideoCapture } from "~/components/media-studio/VideoCapture";
 import { fullResUrl } from "~/components/media-studio/cropImage";
-import { preprocessImage } from "~/components/media-studio/preprocessImage";
 import { PublishGateModal } from "~/components/editor/PublishGateModal";
 import { AddMediaChooser } from "~/components/editor/AddMediaChooser";
 import { RecropWarningModal } from "~/components/editor/RecropWarningModal";
@@ -88,20 +86,10 @@ export function meta() {
 /* Upload quality preference (N2+N4)                                  */
 /* ------------------------------------------------------------------ */
 
-/**
- * Device-local opt-out for the upload preprocessing pass. Default OFF means
- * preprocessing is ON (downscale + EXIF/GPS strip). Persisted to localStorage
- * so the choice survives reloads and is read at all three photo entry points
- * (item picker, burst commit, offline replay) from one source of truth.
- */
-export const ORIGINAL_QUALITY_KEY = "oi.uploads.originalQuality";
-export function originalQualityEnabled(): boolean {
- try {
- return typeof localStorage !== "undefined" && localStorage.getItem(ORIGINAL_QUALITY_KEY) === "1";
- } catch {
- return false;
- }
-}
+// Lives in ./inspection-edit/original-quality so the photo-upload hook can read
+// the preference without importing this route module (which imports it).
+// Re-exported here because InspectionSettingsSheet writes the key via this path.
+export { ORIGINAL_QUALITY_KEY, originalQualityEnabled } from "./inspection-edit/original-quality";
 
 /* ------------------------------------------------------------------ */
 /* Loader */
@@ -1084,189 +1072,15 @@ export default function InspectionEditPage() {
  /* Photo upload */
  /* ---------------------------------------------------------------- */
 
- /**
- * FE-2 — uploads go through the route action ("upload-photo" intent) on a
- * dedicated fetcher: the old direct fetch('/api/…/upload') bypassed the
- * BFF token relay (unauthenticated in saas, C-12 class) and swallowed
- * every failure silently. The effect below attaches returned keys and
- * surfaces failures as a toast.
- */
- // FE-3 — when set, the next picked photo pins to this defect row instead
- // of the item; armed by ItemEditor's per-defect chip right before the
- // picker opens, consumed (and cleared) by handlePhotoUpload.
- const pendingPhotoTargetRef = useRef<{ kind: "canned" | "custom"; id: string } | null>(null);
-
- // Task 16 — Worker subrequest safety: a single submission fans out one
- // upstream upload call per file (see action.server.ts's mapPool), so an
- // unbounded selection could blow the per-request subrequest budget. Cap the
- // batch and tell the user rather than silently dropping the overflow.
- const MAX_BATCH_PHOTOS = 20;
-
- const handlePhotoUpload = useCallback(
- (e: React.ChangeEvent<HTMLInputElement>) => {
- const all = Array.from(e.target.files ?? []);
- if (all.length === 0 || !state.activeItemId) return;
- const itemId = state.activeItemId;
- const overflow = all.length > MAX_BATCH_PHOTOS;
- const files = overflow ? all.slice(0, MAX_BATCH_PHOTOS) : all;
-
- // N2+N4 — bake before submit (auto-orient + downscale + EXIF/GPS strip),
- // unless the user opted into original quality. Capture the
- // defect target ref into a local BEFORE the await so a second picker open
- // cannot clobber it. The offline branch below keeps the RAW File (Task 5
- // bakes at replay). Single-file selections take this exact same path with
- // a one-element array, so behavior is byte-identical to the old code.
- const orig = originalQualityEnabled();
- const target = pendingPhotoTargetRef.current;
- pendingPhotoTargetRef.current = null;
- void (async () => {
- const bakedFiles: File[] = [];
- for (const f of files) {
- bakedFiles.push(orig ? f : await preprocessImage(f));
- }
-
- // #181 PR-G — offline: persist each baked photo locally + append a
- // PENDING doc entry (empty key + pendingUpload) per file. The strip
- // renders them from the local blob; the drain (on reconnect / online)
- // uploads each to R2 and swaps in the real key. Defect-targeted offline
- // adds fall back to the online fetcher (the pending-doc model covers
- // item photos; defect pending is out of scope) — they simply re-fire
- // when back online.
- const doc = collab?.doc ?? null;
- const sid = state.sectionIdForItem(itemId) ?? state.currentSection?.id;
- if (typeof navigator !== "undefined" && navigator.onLine === false && doc && sid && !target) {
-  // Phase U (Batch C2a) — key the offline pending-photo doc entry to the active
-  // unit. At activeUnitId == null this === the legacy `_default:{sid}:{itemId}`.
-  const fk = findingKey(activeUnitId, sid, itemId);
-  for (const baked of bakedFiles) {
-  const pendingId = crypto.randomUUID();
-  await enqueueMedia({
-  pendingId,
-  inspectionId: String(state.inspection.id),
-  findingKey: fk,
-  kind: "photo",
-  blob: baked,
-  enqueuedAt: Date.now(),
-  });
-  appendPendingPhoto(doc, fk, pendingId);
-  }
- } else {
-  const formData = new FormData();
-  formData.append("intent", "upload-photo");
-  formData.append("itemId", itemId);
-  for (const baked of bakedFiles) formData.append("file", baked);
-  if (target) {
-  formData.append("targetType", "defect");
-  formData.append("customId", target.id);
-  formData.append("defectKind", target.kind);
-  }
-  uploadFetcher.submit(formData, { method: "post", encType: "multipart/form-data" });
- }
-
- if (overflow) {
-  pushToast({
-  message: m.editor_route_photos_batch_capped(),
-  variant: "warning",
-  durationMs: 6000,
-  });
- }
- })();
- // Reset both inputs so re-picking the same file(s) re-fires onChange
- if (cameraInputRef.current) cameraInputRef.current.value = "";
- if (libraryInputRef.current) libraryInputRef.current.value = "";
- },
- [state.activeItemId, state.inspection.id, uploadFetcher, collab?.doc, state.sectionIdForItem, state.currentSection, activeUnitId],
- );
-
- const handleBurstCommit = useCallback(
- (blobs: Blob[]) => {
- if (!state.burstCameraItemId || blobs.length === 0) return;
- const itemId = state.burstCameraItemId;
-
- // N4 — bake each frame before upload. Burst frames are already
- // canvas-captured JPEGs (no EXIF), so this is purely the downscale; it
- // no-ops on frames already below the cap. Honors the original-quality opt-out.
- const orig = originalQualityEnabled();
- void (async () => {
- const formData = new FormData();
- formData.append("intent", "upload-photo");
- formData.append("itemId", itemId);
- for (let i = 0; i < blobs.length; i++) {
-  const f = new File([blobs[i]], `burst-${i + 1}.jpg`, { type: "image/jpeg" });
-  formData.append("file", orig ? f : await preprocessImage(f));
- }
- uploadFetcher.submit(formData, { method: "post", encType: "multipart/form-data" });
- })();
- },
- [state.burstCameraItemId, state.inspection.id, uploadFetcher],
- );
-
- // Attach uploaded photo keys once the action responds — to the item, or
- // (FE-3) to the specific defect row the action echoes back.
- const processedUploadData = useRef<unknown>(null);
- useEffect(() => {
- const d = uploadFetcher.data as
- | {
- ok?: boolean;
- keys?: string[];
- // Task 15/16 — per-file status; drives the partial-failure toast below.
- results?: Array<{ index: number; ok: boolean; key?: string; error?: string }>;
- itemId?: string;
- targetType?: "item" | "defect";
- customId?: string;
- defectKind?: "canned" | "custom";
- }
- | undefined;
- if (uploadFetcher.state !== "idle" || !d || processedUploadData.current === d) return;
- processedUploadData.current = d;
- // Attach every successful key exactly as before — unchanged regardless of
- // whether the submission was a single file or a batch.
- if (d.keys?.length && d.itemId) {
- for (const k of d.keys) {
- if (d.targetType === "defect" && d.customId) {
- findings.addPhotoToDefect(
- d.itemId,
- { kind: d.defectKind ?? "canned", id: d.customId },
- k,
- );
- } else {
- findings.addPhotoToItem(d.itemId, k);
- }
- }
- }
- // Task 16 — results[] lets a batch report exactly how many of a large
- // selection made it, instead of an all-or-nothing toast. d.ok is derived
- // from results.every(ok) server-side, so without this a single failed file
- // in a 12-photo batch would fire BOTH the success toast (for the 11 that
- // attached) and the old generic failure toast — keep them mutually
- // exclusive here.
- if (d.results?.length) {
- const total = d.results.length;
- const successCount = d.results.filter((r) => r.ok).length;
- const failCount = total - successCount;
- if (failCount > 0) {
- pushToast({
- message: m.editor_route_photos_partial_upload({ success: successCount, total, failed: failCount }),
- variant: "error",
- durationMs: 8000,
+ const { handlePhotoUpload, handleBurstCommit, pendingPhotoTargetRef } = useEditorPhotoUpload({
+ state,
+ findings,
+ uploadFetcher,
+ collabDoc: collab?.doc,
+ activeUnitId,
+ cameraInputRef,
+ libraryInputRef,
  });
- } else {
- pushToast({
- message: m.editor_route_photos_added({ count: successCount, s: successCount === 1 ? "" : "s", toDefect: d.targetType === "defect" ? " to defect" : "" }),
- variant: "success",
- durationMs: 2000,
- });
- }
- } else if (d.ok === false) {
- // Fallback for a response shape without results[] (e.g. an older/other
- // action path) — preserves the pre-Task-16 generic failure toast.
- pushToast({
- message: m.editor_route_photo_upload_failed(),
- variant: "error",
- durationMs: 8000,
- });
- }
- }, [uploadFetcher.state, uploadFetcher.data, findings]);
 
  /* ---------------------------------------------------------------- */
  /* Open-snippets callback (shared by keyboard shortcut + textarea trigger) */
@@ -1290,149 +1104,25 @@ export default function InspectionEditPage() {
  /* Keyboard shortcuts */
  /* ---------------------------------------------------------------- */
 
- const keyboardHandlers = useMemo(
- () => ({
- onRate: (level: number) => {
- if (state.activeItemId && state.currentSection && state.ratingLevels[level - 1]) {
- handleRating(state.ratingLevels[level - 1].id, 'keyboard');
- }
- },
- onClearRating: () => {
- if (state.activeItemId && state.currentSection) {
- findings.setRating(state.currentSection.id, state.activeItemId, null);
- }
- },
- onNARating: () => {
- if (!state.activeItemId || !state.currentSection) return;
- const naLevel = state.ratingLevels.find((l) => {
- const ab = (l.abbreviation || "").toUpperCase();
- const nm = (l.name || l.label || "").toLowerCase();
- return ab === "NA" || ab === "N/A" || nm.includes("not applicable");
- });
- if (naLevel) {
- handleRating(naLevel.id, 'keyboard');
- }
- },
- onNextItem: () => state.navigateItem(1),
- onPrevItem: () => state.navigateItem(-1),
- onToggleSpeed: toggleSpeedMode,
- speedMode: state.speedMode,
- onSpeedRate: speedRate,
- onSpeedNext: () => {
- if (state.speedCurrent < state.speedQueue.length - 1) {
- state.setSpeedCurrent(state.speedCurrent + 1);
- } else {
- state.setSpeedCurrent(0);
- }
- },
- onSpeedPrev: () => {
- if (state.speedCurrent > 0) {
- state.setSpeedCurrent(state.speedCurrent - 1);
- }
- },
- onSpeedOpenEditor: () => {
- if (!state.speedMode) return;
- const qi = state.speedQueue[state.speedCurrent];
- if (qi == null) return;
- const item = state.speedItemsRef.current[qi];
- if (!item) return;
- state.setSpeedMode(false);
- state.setActiveItemId(item.id);
- state.setCurrentSectionIdx(item.sectionIdx);
- },
- onOpenLibrary: () => {
- if (!state.activeItemId) return;
- const r = state.getResult(state.activeItemId);
- state.setCommentLibraryFilter(
- state.severityForRatingId(r?.rating as string),
- );
- state.setCommentLibrarySearch("");
- state.setCommentLibrarySelectedIdx(0);
- state.setShowCommentLibrary(true);
- },
- onOpenSnippets: openSnippets,
- showCommentLibrary: state.showCommentLibrary,
- onLibraryDown: () => {
- state.setCommentLibrarySelectedIdx(
- Math.min(
- state.commentLibrarySelectedIdx + 1,
- Math.max(serverComments.length, commentLibraryItems.length) - 1,
- ),
- );
- },
- onLibraryUp: () => {
- state.setCommentLibrarySelectedIdx(
- Math.max(state.commentLibrarySelectedIdx - 1, 0),
- );
- },
- onLibrarySelect: () => {
- const sel = serverComments[state.commentLibrarySelectedIdx]
- ?? commentLibraryItems[state.commentLibrarySelectedIdx];
- if (sel && state.activeItemId && state.currentSection) {
- findings.insertComment(
- state.currentSection.id,
- state.activeItemId,
- sel.text,
- );
- if ('id' in sel && sel.id) comments.touchSnippet(sel.id as string);
- state.setShowCommentLibrary(false);
- }
- },
- onLibraryClose: () => state.setShowCommentLibrary(false),
- onPhoto: () => {
- if (!state.activeItemId || uploadFetcher.state !== "idle") return;
- // Task 16 — desktop file pickers already offer camera-vs-library choice
- // natively, so go straight to the multi-select library input; mobile
- // still needs the explicit chooser (camera capture has no multi-select).
- if (isMobile) {
- setAddMediaChooser({ itemId: state.activeItemId });
- } else {
- libraryInputRef.current?.click();
- }
- },
- onSave: () => findings.saveNow(),
- onPublish: () => { setPublishError(null); state.setShowPublishModal(true); },
- onCloneLast: () => handleCloneLast(inspectionPrefs.cloneDefault),
- onSaveAsSnippet: () => {
- if (!state.activeItemId) return;
- const r = state.getResult(state.activeItemId);
- const notes = ((r?.notes as string) || "").trim();
- if (!notes) return;
- const severity = state.severityForRatingId(r?.rating as string);
- const section = state.currentSection?.title || "";
- comments.saveSnippet(notes, severity, section, undefined, (state.activeItem?.label || state.activeItem?.name || undefined) as string | undefined);
- },
- onToggleCheatsheet: () =>
- state.setShowCheatsheet(!state.showCheatsheet),
- onGotoSection: (idx: number) => {
- if (idx >= 0 && idx < state.sections.length) {
- state.selectSection(idx);
- }
- },
- onOpenSectionPicker: () => state.openSectionPicker(),
- onOpenTagPicker: () => {
- if (!state.activeItemId) return;
- setTagPickerOpen(true);
- },
- onToggleFullscreen: () => state.setItemFullscreen(!state.itemFullscreen),
- onExitFullscreen: () => { if (state.itemFullscreen) state.setItemFullscreen(false); }, // guard: bare Escape (not fullscreen) = no-op
- }),
- [
+ useEditorKeyboard({
  state,
  findings,
+ comments,
  handleRating,
+ handleCloneLast,
+ cloneDefault: inspectionPrefs.cloneDefault,
  toggleSpeedMode,
  speedRate,
  openSnippets,
- comments,
  commentLibraryItems,
  serverComments,
- uploadFetcher.state,
+ uploadFetcherState: uploadFetcher.state,
  isMobile,
- ],
- );
-
- useKeyboard(keyboardHandlers, true);
+ setAddMediaChooser,
+ libraryInputRef,
+ setPublishError,
+ setTagPickerOpen,
+ });
 
  /* ---------------------------------------------------------------- */
  /* Visible items (filtered + searched) */
