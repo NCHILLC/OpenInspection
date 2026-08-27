@@ -18,6 +18,14 @@ import {
  type CannedTabId,
  type LibraryMatch,
 } from "./CannedCommentTabs";
+import {
+ type ItemTabs,
+ getIncludedSet,
+ getSelectedChoicesMap,
+ getCommentOverrideMap,
+ getFlaggedMap,
+ cannedDefectPhotoCount,
+} from "./item-tab-projections";
 import { ItemPhotoStrip, type StripPhoto } from "../media-studio/ItemPhotoStrip";
 import type { AttachedRepairItem } from "../../hooks/useFindings";
 import type { ItemAttribute } from "../../lib/types";
@@ -48,12 +56,6 @@ const FALLBACK_LEVELS: EditorRatingLevel[] = [
 /* ------------------------------------------------------------------ */
 /* Canned comment types */
 /* ------------------------------------------------------------------ */
-
-interface ItemTabs {
- information?: CannedInfoComment[];
- limitations?: CannedInfoComment[];
- defects?: CannedDefect[];
-}
 
 const CANNED_TAB_IDS: CannedTabId[] = ["information", "limitations", "defects"];
 
@@ -274,57 +276,6 @@ export function ItemEditor({
  (tabs.defects && tabs.defects.length > 0)
  );
 
- // Build a set of included canned IDs from the result state.
- // The result may store canned state as `result.tabs[tabName]` (array of { cannedId, included }).
- const getIncludedSet = (tabName: CannedTabId): Set<string> => {
- const included = new Set<string>();
- const templateEntries = (tabs[tabName] || []) as Array<{ id: string; default: boolean }>;
- const stateEntries = ((result.tabs as Record<string, Array<{ cannedId: string; included: boolean }>> | undefined)?.[tabName]) || [];
- const stateMap = new Map<string, boolean>();
- for (const s of stateEntries) {
- stateMap.set(s.cannedId, s.included);
- }
- for (const entry of templateEntries) {
- const stateVal = stateMap.get(entry.id);
- // If there is a state override, use it; otherwise use the template default
- const isIncluded = stateVal !== undefined ? stateVal : entry.default;
- if (isIncluded) included.add(entry.id);
- }
- return included;
- };
-
- // Which of the active tab's comments' `choices` are checked — mirrors
- // getIncludedSet's read of `result.tabs[tabName]` state entries, but keyed
- // by cannedId → selectedChoices rather than cannedId → included.
- const getSelectedChoicesMap = (tabName: CannedTabId): Map<string, string[]> => {
- const map = new Map<string, string[]>();
- const stateEntries = ((result.tabs as Record<string, Array<{ cannedId: string; selectedChoices?: string[] }>> | undefined)?.[tabName]) || [];
- for (const s of stateEntries) {
- if (Array.isArray(s.selectedChoices)) map.set(s.cannedId, s.selectedChoices);
- }
- return map;
- };
-
- // Same read pattern as getSelectedChoicesMap, for the two other per-comment
- // state fields the row-icon cluster needs: the inspector's text override and
- // the "needs follow-up" flag. Both apply across all three tabs.
- const getCommentOverrideMap = (tabName: CannedTabId): Map<string, string> => {
- const map = new Map<string, string>();
- const stateEntries = ((result.tabs as Record<string, Array<{ cannedId: string; comment?: string | null }>> | undefined)?.[tabName]) || [];
- for (const s of stateEntries) {
- if (typeof s.comment === "string" && s.comment.length > 0) map.set(s.cannedId, s.comment);
- }
- return map;
- };
-
- const getFlaggedMap = (tabName: CannedTabId): Map<string, boolean> => {
- const map = new Map<string, boolean>();
- const stateEntries = ((result.tabs as Record<string, Array<{ cannedId: string; flagged?: boolean }>> | undefined)?.[tabName]) || [];
- for (const s of stateEntries) {
- if (s.flagged) map.set(s.cannedId, true);
- }
- return map;
- };
 
  const rawTabEntries = (tabs[activeTab] || []) as Array<CannedInfoComment | CannedDefect>;
  // B-20: the Defects tab is searchable — canned libraries grow long and the
@@ -333,10 +284,10 @@ export function ItemEditor({
  activeTab === "defects" && defectQuery.trim()
  ? filterCannedEntries(rawTabEntries, defectQuery)
  : rawTabEntries;
- const includedSet = getIncludedSet(activeTab);
- const selectedChoicesByCannedId = getSelectedChoicesMap(activeTab);
- const commentOverrideByCannedId = getCommentOverrideMap(activeTab);
- const flaggedByCannedId = getFlaggedMap(activeTab);
+ const includedSet = getIncludedSet(tabs, result, activeTab);
+ const selectedChoicesByCannedId = getSelectedChoicesMap(result, activeTab);
+ const commentOverrideByCannedId = getCommentOverrideMap(result, activeTab);
+ const flaggedByCannedId = getFlaggedMap(result, activeTab);
 
  const levels = ratingLevels && ratingLevels.length > 0 ? ratingLevels : FALLBACK_LEVELS;
  // Normalised lookup: legacy stored values ('DEF') resolve onto the system's
@@ -350,8 +301,8 @@ export function ItemEditor({
  ...((tabs.limitations || []).map((e) => ({ ...e, tab: "limitations" as const }))),
  ]);
  const lintIncluded = new Set([
- ...getIncludedSet("information"),
- ...getIncludedSet("limitations"),
+ ...getIncludedSet(tabs, result, "information"),
+ ...getIncludedSet(tabs, result, "limitations"),
  ]);
  const contradictions = hasTabs
  ? findRatingContradictions({ level: activeLevel, entries: lintEntries, includedIds: lintIncluded })
@@ -361,12 +312,6 @@ export function ItemEditor({
  // B-20 — field-authored custom defects already persisted on this item.
  const customDefects = (((result.customComments as { defects?: (CustomDefect & { photos?: Array<{ key: string }> })[] } | undefined)?.defects) ?? []);
 
- // FE-3 — photo count on a canned defect's STATE row (tabs.defects[].photos).
- const cannedDefectPhotoCount = (cannedId: string): number => {
- const rows = ((result.tabs as { defects?: Array<{ cannedId: string; photos?: unknown[] }> } | undefined)?.defects) ?? [];
- const row = Array.isArray(rows) ? rows.find((r) => r.cannedId === cannedId) : undefined;
- return Array.isArray(row?.photos) ? row.photos.length : 0;
- };
 
  // Shared per-defect photo chip (canned + custom rows).
  const addPhotoIcon = (
@@ -407,7 +352,7 @@ export function ItemEditor({
  // here would be a conditional hook (rules-of-hooks). The 3-id map is cheap.
  const visibleTabs = CANNED_TAB_IDS
   .filter((id) => ((tabs[id] || []) as unknown[]).length > 0)
-  .map((id) => ({ id, label: cannedTabLabel(id), count: getIncludedSet(id).size || undefined }));
+  .map((id) => ({ id, label: cannedTabLabel(id), count: getIncludedSet(tabs, result, id).size || undefined }));
 
  // Photo count is read in several places (badge, caption, empty-state copy).
  const photoCount = ((result.photos as unknown[]) || []).length;
@@ -610,7 +555,7 @@ export function ItemEditor({
  missingFields={missingFields}
  requiredDefectFields={requiredDefectFields}
  defectPhotoChip={defectPhotoChip}
- cannedDefectPhotoCount={cannedDefectPhotoCount}
+ cannedDefectPhotoCount={(id) => cannedDefectPhotoCount(result, id)}
  categoryColor={categoryColor}
  libraryMatches={libraryMatches}
  onSeedFromLibrary={(match) => {
