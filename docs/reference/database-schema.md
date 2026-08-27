@@ -9,11 +9,11 @@ from the Drizzle definitions in `server/lib/db/schema/` — the two that
 
 | | |
 |---|---|
-| Tables | 104 |
-| Columns | 1234 |
+| Tables | 106 |
+| Columns | 1231 |
 | Indexes (excluding primary keys) | 176 |
 | Database foreign keys (all legacy, frozen) | 51 |
-| Columns carrying a source comment | 593 (48%) |
+| Columns carrying a source comment | 588 (48%) |
 
 **Tables without `tenant_id`.** Every table holding tenant data must carry it —
 `npm run lint:tenant-scope` is the gate. These are the tables that are not *about*
@@ -21,10 +21,10 @@ a tenant, which is the only reason to be missing it:
 
 `agent_terms_acceptances` · `deployment_legal_versions` · `discovery_objections` · `marketplace_libraries` · `parked_cmd_events` · `processed_cmd_events` · `processed_webhook_events` · `slug_reservations` · `sms_disclosure_versions` · `statutory_form_sightings` · `statutory_form_versions` · `sync_outbox` · `tenants`
 
-That is 13 of 104. If a table you just added appears here,
+That is 13 of 106. If a table you just added appears here,
 that is the bug, not the list.
 
-**Timestamps.** 198 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
+**Timestamps.** 199 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
 epoch MILLISECONDS, with no legacy `mode: 'timestamp'` columns left.
 Seconds and milliseconds are one multiplication apart and the mistake reads as a
 date tens of thousands of years out, so the Schema Rules allow only the former for
@@ -210,7 +210,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `model` | text | NN |  |  | Model id as configured for the deployment at call time. Recorded because it is configuration: the same prompt version against a different model is a different output, and nothing else in the system remembers which one was in force. |
 | `prompt_version` | text | NN |  |  | The `AI_PROMPTS[…].version` token of the prompt that was rendered. The reason the tokens are names and not hashes: this column is what makes an old output distinguishable from a new one after a rewording. |
 | `created_at` | integer | NN IX |  |  | *Creation time, epoch milliseconds.* |
-| `config_version` | integer |  |  |  | `tenant_configs.ai_config_version` at the moment of the call. NULL for rows written before this column existed, and for the managed path, whose destination belongs to the deployment and does not move per workspace. **[more]** |
+| `endpoint` | text |  |  |  | Where the call actually went: scheme, host, port and path, normalised by `normaliseEndpoint` so credentials, query and fragment are structurally absent. **[more]** |
 
 **Indexes**
 
@@ -2457,9 +2457,44 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ---
 
+## `tenant_ai_attestations`
+
+<sub>server/lib/db/schema/tenant/ai.ts · 7 columns · primary key `tenant_id`</sub>
+
+> What a workspace stated about its own AI provider key, and when. Recorded verbatim from the secrets save.
+
+| Column | Type | Flags | Default | Values | Description |
+|---|---|---|---|---|---|
+| `tenant_id` | text | PK NN |  |  | *Tenant isolation key. Every read and write must filter on it.* |
+| `provider` | text | NN |  | `gemini, openai_compatible` | Which provider the key belongs to. Deliberately not narrowed to one vendor — a destination the WORKSPACE chose is not one this codebase gets to enumerate. |
+| `mode` | text | NN |  | `tenant_key` | The arrangement attested: the tenant's OWN key, never a managed one. |
+| `account_owner` | text | NN |  | `tenant` | Whose provider account the key bills to — and therefore whose provider terms govern the content sent to it. |
+| `terms_version` | text | NN |  |  | Stamped from `AI_PROVIDER_TERMS_VERSION` at write time. A later bump of that constant does NOT invalidate stored rows — the runtime check requires a row to exist and ignores the value — so re-confirmation stays a deliberate pass rather than an outage caused by a one-character edit. |
+| `attested_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
+| `policy_version` | text | NN |  |  | Stamped from `AI_KEY_ATTESTATION_POLICY_VERSION` — the revision of OUR statements, which moves independently of the provider terms above. |
+
+---
+
+## `tenant_ai_configs`
+
+<sub>server/lib/db/schema/tenant/ai.ts · 6 columns · primary key `tenant_id`</sub>
+
+> A workspace's AI settings, and the statement it made about its own key. ## Why these are not columns on `tenant_configs` They were, until these tables existed — seventeen of them, on a table that had reached one hundred columns.
+
+| Column | Type | Flags | Default | Values | Description |
+|---|---|---|---|---|---|
+| `tenant_id` | text | PK NN |  |  | *Tenant isolation key. Every read and write must filter on it.* |
+| `is_enabled` | integer | NN | `true` |  | Whether this workspace may be offered AI at all. A PROVISIONING answer, not a permission: whether a given call is allowed is decided in `resolveAi`, where a provider is actually built. |
+| `base_url` | text |  |  |  | Root of an OpenAI-compatible API. NULL means the deployment default (`AI_BASE_URL`). |
+| `model` | text |  |  |  | Model id as the chosen backend names it. NULL means the deployment default (`AI_MODEL`). |
+| `is_courtesy_translation_enabled` | integer | NN | `false` |  | Whether this workspace may PRODUCE courtesy translations of a report. ⚠️ It gates production and never consumption. **[more]** |
+| `updated_at` | integer | NN |  |  | *Last write time, epoch milliseconds.* |
+
+---
+
 ## `tenant_configs`
 
-<sub>server/lib/db/schema/tenant/core.ts · 98 columns · primary key `tenant_id`</sub>
+<sub>server/lib/db/schema/tenant/core.ts · 82 columns · primary key `tenant_id`</sub>
 
 | Column | Type | Flags | Default | Values | Description |
 |---|---|---|---|---|---|
@@ -2540,27 +2575,11 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `company_lat` | real |  |  |  | Coordinates of `company_address`, resolved ONCE through the Places details path when an admin saves the address. **[more]** |
 | `company_lng` | real |  |  |  | Both coordinates must be `typeof number` before `closest` anchors anything — a lone lat is no anchor — and 0 is a legitimate longitude, which is why the routing check is a typeof and never truthiness. |
 | `company_geocoded_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
-| `ai_key_attestation_provider` | text |  |  | `gemini, openai_compatible` | What the workspace confirmed when it saved its OWN AI provider key. The key and the provider account belong to the tenant, but this codebase ships the client that calls the provider, so the arrangement is worth recording rather than assuming. **[more]** |
-| `ai_key_attestation_mode` | text |  |  | `tenant_key` | The arrangement attested: the tenant's OWN key, not a managed one. All six are written in the same statement as `secrets_enc` by the secrets save, and every one must be non-null before a BYO AI call is allowed. |
-| `ai_key_attestation_account_owner` | text |  |  | `tenant` | Whose provider account the key bills to — and therefore whose provider terms govern the content sent to it. |
-| `ai_key_attestation_terms_version` | text |  |  |  | Stamped from AI_PROVIDER_TERMS_VERSION at write time. A later bump of that constant does NOT invalidate stored rows — the runtime check requires the column non-null and ignores its value — so re-confirmation stays a deliberate pass rather than an outage caused by a one-character edit. |
-| `ai_key_attestation_attested_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
-| `ai_key_attestation_policy_version` | text |  |  |  | Stamped from AI_KEY_ATTESTATION_POLICY_VERSION — the revision of OUR statements, which moves independently of the provider terms above. |
 | `repair_quick_phrases` | text |  |  |  | #275 — quick-insert phrases for repair-request notes, maintained by the tenant. Same shape and storage idiom as `custom_referral_sources` above. **[more]** |
 | `legal_name` | text |  |  |  | The registered legal entity, as it appears on the licence — distinct from `companyName`, which is the trading brand / DBA. **[more]** |
 | `invoice_seq` | integer | NN | `1000` |  | The last invoice number handed out for this tenant. Default 1000, so the first invoice is **1001** — Jobber's convention, and the category's; starting at 1 tells a homebuyer they are this company's first customer. **[more]** |
 | `report_pdf_retention_years` | integer | NN | `7` |  | Years a rendered report PDF is kept. `0` = indefinite, which is an explicit controller instruction the platform executes rather than an absence of a setting. **[more]** |
 | `is_report_view_counting_enabled` | integer | NN | `false` |  | Whether this workspace counts report opens. Default FALSE. **[more]** |
-| `is_ai_enabled` | integer | NN | `true` |  | Whether AI features may RUN for this workspace — which is a different question from whether AI is SET UP, and until this column existed the two were the same answer. **[more]** |
-| `ai_provider_kind` | text |  |  | `openai_compatible` | Which wire protocol the configured endpoint speaks. NULL means "use the deployment default". |
-| `ai_base_url` | text |  |  |  | Root of an OpenAI-compatible API. NULL means the deployment default (`AI_BASE_URL`). |
-| `ai_model` | text |  |  |  | Model id as the chosen backend names it. NULL means the deployment default (`AI_MODEL`). |
-| `ai_config_version` | integer | NN | `0` |  | Monotonic version of this workspace's AI configuration. Bumped on every saved change to provider, endpoint, model or key. **[more]** |
-| `ai_key_attestation_endpoint` | text |  |  |  | WHAT THESE FIVE CAN AND CANNOT PROVE. They are a STATEMENT BY THE WORKSPACE, recorded verbatim — not a measurement, and nothing here verifies any of them. **[more]** |
-| `ai_key_attestation_model` | text |  |  |  |  |
-| `ai_key_attestation_service_tier` | text |  |  |  | Which of the provider's terms the workspace says govern this account. A free tier and a paid tier are different contracts at most vendors, and no endpoint this client calls reports which one a key belongs to — so the workspace's statement is the only signal that exists. |
-| `ai_key_attestation_intended_use` | text |  |  |  | What the workspace says they are sending it for, in their own words. |
-| `ai_key_attestation_config_version` | integer |  |  |  | The `ai_config_version` this attestation was made about. Without it the attestation floats free: a workspace could attest to one destination, change the endpoint, and the stored statement would still read as though it covered every call. **[more]** |
 
 ---
 

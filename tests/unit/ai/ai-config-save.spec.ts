@@ -21,8 +21,14 @@ beforeEach(async () => {
     await db.insert(schema.tenantConfigs).values({ tenantId: TENANT, updatedAt: new Date() });
 });
 
-const config = () => db.select().from(schema.tenantConfigs)
-    .where(eq(schema.tenantConfigs.tenantId, TENANT)).get();
+/** ⚠️ `undefined` until the FIRST save, and that is the behaviour under test.
+ *  These fields used to live on `tenant_configs`, where a row existed for every
+ *  workspace before anyone opened the settings page — so "has this been saved?"
+ *  and "does a row exist?" were different questions. In `tenant_ai_configs`
+ *  they are the same question, and `saveAiConfig` upserts precisely because an
+ *  UPDATE would now silently write nothing on a workspace's first save. */
+const config = () => db.select().from(schema.tenantAiConfigs)
+    .where(eq(schema.tenantAiConfigs.tenantId, TENANT)).get();
 
 describe('saveAiConfig', () => {
     it('stores the endpoint and model the workspace submitted', async () => {
@@ -30,25 +36,32 @@ describe('saveAiConfig', () => {
             aiEnabled: true,
             aiBaseUrl: 'https://api.groq.com/openai/v1',
             aiModel: 'llama-3.3-70b',
+            courtesyTranslationEnabled: false,
         });
         const c = config()!;
-        expect(c.aiBaseUrl).toBe('https://api.groq.com/openai/v1');
-        expect(c.aiModel).toBe('llama-3.3-70b');
-        expect(c.aiEnabled).toBe(true);
+        expect(c.baseUrl).toBe('https://api.groq.com/openai/v1');
+        expect(c.model).toBe('llama-3.3-70b');
+        expect(c.isEnabled).toBe(true);
     });
 
     /**
-     * The version is what lets a caller holding a resolved endpoint know it is
-     * holding a stale one. Without the bump the column is a number that never
-     * moves, and every consumer of it is reading a value that cannot answer the
-     * question it exists to answer.
+     * The FIRST save creates the row, and a second save must update it rather
+     * than insert a second one. That is the part of the upsert worth asserting
+     * now that the version counter is gone: it was the counter that used to
+     * prove the conflict branch had been taken, so without a replacement this
+     * file would stop covering the branch entirely.
      */
-    it('bumps the config version on every save', async () => {
-        expect(config()!.aiConfigVersion).toBe(0);
-        await saveAiConfig(d1, TENANT, { aiEnabled: true, aiBaseUrl: 'https://a/v1', aiModel: 'm' });
-        expect(config()!.aiConfigVersion).toBe(1);
-        await saveAiConfig(d1, TENANT, { aiEnabled: true, aiBaseUrl: 'https://b/v1', aiModel: 'm' });
-        expect(config()!.aiConfigVersion).toBe(2);
+    it('creates the row on the first save and updates it on the second', async () => {
+        expect(config()).toBeUndefined();
+        await saveAiConfig(d1, TENANT, { aiEnabled: true, aiBaseUrl: 'https://a/v1', aiModel: 'm', courtesyTranslationEnabled: false });
+        expect(config()!.baseUrl).toBe('https://a/v1');
+        await saveAiConfig(d1, TENANT, { aiEnabled: true, aiBaseUrl: 'https://b/v1', aiModel: 'm', courtesyTranslationEnabled: false });
+        // One row, carrying the SECOND value: an upsert that inserted again
+        // would leave two, and one that ignored the conflict would leave the
+        // first value in place. Both are asserted, because either alone passes
+        // for the wrong reason.
+        expect(db.select().from(schema.tenantAiConfigs).all()).toHaveLength(1);
+        expect(config()!.baseUrl).toBe('https://b/v1');
     });
 
     /**
@@ -62,16 +75,18 @@ describe('saveAiConfig', () => {
             aiEnabled: true,
             aiBaseUrl: 'https://api.groq.com/openai/v1',
             aiModel: 'llama-3.3-70b',
+            courtesyTranslationEnabled: false,
         });
         await saveAiConfig(d1, TENANT, {
             aiEnabled: false,
             aiBaseUrl: 'https://api.groq.com/openai/v1',
             aiModel: 'llama-3.3-70b',
+            courtesyTranslationEnabled: false,
         });
         const c = config()!;
-        expect(c.aiEnabled).toBe(false);
-        expect(c.aiBaseUrl).toBe('https://api.groq.com/openai/v1');
-        expect(c.aiModel).toBe('llama-3.3-70b');
+        expect(c.isEnabled).toBe(false);
+        expect(c.baseUrl).toBe('https://api.groq.com/openai/v1');
+        expect(c.model).toBe('llama-3.3-70b');
     });
 
     /**
@@ -80,22 +95,67 @@ describe('saveAiConfig', () => {
      * and refuses with the wrong reason.
      */
     it('stores a blank endpoint or model as null rather than an empty string', async () => {
-        await saveAiConfig(d1, TENANT, { aiEnabled: true, aiBaseUrl: '  ', aiModel: '' });
+        await saveAiConfig(d1, TENANT, { aiEnabled: true, aiBaseUrl: '  ', aiModel: '', courtesyTranslationEnabled: false });
         const c = config()!;
-        expect(c.aiBaseUrl).toBeNull();
-        expect(c.aiModel).toBeNull();
+        expect(c.baseUrl).toBeNull();
+        expect(c.model).toBeNull();
+    });
+
+    /**
+     * #23 — the courtesy-translation switch round-trips.
+     *
+     * Written because widening `AiConfigInput` to carry it turned seven
+     * fixtures red, and satisfying the compiler by adding `false` to each would
+     * have left the new field with no coverage at all — a column the save path
+     * writes and nothing checks.
+     */
+    it('stores the courtesy-translation switch the workspace submitted', async () => {
+        await saveAiConfig(d1, TENANT, {
+            aiEnabled: true, aiBaseUrl: 'https://a/v1', aiModel: 'm',
+            courtesyTranslationEnabled: true,
+        });
+        expect(config()!.isCourtesyTranslationEnabled).toBe(true);
+        await saveAiConfig(d1, TENANT, {
+            aiEnabled: true, aiBaseUrl: 'https://a/v1', aiModel: 'm',
+            courtesyTranslationEnabled: false,
+        });
+        // Both directions. A save path that only ever wrote `true` would pass
+        // the first assertion and leave a workspace unable to switch it off.
+        expect(config()!.isCourtesyTranslationEnabled).toBe(false);
+    });
+
+    /**
+     * The two switches are independent, which is the whole reason they are two
+     * controls rather than one. "AI is available here" and "produce a second
+     * copy of every report we publish" are different decisions, and the second
+     * one spends money on every publish.
+     */
+    it('does not couple the courtesy-translation switch to the AI switch', async () => {
+        await saveAiConfig(d1, TENANT, {
+            aiEnabled: true, aiBaseUrl: 'https://a/v1', aiModel: 'm',
+            courtesyTranslationEnabled: true,
+        });
+        await saveAiConfig(d1, TENANT, {
+            aiEnabled: false, aiBaseUrl: 'https://a/v1', aiModel: 'm',
+            courtesyTranslationEnabled: true,
+        });
+        const c = config()!;
+        expect(c.isEnabled).toBe(false);
+        expect(c.isCourtesyTranslationEnabled).toBe(true);
     });
 
     it('writes nothing for another tenant', async () => {
         const other = '00000000-0000-0000-0000-0000000000d2';
         await db.insert(schema.tenants).values({ id: other, slug: 'd2', createdAt: new Date() });
-        await db.insert(schema.tenantConfigs).values({ tenantId: other, updatedAt: new Date() });
-        await saveAiConfig(d1, TENANT, { aiEnabled: false, aiBaseUrl: 'https://a/v1', aiModel: 'm' });
-        const untouched = db.select().from(schema.tenantConfigs)
-            .where(eq(schema.tenantConfigs.tenantId, other)).get()!;
-        expect(untouched.aiBaseUrl).toBeNull();
-        expect(untouched.aiConfigVersion).toBe(0);
-        expect(untouched.aiEnabled).toBe(true);
+        // Seeded with a row so this asserts "left alone" rather than "never
+        // existed" — an upsert scoped to the wrong tenant would OVERWRITE this
+        // row, and a check that only looked for absence would not see it.
+        await db.insert(schema.tenantAiConfigs).values({ tenantId: other, updatedAt: new Date() });
+        await saveAiConfig(d1, TENANT, { aiEnabled: false, aiBaseUrl: 'https://a/v1', aiModel: 'm', courtesyTranslationEnabled: false });
+        const untouched = db.select().from(schema.tenantAiConfigs)
+            .where(eq(schema.tenantAiConfigs.tenantId, other)).get()!;
+        expect(untouched.baseUrl).toBeNull();
+        expect(untouched.isEnabled).toBe(true);
     });
 });
 

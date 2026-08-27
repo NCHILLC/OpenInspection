@@ -60,23 +60,28 @@ export const aiCallProvenance = sqliteTable('ai_call_provenance', {
     promptVersion: text('prompt_version').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     /**
-     * `tenant_configs.ai_config_version` at the moment of the call.
+     * Where the call actually went: scheme, host, port and path, normalised by
+     * `normaliseEndpoint` so credentials, query and fragment are structurally
+     * absent.
      *
-     * NULL for rows written before this column existed, and for the managed
-     * path, whose destination belongs to the deployment and does not move per
-     * workspace. NULL rather than 0 on purpose: 0 is a real version a workspace
-     * can be on, so using it for "not recorded" would make the two
-     * indistinguishable.
+     * This is the fact the row was missing. `provider`, `model`, `mode` and
+     * `prompt_version` describe HOW the call was made; none of them reliably
+     * says WHERE. `provider` comes closest — it is the host when the model id
+     * carries no vendor prefix — but it is the prefix when one does, and a
+     * reader cannot tell which from the row.
      *
-     * This is still METADATA ABOUT A CALL and carries no part of the prompt —
-     * it is a small integer naming a configuration row, not a copy of anything
-     * that was said. The table's no-prompt-text rule is unaffected.
+     * OBSERVED off the adapter that ran, like `provider`, for the reason stated
+     * on that column: a mismatch between configuration and what happened is
+     * exactly what this table exists to make visible.
      *
-     * It is also the one column here that is NOT observed: `provider` is read
-     * off the adapter that ran, whereas this is a value the caller supplies. It
-     * describes configuration, which is exactly what it claims to describe.
+     * NULL only for rows written before this column existed. It is populated on
+     * BOTH the managed and BYO paths, unlike the version pointer it replaces —
+     * a deployment endpoint is still an answer to "where did this text go".
+     *
+     * The path is kept because some backends encode a processing region in it,
+     * and that region is what `AI_BASE_URL` is documented to answer.
      */
-    configVersion: integer('config_version'),
+    endpoint: text('endpoint'),
 }, (t) => ({
     byTenantTime: index('idx_ai_call_provenance_tenant_created').on(t.tenantId, t.createdAt),
 }));
