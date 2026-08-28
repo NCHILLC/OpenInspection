@@ -112,5 +112,6 @@
   "templates_edit_error_not_found": "This template could not be found. It may have been deleted.",
   "templates_edit_error_forbidden": "You do not have permission to edit this template.",
   "templates_edit_error_generic": "Something went wrong while opening the template editor.",
-  "templates_edit_error_back": "Back to Templates"
+  "templates_edit_error_back": "Back to Templates",
+  "templates_edit_phone_preview_label": "Phone preview · {width}px"
 }

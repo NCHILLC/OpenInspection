@@ -12,7 +12,7 @@ import { RatingSystemEditor } from "~/components/RatingSystemEditor";
 import { toEditorLevel, fromEditorLevel } from "~/lib/editor/rating-level-adapter";
 import { ItemPropertiesPanel } from "~/components/template/ItemPropertiesPanel";
 import { ItemCommentsPanel } from "~/components/template/ItemCommentsPanel";
-import { ItemPreviewPanel } from "~/components/template/ItemPreviewPanel";
+import { PhoneFramePreview } from "~/components/template/PhoneFramePreview";
 import { SectionAuthorHeader } from "~/components/template/SectionAuthorHeader";
 import { SectionPreview } from "~/components/template/SectionPreview";
 import { SectionRail } from "~/components/editor-shared/SectionRail";
@@ -638,7 +638,7 @@ export default function TemplateEditPage() {
               )}
 
               {rightRail === "preview" && (
-                <ItemPreviewPanel selectedItem={selectedItem} categoryColor={catColor} categories={defectCategories} />
+                <PhoneFramePreview selectedItem={selectedItem} sectionTitle={section?.title} ratingLevels={editorSystem.levels} categoryColor={catColor} defectCategories={defectCategories} />
               )}
             </div>
           </aside>
