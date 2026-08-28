@@ -212,5 +212,8 @@
   "editor_mobile_back_to_inspections": "Volver a inspecciones",
   "editor_mobile_back_to_sections": "Volver a secciones",
   "editor_mobile_back_to_items": "Volver a elementos",
-  "editor_mobile_percent_complete": "{percent}% completado"
+  "editor_mobile_percent_complete": "{percent}% completado",
+  "editor_findings_abbrev": "H",
+  "editor_findings_present": "Hallazgos registrados",
+  "editor_findings_none": "Sin hallazgos registrados"
 }

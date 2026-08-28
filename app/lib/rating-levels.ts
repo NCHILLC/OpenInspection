@@ -76,3 +76,20 @@ export function ratingAdvanceDecision(opts: {
   }
   return { advance: true, focusNotes: false };
 }
+
+/* C-14a — rating buttons render from the inspection's rating-system levels
+ * (full words + always-on semantic colour). The hardcoded SAT/MON/DEF row
+ * wrote ids the rest of the editor (severityForRatingId, getRatingColor,
+ * pausesAdvance lookup) could never match. This fallback only covers the
+ * no-levels edge and mirrors the server's fallback ids.
+ *
+ * It sits beside EditorRatingLevel rather than inside a component: it is the
+ * default INSTANCE of that type, and a second editing surface reaching for a
+ * fallback should reach for this one rather than write its own. */
+export const FALLBACK_RATING_LEVELS: EditorRatingLevel[] = [
+    { id: "Satisfactory", label: "Satisfactory", abbreviation: "Sat", severity: "good" },
+    { id: "Monitor", label: "Monitor", abbreviation: "Mon", severity: "marginal", pausesAdvance: true },
+    { id: "Defect", label: "Defect", abbreviation: "Def", severity: "significant", isDefect: true, pausesAdvance: true },
+    { id: "Not Inspected", label: "Not Inspected", abbreviation: "N/I", severity: "minor" },
+    { id: "Not Present", label: "Not Present", abbreviation: "N/P", severity: "minor" },
+];

@@ -212,5 +212,8 @@
   "editor_mobile_back_to_inspections": "Back to inspections",
   "editor_mobile_back_to_sections": "Back to sections",
   "editor_mobile_back_to_items": "Back to items",
-  "editor_mobile_percent_complete": "{percent}% complete"
+  "editor_mobile_percent_complete": "{percent}% complete",
+  "editor_findings_abbrev": "F",
+  "editor_findings_present": "Findings recorded",
+  "editor_findings_none": "No findings recorded"
 }

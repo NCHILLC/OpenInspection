@@ -19,26 +19,12 @@ import { m } from "~/paraglide/messages";
 /* Canned comment types */
 /* ------------------------------------------------------------------ */
 
-export interface CannedInfoComment {
-  id: string;
-  title: string;
-  comment: string;
-  default: boolean;
-  /** Checklist-style answer options defined on the template comment. */
-  choices?: string[];
-}
-
-export interface CannedDefect {
-  id: string;
-  title: string;
-  category: string;
-  location: string;
-  comment: string;
-  photos: string[];
-  default: boolean;
-  /** Checklist-style answer options defined on the template comment. */
-  choices?: string[];
-}
+/* These three moved down to editor-shared so `item-tab-projections` can read a
+   template's entries without editor-shared importing upward out of its layer.
+   Imported for use below AND re-exported, so every existing import of them from
+   this module — and there are many — still resolves. */
+import type { CannedInfoComment, CannedDefect, CannedTabId } from "../editor-shared/canned-comment-types";
+export type { CannedInfoComment, CannedDefect, CannedTabId };
 
 /** Track H — a tenant-library search hit (shape mirrors CommentEntry in
  *  useCannedComments; kept structural so this component stays hook-free). */
@@ -49,8 +35,6 @@ export interface LibraryMatch {
   category?: string | null;
   section?: string | null;
 }
-
-export type CannedTabId = "information" | "limitations" | "defects";
 
 export interface CannedCommentTabsProps {
   visibleTabs: Array<{ id: CannedTabId; label: string; count?: number }>;

@@ -1,4 +1,4 @@
-import type { CannedInfoComment, CannedDefect, CannedTabId } from "./CannedCommentTabs";
+import type { CannedInfoComment, CannedDefect, CannedTabId } from "./canned-comment-types";
 
 /** The template side of one item: the three canned-comment tabs it declares. */
 export interface ItemTabs {
@@ -20,11 +20,12 @@ export interface ItemTabs {
  * (`scripts/check-file-size.mjs`) needed the room; the bodies are unchanged,
  * with `tabs` and `result` becoming parameters instead of captured variables.
  *
- * ⚠️ WHEN A SECOND SURFACE READS THIS STATE, IT READS IT HERE. The phone report
- * writer needs exactly these five answers to render an item, and a second
- * implementation of "is this canned entry included?" is how the two surfaces
- * start disagreeing about what the inspector recorded. Promote this module to
- * `editor-shared/` at that point rather than copying it.
+ * ⚠️ ONE IMPLEMENTATION, BECAUSE TWO WOULD DISAGREE. A second reading of "is
+ * this canned entry included?" is how two surfaces start telling different
+ * stories about what the inspector recorded. `FindingsIndicator` became that
+ * second consumer, which is why this now sits in `editor-shared/` rather than
+ * beside `ItemEditor`: anything rendering an item's recorded state reads it
+ * from here.
  */
 
 type ResultLike = Record<string, unknown>;
@@ -85,6 +86,32 @@ export function getFlaggedMap(result: ResultLike, tabName: CannedTabId): Map<str
         if (s.flagged) map.set(s.cannedId, true);
     }
     return map;
+}
+
+/**
+ * Does this item carry a finding? — the `F` of IN / NI / NP / F.
+ *
+ * ⚠️ DERIVED, NEVER STORED, AND DELIBERATELY NOT A RATING LEVEL. Spectora lights
+ * `IN` and `F` on the same row at once, so they are two different questions:
+ * IN/NI/NP is what the inspector DID with the item (one answer, mutually
+ * exclusive), and F is whether anything is wrong with it (independent).
+ * `ItemEntry.rating` holds a single scalar and `RatingSegment` is a
+ * `role="radiogroup"`, so an `IN/NI/NP/F` rating preset would make choosing F
+ * silently CLEAR IN — the report would then disagree with what the inspector
+ * saw on screen, with nothing to catch it.
+ * `findings-not-a-rating-level.test.ts` beside this file holds that line.
+ *
+ * Counts canned defects the template ships as `default: true` unless the
+ * inspector turned them off (that is `getIncludedSet`'s precedence), plus any
+ * per-inspection custom defect still marked included.
+ */
+export function hasIncludedFindings(tabs: ItemTabs, result: ResultLike): boolean {
+    if (getIncludedSet(tabs, result, "defects").size > 0) return true;
+    const custom = (result.customComments as { defects?: Array<{ included?: boolean }> } | undefined)?.defects ?? [];
+    // `included` is required on CustomDefect and seeded true, so an absent flag
+    // means a document older than the field — read it as included rather than
+    // silently dropping a finding the inspector wrote by hand.
+    return custom.some((d) => d.included !== false);
 }
 
 /** FE-3 — photo count on a canned defect's STATE row (tabs.defects[].photos). */

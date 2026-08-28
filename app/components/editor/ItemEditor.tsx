@@ -25,12 +25,14 @@ import {
  getCommentOverrideMap,
  getFlaggedMap,
  cannedDefectPhotoCount,
-} from "./item-tab-projections";
+ hasIncludedFindings,
+} from "../editor-shared/item-tab-projections";
+import { FindingsIndicator } from "../editor-shared/FindingsIndicator";
 import { ItemPhotoStrip, type StripPhoto } from "../media-studio/ItemPhotoStrip";
 import type { AttachedRepairItem } from "../../hooks/useFindings";
 import type { ItemAttribute } from "../../lib/types";
 import { shouldTriggerSlash } from "../../lib/slash-trigger";
-import { findRatingLevel, type EditorRatingLevel } from "../../lib/rating-levels";
+import { findRatingLevel, FALLBACK_RATING_LEVELS, type EditorRatingLevel } from "../../lib/rating-levels";
 import { findRatingContradictions } from "../../lib/contradiction-lint";
 import { filterCannedEntries, deriveDefectTitle, type CustomDefect, type CustomDefectCategory } from "../../lib/custom-defects";
 import type { DefectTrade } from "../../lib/defect-fields";
@@ -40,21 +42,8 @@ import { m } from "~/paraglide/messages";
 
 export type { LibraryMatch };
 
-/* C-14a — rating buttons render from the inspection's rating-system levels
- * (full words + always-on semantic colour). The hardcoded SAT/MON/DEF row
- * wrote ids the rest of the editor (severityForRatingId, getRatingColor,
- * pausesAdvance lookup) could never match. This fallback only covers the
- * no-levels edge and mirrors the server's fallback ids. */
-const FALLBACK_LEVELS: EditorRatingLevel[] = [
- { id: "Satisfactory", label: "Satisfactory", abbreviation: "Sat", severity: "good" },
- { id: "Monitor", label: "Monitor", abbreviation: "Mon", severity: "marginal", pausesAdvance: true },
- { id: "Defect", label: "Defect", abbreviation: "Def", severity: "significant", isDefect: true, pausesAdvance: true },
- { id: "Not Inspected", label: "Not Inspected", abbreviation: "N/I", severity: "minor" },
- { id: "Not Present", label: "Not Present", abbreviation: "N/P", severity: "minor" },
-];
-
 /* ------------------------------------------------------------------ */
-/* Canned comment types */
+/* Canned comment tabs */
 /* ------------------------------------------------------------------ */
 
 const CANNED_TAB_IDS: CannedTabId[] = ["information", "limitations", "defects"];
@@ -289,7 +278,7 @@ export function ItemEditor({
  const commentOverrideByCannedId = getCommentOverrideMap(result, activeTab);
  const flaggedByCannedId = getFlaggedMap(result, activeTab);
 
- const levels = ratingLevels && ratingLevels.length > 0 ? ratingLevels : FALLBACK_LEVELS;
+ const levels = ratingLevels && ratingLevels.length > 0 ? ratingLevels : FALLBACK_RATING_LEVELS;
  // Normalised lookup: legacy stored values ('DEF') resolve onto the system's
  // level ('Defect'), so highlights survive the id-scheme split (B-18).
  const activeLevel = findRatingLevel(levels, (result.rating as string) || null);
@@ -408,7 +397,15 @@ export function ItemEditor({
  {/* Rating buttons — driven by the rating system's levels (C-14a):
  full words on ≥sm, abbreviation on narrow, always-on semantic colour. */}
  {item.type === "rich" && (
- <RatingButtonRow levels={levels} activeLevel={activeLevel} onRating={onRating} />
+ <div className="flex items-start gap-3">
+ <div className="flex-1 min-w-0">
+  <RatingButtonRow levels={levels} activeLevel={activeLevel} onRating={onRating} />
+ </div>
+ {/* Beside the radiogroup, never inside it — the rating says what was DONE
+     with the item, this says whether anything is WRONG with it, and both
+     can be true at once. See FindingsIndicator. */}
+ <FindingsIndicator active={hasIncludedFindings(tabs, result)} />
+ </div>
  )}
 
  {/* Module B — non-rich typed inputs (text/number/boolean/select/
