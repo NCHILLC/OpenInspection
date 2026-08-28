@@ -215,5 +215,13 @@
   "editor_mobile_percent_complete": "{percent}% complete",
   "editor_findings_abbrev": "F",
   "editor_findings_present": "Findings recorded",
-  "editor_findings_none": "No findings recorded"
+  "editor_findings_none": "No findings recorded",
+  "editor_search_placeholder": "Search this report",
+  "editor_search_kinds_aria": "Limit search to comment types",
+  "editor_search_incomplete": "Incomplete",
+  "editor_search_prompt": "Type to search, or filter by flagged and incomplete",
+  "editor_search_more_hits": "+{count} more",
+  "editor_mobile_search": "Search report",
+  "editor_search_result_count_one": "1 result",
+  "editor_search_result_count_other": "{count} results"
 }

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { InspectionContext } from "./helpers";
+import { isItemComplete } from "~/lib/item-completeness";
 
 /**
  * Progress slice: overall + per-section completion, defect counts, and live
@@ -16,20 +17,7 @@ export function useInspectionProgress(ctx: InspectionContext) {
     for (const sec of sections) {
       for (const item of sec.items || []) {
         total++;
-        const r = getResult(item.id, sec.id);
-        if (r.rating) {
-          rated++;
-        } else {
-          const v = r.value;
-          if (
-            v !== undefined &&
-            v !== null &&
-            v !== "" &&
-            !(Array.isArray(v) && v.length === 0)
-          ) {
-            rated++;
-          }
-        }
+        if (isItemComplete(getResult(item.id, sec.id))) rated++;
       }
     }
     return {
@@ -50,8 +38,14 @@ export function useInspectionProgress(ctx: InspectionContext) {
       let hasDefect = false;
       for (const item of sec.items) {
         const r = getResult(item.id, sec.id);
+        // Same completeness rule as the overall ring — this counted only
+        // `r.rating`, so a section of filled-in non-rich items showed 0% while
+        // the ring counted every one of them. See isItemComplete.
+        if (isItemComplete(r)) rated++;
+        // `hasDefect` stays rating-only on purpose: a defect is a SEVERITY, and
+        // only a rating carries one. A text item holding a value is complete
+        // without being a defect.
         if (r.rating != null) {
-          rated++;
           const level = ratingLevels.find((l) => l.id === r.rating);
           if (level?.isDefect) hasDefect = true;
         }

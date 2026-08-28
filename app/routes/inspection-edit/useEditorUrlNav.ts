@@ -18,6 +18,8 @@ export interface EditorUrlNav {
     level: EditorNavLevel;
     goToSection: (sectionId: string) => void;
     goToItem: (itemId: string) => void;
+    /** Jump to an item in any section — one history entry. */
+    goToItemIn: (sectionId: string, itemId: string) => void;
     /** Up one level — pops real history where there is any to pop. */
     goUp: () => void;
     /** True when `goUp` from the section list leaves the editor entirely. */
@@ -129,6 +131,22 @@ export function useEditorUrlNav({
         [sections, setSearchParams, paramsForState],
     );
 
+    /**
+     * Jump straight to an item in another section — what a search result is.
+     *
+     * One push, not a `goToSection` followed by a `goToItem`: two entries would
+     * make the back button land on the target's section list, a screen the
+     * inspector never chose to be on and did not come from.
+     */
+    const goToItemIn = useCallback(
+        (sectionId: string, itemId: string) => {
+            if (sections.findIndex((s) => s.id === sectionId) < 0) return;
+            pushedDepth.current += 1;
+            setSearchParams(paramsForState(sectionId, itemId), { preventScrollReset: true });
+        },
+        [sections, setSearchParams, paramsForState],
+    );
+
     const goToItem = useCallback(
         (itemId: string) => {
             pushedDepth.current += 1;
@@ -164,5 +182,5 @@ export function useEditorUrlNav({
         void navigate("/inspections");
     }, [currentSectionId, navigate, searchParams, setSearchParams, paramsForState]);
 
-    return { level, goToSection, goToItem, goUp, atRoot };
+    return { level, goToSection, goToItem, goToItemIn, goUp, atRoot };
 }

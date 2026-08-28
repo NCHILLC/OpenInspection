@@ -8,7 +8,7 @@ import type { EditorNavLevel } from "~/routes/inspection-edit/useEditorUrlNav";
  * here too; they are screens now, not drawers, which is the whole point of the
  * stack — so the union narrowed rather than keeping two values nothing opens.
  */
-export type MobileDrawerId = "preview" | "theme" | "actions";
+export type MobileDrawerId = "preview" | "theme" | "actions" | "search";
 
 export interface MobileDrillShellProps {
     level: EditorNavLevel;
@@ -18,6 +18,7 @@ export interface MobileDrillShellProps {
     itemLabel: string;
     onBack: () => void;
     onMore: () => void;
+    onOpenSearch: () => void;
     onOpenPreview: () => void;
     onOpenTheme: () => void;
     /** Whole-inspection completion, 0–100. Rendered as the root screen's ring. */
@@ -55,6 +56,7 @@ export function MobileDrillShell({
     itemLabel,
     onBack,
     onMore,
+    onOpenSearch,
     onOpenPreview,
     onOpenTheme,
     percentComplete,
@@ -81,6 +83,7 @@ export function MobileDrillShell({
                 title={title}
                 onBack={onBack}
                 onMore={onMore}
+                onSearch={onOpenSearch}
                 backLabel={backLabel}
             />
             <main className="p-4">{children}</main>

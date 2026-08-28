@@ -8,6 +8,8 @@ export interface MobileAppBarProps {
     title: string;
     onBack: () => void;
     onMore: () => void;
+    /** Opens report search. Absent on screens where there is nothing to search. */
+    onSearch?: () => void;
     /** Accessible name for the back control, which changes meaning per level. */
     backLabel?: string;
 }
@@ -20,7 +22,7 @@ export interface MobileAppBarProps {
  * happen to hold: the stack shows inspection → section → item, so the pair is
  * "section / item" only on the deepest screen.
  */
-export function MobileAppBar({ eyebrow, title, onBack, onMore, backLabel }: MobileAppBarProps) {
+export function MobileAppBar({ eyebrow, title, onBack, onMore, onSearch, backLabel }: MobileAppBarProps) {
     return (
         <header className="sticky top-0 z-30 h-12 bg-ih-bg-card border-b border-ih-border flex items-center px-2 gap-2">
             <IconButton
@@ -32,6 +34,13 @@ export function MobileAppBar({ eyebrow, title, onBack, onMore, backLabel }: Mobi
                 <div className="text-[10px] uppercase tracking-[0.1em] text-ih-fg-3 truncate">{eyebrow}</div>
                 <div className="text-[13px] font-bold truncate">{title}</div>
             </div>
+            {onSearch && (
+                <IconButton
+                    onClick={onSearch}
+                    className="w-10 h-10"
+                    aria-label={m.editor_mobile_search()}
+                ><Icon name="search" size={18} /></IconButton>
+            )}
             <IconButton
                 onClick={onMore}
                 className="w-10 h-10"

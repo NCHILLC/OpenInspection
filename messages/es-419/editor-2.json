@@ -215,5 +215,13 @@
   "editor_mobile_percent_complete": "{percent}% completado",
   "editor_findings_abbrev": "H",
   "editor_findings_present": "Hallazgos registrados",
-  "editor_findings_none": "Sin hallazgos registrados"
+  "editor_findings_none": "Sin hallazgos registrados",
+  "editor_search_placeholder": "Buscar en este informe",
+  "editor_search_kinds_aria": "Limitar la búsqueda por tipo de comentario",
+  "editor_search_incomplete": "Incompleto",
+  "editor_search_prompt": "Escribe para buscar, o filtra por marcados e incompletos",
+  "editor_search_more_hits": "+{count} más",
+  "editor_mobile_search": "Buscar en el informe",
+  "editor_search_result_count_one": "1 resultado",
+  "editor_search_result_count_other": "{count} resultados"
 }

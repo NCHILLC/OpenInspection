@@ -67,6 +67,7 @@ import { SectionPickerModal } from "~/components/editor/SectionPickerModal";
 import { TagPickerModal } from "~/components/editor/TagPickerModal";
 import { useIsMobile } from "~/hooks/useBreakpoint";
 import { MobileDrillShell, type MobileDrawerId } from "~/components/editor/MobileDrillShell";
+import { MobileReportSearch } from "~/components/editor/MobileReportSearch";
 import { useEditorUrlNav } from "./inspection-edit/useEditorUrlNav";
 import { MobileFinishDrawer } from "~/components/editor/MobileFinishDrawer";
 import { MobileBottomDrawer } from "~/components/MobileBottomDrawer";
@@ -1603,12 +1604,20 @@ export default function InspectionEditPage() {
  itemLabel={((state.activeItem?.label || state.activeItem?.name) as string | undefined) ?? m.editor_route_select_an_item()}
  onBack={urlNav.goUp}
  onMore={() => setMobileDrawer("actions")}
+ onOpenSearch={() => setMobileDrawer("search")}
  onOpenPreview={() => setMobileDrawer("preview")}
  onOpenTheme={() => setMobileDrawer("theme")}
  percentComplete={state.progress.pct}
  overlays={<>
   {photoInputsEl}
   {addMediaOverlaysEl}
+  <MobileBottomDrawer open={mobileDrawer === "search"} onClose={() => setMobileDrawer(null)} title={m.editor_mobile_search()}>
+  <MobileReportSearch
+   sections={state.sections}
+   getResult={(itemId, sectionId) => state.getResult(itemId, sectionId)}
+   onJump={(sectionId, itemId) => { setMobileDrawer(null); urlNav.goToItemIn(sectionId, itemId); }}
+  />
+  </MobileBottomDrawer>
   <MobileBottomDrawer open={mobileDrawer === "preview"} onClose={() => setMobileDrawer(null)} title={m.editor_route_drawer_preview()}>
   {sideRailEl}
   </MobileBottomDrawer>
