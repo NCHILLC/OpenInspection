@@ -4,7 +4,6 @@
 // executes it in-process as the authenticated user via the identity bridge.
 import { McpAgent } from 'agents/mcp';
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
-import snapshot from '../lib/mcp/openapi-snapshot.json';
 import { selectTools, toolNameFromOperationId, type SnapshotEntry } from '../lib/mcp/tools';
 import { selectResources, buildResourceRequest } from '../lib/mcp/resources';
 import { buildToolInput, toZodInputSchema, type ToolInput } from '../lib/mcp/resolve-schema';
@@ -13,6 +12,24 @@ import { callApiAsUser } from '../lib/mcp/identity-bridge';
 import { extendedToolsEnabled } from '../lib/mcp/flag';
 import { MCP_MAX_RESULT_BYTES } from '../lib/mcp/result-limits';
 import type { AppEnv } from '../types/hono';
+
+// The OpenAPI snapshot is ~856 KB of JSON. A STATIC import materialises it as an
+// object literal during MODULE EVALUATION — and this module is evaluated on every
+// cold start of the whole Worker, because `InspectorMcp` must be exported
+// statically for wrangler to bind the Durable Object class. That put ~500 KB of
+// minified literal (~40% of the eager entry chunk) in front of every request,
+// including requests that never touch MCP: `buildOAuthHandler` returns early when
+// MCP_ENABLED is off, but only AFTER this module has already been evaluated.
+//
+// The snapshot is read only while registering a session's tools/resources, so it
+// loads on first use and is cached per isolate. Same reasoning as
+// `getComponentSchemas()` below — pay the OpenAPI-document cost when something
+// actually asks for it.
+let snapshotPromise: Promise<SnapshotEntry[]> | undefined;
+const getSnapshot = (): Promise<SnapshotEntry[]> =>
+    (snapshotPromise ??= import('../lib/mcp/openapi-snapshot.json').then(
+        (m) => m.default as SnapshotEntry[],
+    ));
 
 // `Env` is the global interface from worker-configuration.d.ts (extends Cloudflare.Env),
 // which satisfies McpAgent's `Env extends Cloudflare.Env` constraint.
@@ -128,7 +145,7 @@ export async function registerGrantedTools(
     props: McpProps,
     makeCtx: () => ExecutionContext = makeExecutionContext,
 ): Promise<void> {
-    const all = snapshot as SnapshotEntry[];
+    const all = await getSnapshot();
     const includeExtended = extendedToolsEnabled(env as unknown as { MCP_EXTENDED_TOOLS?: string });
     const granted = selectTools(all, props.scopes, { includeExtended });
 
@@ -181,7 +198,7 @@ export async function registerGrantedResources(
     makeCtx: () => ExecutionContext = makeExecutionContext,
 ): Promise<void> {
     const includeExtended = extendedToolsEnabled(env as unknown as { MCP_EXTENDED_TOOLS?: string });
-    const resources = selectResources(snapshot as SnapshotEntry[], props.scopes, { includeExtended });
+    const resources = selectResources(await getSnapshot(), props.scopes, { includeExtended });
 
     const read = async (entry: SnapshotEntry, vars: Record<string, string>, uri: URL) => {
         // Defense-in-depth: re-assert the read grant before dispatching.
