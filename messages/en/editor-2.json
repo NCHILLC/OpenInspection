@@ -207,5 +207,10 @@
   "editor_savetpl_body_new": "Creates a new template from this inspection's current structure. It becomes available for future inspections; this inspection is unchanged.",
   "editor_savetpl_body_back": "Overwrites the source template with this inspection's current structure. Future inspections created from it pick up the change; already-published reports keep their frozen snapshot.",
   "editor_savetpl_name_label": "Template name",
-  "editor_savetpl_name_placeholder": "Custom Template"
+  "editor_savetpl_name_placeholder": "Custom Template",
+  "editor_mobile_eyebrow_inspection": "Inspection",
+  "editor_mobile_back_to_inspections": "Back to inspections",
+  "editor_mobile_back_to_sections": "Back to sections",
+  "editor_mobile_back_to_items": "Back to items",
+  "editor_mobile_percent_complete": "{percent}% complete"
 }

@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useLoaderData, useFetcher, useNavigate, useRevalidator } from "react-router";
+import { useLoaderData, useFetcher, useRevalidator } from "react-router";
 import { INSPECTION_STATUS } from "~/lib/status";
 import { findRatingLevel, ratingAdvanceDecision } from "~/lib/rating-levels";
 import { makeCustomDefect } from "~/lib/custom-defects";
@@ -66,8 +66,8 @@ import { CommentLibraryDrawer } from "~/components/editor/CommentLibraryDrawer";
 import { SectionPickerModal } from "~/components/editor/SectionPickerModal";
 import { TagPickerModal } from "~/components/editor/TagPickerModal";
 import { useIsMobile } from "~/hooks/useBreakpoint";
-import { MobileAppBar } from "~/components/editor/MobileAppBar";
-import { MobileDrawerTriggers, type MobileDrawerId } from "~/components/editor/MobileDrawerTriggers";
+import { MobileDrillShell, type MobileDrawerId } from "~/components/editor/MobileDrillShell";
+import { useEditorUrlNav } from "./inspection-edit/useEditorUrlNav";
 import { MobileFinishDrawer } from "~/components/editor/MobileFinishDrawer";
 import { MobileBottomDrawer } from "~/components/MobileBottomDrawer";
 import { BreadcrumbDropdown, type UnitScopeRow } from "~/components/editor/BreadcrumbDropdown";
@@ -98,24 +98,7 @@ export { ORIGINAL_QUALITY_KEY, originalQualityEnabled } from "./inspection-edit/
 export { loader } from "./inspection-edit/loader.server";
 import type { loader } from "./inspection-edit/loader.server";
 
-/**
- * The editor holds its own optimistic state (useInspection) and persists every
- * change through fetchers. Re-running this heavy loader after each mutation
- * (rate / notes / save-settings / set-cover / upload-cover …) just reloads and
- * flickers the whole editor. Skip revalidation for POST submissions; navigation
- * and explicit `revalidator.revalidate()` (offline sync) still refresh because
- * they carry no POST formMethod.
- */
-export function shouldRevalidate({
-  formMethod,
-  defaultShouldRevalidate,
-}: {
-  formMethod?: string;
-  defaultShouldRevalidate: boolean;
-}) {
-  if (formMethod && formMethod.toUpperCase() === "POST") return false;
-  return defaultShouldRevalidate;
-}
+export { shouldRevalidate } from "./inspection-edit/should-revalidate";
 
 /* ------------------------------------------------------------------ */
 /* Action (BFF relay for client mutations) */
@@ -212,7 +195,6 @@ export default function InspectionEditPage() {
  const { fetcher: unitsFetcher, submit: submitUnits, busy: unitsBusy } =
   useGuardedSubmit<{ ok: boolean; intent?: string }>();
  const scopeFetcher = useFetcher<{ ok: boolean; intent?: string; scope?: string; results?: ResultMap }>();
- const navigate = useNavigate();
  // Task 16 — split the single photo input into a camera capture input
  // (single file, capture=environment — "Take photo") and a library input
  // (multiple, no capture — "Add from library", desktop's default add-photo
@@ -797,6 +779,16 @@ export default function InspectionEditPage() {
  /* Mobile shell state */
  const isMobile = useIsMobile();
  const [mobileDrawer, setMobileDrawer] = useState<MobileDrawerId | null>(null);
+ // The phone stack lives in ?section=/?item= so back, deep links and a reload
+ // after a camera-induced page eviction all land where the inspector was.
+ const urlNav = useEditorUrlNav({
+ enabled: isMobile,
+ sections: state.sections,
+ currentSectionIdx: state.currentSectionIdx,
+ activeItemId: state.activeItemId,
+ setCurrentSectionIdx: state.setCurrentSectionIdx,
+ setActiveItemId: state.setActiveItemId,
+ });
 
  const PRESET_TAGS = useMemo(() => [
   { id: "follow-up", name: "Follow Up", color: "#ef4444" },
@@ -1150,9 +1142,12 @@ export default function InspectionEditPage() {
  sections={state.sections}
  activeSection={state.currentSection?.id || ""}
  onSelect={(id) => {
+ // Same shared SectionRail in both shells; only where the tap GOES differs.
+ // On the phone it is a drill-down (a history entry back can pop), on the
+ // desktop it just moves the rail's selection.
+ if (isMobile) { urlNav.goToSection(id); return; }
  state.selectSectionById(id);
  state.setActiveView("items");
- if (isMobile) setMobileDrawer(null);
  }}
  results={state.results}
  activeUnitId={activeUnitId}
@@ -1176,8 +1171,8 @@ export default function InspectionEditPage() {
  sectionId={state.currentSection?.id || ""}
  activeItemId={state.activeItemId}
  onSelect={(id) => {
+ if (isMobile) { urlNav.goToItem(id); return; }
  state.setActiveItemId(id);
- if (isMobile) setMobileDrawer(null);
  }}
  results={state.results}
  activeUnitId={activeUnitId}
@@ -1614,76 +1609,40 @@ export default function InspectionEditPage() {
 
  if (isMobile) {
  return (
- <div className="min-h-screen pb-14">
- {photoInputsEl}
- {addMediaOverlaysEl}
- <MobileAppBar
- sectionTitle={state.currentSection?.title ?? ''}
+ <MobileDrillShell
+ level={urlNav.level}
+ inspectionTitle={(state.inspection.propertyAddress as string) || m.editor_mobile_eyebrow_inspection()}
+ sectionTitle={state.currentSection?.title ?? ""}
  itemLabel={((state.activeItem?.label || state.activeItem?.name) as string | undefined) ?? m.editor_route_select_an_item()}
- onBack={() => {
-  // B-22: back from item editor → item list; back from list → inspections
-  if (state.activeItemId) { state.setActiveItemId(null); return; }
-  navigate('/inspections');
- }}
- onMore={() => setMobileDrawer('actions')}
- />
- <main className="p-4">
- {emptyTemplateEl ?? (state.activeItemId ? (
-  itemEditorEl
- ) : (
-  <p className="text-center text-ih-fg-3 mt-12">{m.editor_route_mobile_begin()}</p>
- ))}
- </main>
- <MobileDrawerTriggers onOpen={(id) => setMobileDrawer(id)} />
- <MobileBottomDrawer
- open={mobileDrawer === 'sections'}
- onClose={() => setMobileDrawer(null)}
- title={m.editor_route_drawer_sections()}
+ onBack={urlNav.goUp}
+ onMore={() => setMobileDrawer("actions")}
+ onOpenPreview={() => setMobileDrawer("preview")}
+ onOpenTheme={() => setMobileDrawer("theme")}
+ percentComplete={state.progress.pct}
+ overlays={<>
+  {photoInputsEl}
+  {addMediaOverlaysEl}
+  <MobileBottomDrawer open={mobileDrawer === "preview"} onClose={() => setMobileDrawer(null)} title={m.editor_route_drawer_preview()}>
+  {sideRailEl}
+  </MobileBottomDrawer>
+  <MobileBottomDrawer open={mobileDrawer === "theme"} onClose={() => setMobileDrawer(null)} title={m.nav_theme_label()}>
+  <div className="p-4"><ThemeSegmentControl /></div>
+  </MobileBottomDrawer>
+  <MobileFinishDrawer
+  open={mobileDrawer === "actions"}
+  onClose={() => setMobileDrawer(null)}
+  onPublish={() => void handlePublishClick()}
+  onSign={() => setSignModalOpen(true)}
+  onOpenSettings={() => state.setSettingsOpen(true)}
+  onFinishFieldwork={(state.inspection.status as string) !== "completed" ? handleFinishFieldwork : null}
+  finishingFieldwork={completeBusy}
+  onPreviewReport={loaderData.tenantSlug ? () => window.open(`/report-view/${loaderData.tenantSlug}/${state.inspection.id}`, "_blank", "noopener") : null}
+  />
+  {finishActionsEl}
+ </>}
  >
- {sectionRailEl}
- </MobileBottomDrawer>
- <MobileBottomDrawer
- open={mobileDrawer === 'items'}
- onClose={() => setMobileDrawer(null)}
- title={m.editor_route_drawer_items()}
- >
- {itemListEl}
- </MobileBottomDrawer>
- <MobileBottomDrawer
- open={mobileDrawer === 'preview'}
- onClose={() => setMobileDrawer(null)}
- title={m.editor_route_drawer_preview()}
- >
- {sideRailEl}
- </MobileBottomDrawer>
- <MobileFinishDrawer
- open={mobileDrawer === 'actions'}
- onClose={() => setMobileDrawer(null)}
- onPublish={() => void handlePublishClick()}
- onSign={() => setSignModalOpen(true)}
- onOpenSettings={() => state.setSettingsOpen(true)}
- onFinishFieldwork={(state.inspection.status as string) !== "completed" ? handleFinishFieldwork : null}
- finishingFieldwork={completeBusy}
- onPreviewReport={
-  loaderData.tenantSlug
-  ? () => window.open(`/report-view/${loaderData.tenantSlug}/${state.inspection.id}`, "_blank", "noopener")
-  : null
- }
- />
- {/* Theme — narrow-screen home for the theme control the xl+ header shows
-     inline, so the auto/light/dark/field preference is reachable on tablet
-     and phone too. */}
- <MobileBottomDrawer
- open={mobileDrawer === 'theme'}
- onClose={() => setMobileDrawer(null)}
- title={m.nav_theme_label()}
- >
- <div className="p-4">
-  <ThemeSegmentControl />
- </div>
- </MobileBottomDrawer>
- {finishActionsEl}
- </div>
+ {emptyTemplateEl ?? (urlNav.level === "item" ? itemEditorEl : urlNav.level === "items" ? itemListEl : sectionRailEl)}
+ </MobileDrillShell>
  );
  }
 

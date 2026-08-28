@@ -1,5 +1,5 @@
 {
-  "app/routes/inspection-edit.tsx": 2299,
+  "app/routes/inspection-edit.tsx": 2259,
   "app/routes/inspector-portal.tsx": 1302,
   "server/durable-objects/inspection-doc.ts": 945,
   "server/services/inspection/inspection-report.service.ts": 940,
@@ -66,5 +66,6 @@
   "app/routes/calendar.tsx": 415,
   "server/lib/db/schema/inspection/core.ts": 415,
   "server/services/agreement/signer-state.ts": 413,
+  "playwright.config.ts": 409,
   "app/lib/collab/collab-findings-api.ts": 402
 }

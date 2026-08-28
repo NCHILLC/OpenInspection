@@ -207,5 +207,10 @@
   "editor_savetpl_body_new": "Crea una plantilla nueva a partir de la estructura actual de esta inspección. Queda disponible para inspecciones futuras; esta inspección no cambia.",
   "editor_savetpl_body_back": "Sobrescribe la plantilla de origen con la estructura actual de esta inspección. Las inspecciones futuras creadas a partir de ella adoptan el cambio; los informes ya publicados conservan su instantánea congelada.",
   "editor_savetpl_name_label": "Nombre de la plantilla",
-  "editor_savetpl_name_placeholder": "Plantilla personalizada"
+  "editor_savetpl_name_placeholder": "Plantilla personalizada",
+  "editor_mobile_eyebrow_inspection": "Inspección",
+  "editor_mobile_back_to_inspections": "Volver a inspecciones",
+  "editor_mobile_back_to_sections": "Volver a secciones",
+  "editor_mobile_back_to_items": "Volver a elementos",
+  "editor_mobile_percent_complete": "{percent}% completado"
 }

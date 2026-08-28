@@ -32,6 +32,34 @@ import { ToastPortal } from "~/components/Toast";
 // returns from the ALS store with no side effect.
 import { getLocale } from "~/paraglide/runtime";
 import { getCloudflareEnv } from "~/lib/load-context";
+import { isDrilldownOnlyChange } from "~/lib/drilldown-nav";
+
+/**
+ * ⚠️ ROOT'S LOADER IS CHEAP, BUT IT IS STILL A SERVER ROUND TRIP. It reads UI
+ * prefs off the request cookie, the request's locale, and one env var — nothing
+ * that can change while the phone report writer walks its `?section=`/`?item=`
+ * stack inside a single page. Left to the default, every tap in that stack
+ * fetches `.data?_routes=root`, and a loader that fails mid-navigation takes
+ * React Router to the error boundary: tapping a section in a crawlspace would
+ * throw the inspector onto an error screen.
+ *
+ * The editor route refusing to revalidate is therefore only half the job — a
+ * drill-down that skips the heavy loader but not this one still costs a request
+ * per tap. Anything that is NOT a drill-down keeps the default, so a theme or
+ * locale change still refreshes these prefs.
+ */
+export function shouldRevalidate({
+  currentUrl,
+  nextUrl,
+  defaultShouldRevalidate,
+}: {
+  currentUrl?: URL;
+  nextUrl?: URL;
+  defaultShouldRevalidate: boolean;
+}) {
+  if (currentUrl && nextUrl && isDrilldownOnlyChange(currentUrl, nextUrl)) return false;
+  return defaultShouldRevalidate;
+}
 
 export function loader({
   request,

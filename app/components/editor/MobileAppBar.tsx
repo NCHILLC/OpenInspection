@@ -2,28 +2,35 @@ import { Icon, IconButton } from "@core/shared-ui";
 import { m } from "~/paraglide/messages";
 
 export interface MobileAppBarProps {
-    sectionTitle: string;
-    itemLabel:    string;
-    onBack:       () => void;
-    onMore:       () => void;
+    /** Small caps line above the title — the level this screen sits under. */
+    eyebrow: string;
+    /** What this screen is: the inspection, a section, or an item. */
+    title: string;
+    onBack: () => void;
+    onMore: () => void;
+    /** Accessible name for the back control, which changes meaning per level. */
+    backLabel?: string;
 }
 
 /**
- * Mobile (<768px) top app bar — replaces the desktop header chrome with a
- * compact 12px-tall bar showing section + item context plus back/more
- * affordances.
+ * Mobile (<768px) top app bar — a compact 12px-tall bar carrying the
+ * drill-down stack's context (where you are, one level up) plus back/more.
+ *
+ * The two text props are named for what they RENDER rather than what they
+ * happen to hold: the stack shows inspection → section → item, so the pair is
+ * "section / item" only on the deepest screen.
  */
-export function MobileAppBar({ sectionTitle, itemLabel, onBack, onMore }: MobileAppBarProps) {
+export function MobileAppBar({ eyebrow, title, onBack, onMore, backLabel }: MobileAppBarProps) {
     return (
         <header className="sticky top-0 z-30 h-12 bg-ih-bg-card border-b border-ih-border flex items-center px-2 gap-2">
             <IconButton
                 onClick={onBack}
                 className="w-10 h-10"
-                aria-label={m.common_back()}
+                aria-label={backLabel ?? m.common_back()}
             ><Icon name="back" size={18} /></IconButton>
             <div className="flex-1 min-w-0">
-                <div className="text-[10px] uppercase tracking-[0.1em] text-ih-fg-3 truncate">{sectionTitle}</div>
-                <div className="text-[13px] font-bold truncate">{itemLabel}</div>
+                <div className="text-[10px] uppercase tracking-[0.1em] text-ih-fg-3 truncate">{eyebrow}</div>
+                <div className="text-[13px] font-bold truncate">{title}</div>
             </div>
             <IconButton
                 onClick={onMore}
