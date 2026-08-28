@@ -223,5 +223,6 @@
   "editor_search_more_hits": "+{count} more",
   "editor_mobile_search": "Search report",
   "editor_search_result_count_one": "1 result",
-  "editor_search_result_count_other": "{count} results"
+  "editor_search_result_count_other": "{count} results",
+  "editor_mobile_next_item": "Next"
 }

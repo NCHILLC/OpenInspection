@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { nextItemTarget } from "~/lib/next-item";
 
 /** Which screen of the phone drill-down stack is showing. */
 export type EditorNavLevel = "sections" | "items" | "item";
@@ -20,6 +21,12 @@ export interface EditorUrlNav {
     goToItem: (itemId: string) => void;
     /** Jump to an item in any section — one history entry. */
     goToItemIn: (sectionId: string, itemId: string) => void;
+    /**
+     * Walk forward to the next item in the REPORT, crossing section boundaries.
+     * Null at the last item of the last section — the one place with nowhere to
+     * go — so the control can disable itself rather than lie.
+     */
+    goNext: (() => void) | null;
     /** Up one level — pops real history where there is any to pop. */
     goUp: () => void;
     /** True when `goUp` from the section list leaves the editor entirely. */
@@ -155,6 +162,12 @@ export function useEditorUrlNav({
         [currentSectionId, setSearchParams, paramsForState],
     );
 
+    // The forward walk lives here with the rest of the navigation rather than in
+    // the route: this hook already knows the sections and where the inspector
+    // is, and "next" is a move like any other.
+    const next = nextItemTarget(sections as never, currentSectionId, activeItemId);
+    const goNext = next ? () => goToItemIn(next.sectionId, next.itemId) : null;
+
     // Derived from the URL, not from state: the screen must match the address
     // bar on the render the params land, not one commit later.
     const level: EditorNavLevel = searchParams.get("item")
@@ -182,5 +195,5 @@ export function useEditorUrlNav({
         void navigate("/inspections");
     }, [currentSectionId, navigate, searchParams, setSearchParams, paramsForState]);
 
-    return { level, goToSection, goToItem, goToItemIn, goUp, atRoot };
+    return { level, goToSection, goToItem, goToItemIn, goNext, goUp, atRoot };
 }

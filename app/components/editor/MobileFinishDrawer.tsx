@@ -17,6 +17,8 @@ export interface MobileFinishDrawerProps {
   finishingFieldwork: boolean;
   /** Opens the full web report in a new tab; null when the slug is unknown. */
   onPreviewReport: (() => void) | null;
+  /** Auto/light/dark/field. Moved here off the bottom nav — see below. */
+  onOpenTheme: () => void;
 }
 
 /**
@@ -45,6 +47,7 @@ export function MobileFinishDrawer({
   onFinishFieldwork,
   finishingFieldwork,
   onPreviewReport,
+  onOpenTheme,
 }: MobileFinishDrawerProps) {
   const run = (fn: () => void) => {
     onClose();
@@ -81,6 +84,13 @@ export function MobileFinishDrawer({
             {finishingFieldwork ? m.editor_finish_fieldwork_pending() : m.editor_finish_fieldwork()}
           </Button>
         )}
+        {/* Theme lives here rather than in the bottom nav. It held a quarter of
+            the navigation row for a preference someone sets once and never
+            touches again, while walking to the next item — the action of the
+            whole job — had no control at all. */}
+        <Button variant="ghost" className="w-full" onClick={() => run(onOpenTheme)}>
+          {m.nav_theme_label()}
+        </Button>
       </div>
     </MobileBottomDrawer>
   );

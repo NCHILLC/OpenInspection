@@ -223,5 +223,6 @@
   "editor_search_more_hits": "+{count} más",
   "editor_mobile_search": "Buscar en el informe",
   "editor_search_result_count_one": "1 resultado",
-  "editor_search_result_count_other": "{count} resultados"
+  "editor_search_result_count_other": "{count} resultados",
+  "editor_mobile_next_item": "Siguiente"
 }

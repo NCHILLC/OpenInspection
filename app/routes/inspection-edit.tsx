@@ -1606,7 +1606,7 @@ export default function InspectionEditPage() {
  onMore={() => setMobileDrawer("actions")}
  onOpenSearch={() => setMobileDrawer("search")}
  onOpenPreview={() => setMobileDrawer("preview")}
- onOpenTheme={() => setMobileDrawer("theme")}
+ onNext={urlNav.goNext}
  percentComplete={state.progress.pct}
  overlays={<>
   {photoInputsEl}
@@ -1632,6 +1632,7 @@ export default function InspectionEditPage() {
   onOpenSettings={() => state.setSettingsOpen(true)}
   onFinishFieldwork={(state.inspection.status as string) !== "completed" ? handleFinishFieldwork : null}
   finishingFieldwork={completeBusy}
+  onOpenTheme={() => setMobileDrawer("theme")}
   onPreviewReport={loaderData.tenantSlug ? () => window.open(`/report-view/${loaderData.tenantSlug}/${state.inspection.id}`, "_blank", "noopener") : null}
   />
   {finishActionsEl}

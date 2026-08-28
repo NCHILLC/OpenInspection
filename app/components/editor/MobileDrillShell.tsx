@@ -20,7 +20,11 @@ export interface MobileDrillShellProps {
     onMore: () => void;
     onOpenSearch: () => void;
     onOpenPreview: () => void;
-    onOpenTheme: () => void;
+    /**
+     * Walk forward: the next item in the report, or where the walk starts.
+     * `null` only at the very last item, where there is nowhere left to go.
+     */
+    onNext: (() => void) | null;
     /** Whole-inspection completion, 0–100. Rendered as the root screen's ring. */
     percentComplete: number;
     /** The screen for the current level. */
@@ -58,7 +62,7 @@ export function MobileDrillShell({
     onMore,
     onOpenSearch,
     onOpenPreview,
-    onOpenTheme,
+    onNext,
     percentComplete,
     children,
     overlays,
@@ -110,12 +114,19 @@ export function MobileDrillShell({
                     <span className="text-[16px]" aria-hidden="true">👁</span>
                     <span className="text-[10px] uppercase tracking-[0.1em]">{m.editor_route_drawer_preview()}</span>
                 </button>
+                {/* Forward, in the slot Theme used to hold. Walking to the next
+                    item is the single most repeated action of an inspection —
+                    hundreds of times per property — and it was costing a trip
+                    back up the stack. Theme is a once-a-day preference and now
+                    lives in the ⋮ menu, which is what a preference deserves. */}
                 <button
-                    onClick={onOpenTheme}
-                    className="flex-1 flex flex-col items-center justify-center text-ih-fg-2 hover:bg-ih-bg-muted active:bg-ih-bg-muted min-h-11"
+                    onClick={() => onNext?.()}
+                    disabled={!onNext}
+                    data-testid="mobile-next-item"
+                    className="flex-1 flex flex-col items-center justify-center text-ih-fg-2 hover:bg-ih-bg-muted active:bg-ih-bg-muted min-h-11 disabled:opacity-40"
                 >
-                    <span className="text-[16px]" aria-hidden="true">◐</span>
-                    <span className="text-[10px] uppercase tracking-[0.1em]">{m.nav_theme_label()}</span>
+                    <span className="text-[16px]" aria-hidden="true">→</span>
+                    <span className="text-[10px] uppercase tracking-[0.1em]">{m.editor_mobile_next_item()}</span>
                 </button>
             </nav>
 
