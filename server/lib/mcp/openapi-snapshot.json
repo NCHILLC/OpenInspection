@@ -2454,6 +2454,13 @@
                                               "type": "string",
                                               "maxLength": 12,
                                               "description": "TODO describe abbrev field for the OpenInspection MCP integration"
+                                            },
+                                            "choices": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              },
+                                              "description": "Checklist-style answer options for this comment."
                                             }
                                           },
                                           "required": [
@@ -2493,6 +2500,13 @@
                                               "type": "string",
                                               "maxLength": 12,
                                               "description": "TODO describe abbrev field for the OpenInspection MCP integration"
+                                            },
+                                            "choices": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              },
+                                              "description": "Checklist-style answer options for this comment."
                                             }
                                           },
                                           "required": [
@@ -2548,6 +2562,18 @@
                                               "type": "string",
                                               "maxLength": 12,
                                               "description": "TODO describe abbrev field for the OpenInspection MCP integration"
+                                            },
+                                            "recommendedContractorTypeId": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "description": "Soft ref to contractor_types.id."
+                                            },
+                                            "choices": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              },
+                                              "description": "Checklist-style answer options for this comment."
                                             }
                                           },
                                           "required": [
@@ -13374,6 +13400,13 @@
                                           "type": "string",
                                           "maxLength": 12,
                                           "description": "TODO describe abbrev field for the OpenInspection MCP integration"
+                                        },
+                                        "choices": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          },
+                                          "description": "Checklist-style answer options for this comment."
                                         }
                                       },
                                       "required": [
@@ -13413,6 +13446,13 @@
                                           "type": "string",
                                           "maxLength": 12,
                                           "description": "TODO describe abbrev field for the OpenInspection MCP integration"
+                                        },
+                                        "choices": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          },
+                                          "description": "Checklist-style answer options for this comment."
                                         }
                                       },
                                       "required": [
@@ -13468,6 +13508,18 @@
                                           "type": "string",
                                           "maxLength": 12,
                                           "description": "TODO describe abbrev field for the OpenInspection MCP integration"
+                                        },
+                                        "recommendedContractorTypeId": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "description": "Soft ref to contractor_types.id."
+                                        },
+                                        "choices": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          },
+                                          "description": "Checklist-style answer options for this comment."
                                         }
                                       },
                                       "required": [
@@ -19528,6 +19580,13 @@
                                               "type": "string",
                                               "maxLength": 12,
                                               "description": "TODO describe abbrev field for the OpenInspection MCP integration"
+                                            },
+                                            "choices": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              },
+                                              "description": "Checklist-style answer options for this comment."
                                             }
                                           },
                                           "required": [
@@ -19567,6 +19626,13 @@
                                               "type": "string",
                                               "maxLength": 12,
                                               "description": "TODO describe abbrev field for the OpenInspection MCP integration"
+                                            },
+                                            "choices": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              },
+                                              "description": "Checklist-style answer options for this comment."
                                             }
                                           },
                                           "required": [
@@ -19622,6 +19688,18 @@
                                               "type": "string",
                                               "maxLength": 12,
                                               "description": "TODO describe abbrev field for the OpenInspection MCP integration"
+                                            },
+                                            "recommendedContractorTypeId": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "description": "Soft ref to contractor_types.id."
+                                            },
+                                            "choices": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              },
+                                              "description": "Checklist-style answer options for this comment."
                                             }
                                           },
                                           "required": [

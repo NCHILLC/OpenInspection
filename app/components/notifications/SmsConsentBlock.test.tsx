@@ -12,8 +12,22 @@ import { render } from "@testing-library/react";
 import { SmsConsentBlock, type SmsConsent } from "./SmsConsentBlock";
 
 const DISCLOSURE = { version: 3, text: "Message and data rates may apply." };
+/**
+ * ⚠️ MIDDAY UTC, NOT MIDNIGHT, AND THE TIME IS THE WHOLE REASON THIS COMMENT
+ * EXISTS.
+ *
+ * It was `T00:00:00.000Z`, which only renders as Jun 12 where the machine's UTC
+ * offset is >= 0. The assertion below allows "Jun 12 or 13" — it anticipated
+ * offsets AHEAD of UTC and not behind — so on any US timezone (Charlotte is
+ * UTC-4) midnight UTC fell back to Jun 11 and this spec failed. Red on a
+ * contributor's machine, green on the Linux runner, and failing about nothing.
+ *
+ * Midday holds the calendar date steady from UTC-12 to UTC+14, so the spec
+ * tests what it means to — the LOCALE a date is formatted in — rather than the
+ * reader's longitude.
+ */
 const base: SmsConsent = {
-  phone: "+1 555 000 1111", state: "granted", at: "2026-06-12T00:00:00.000Z",
+  phone: "+1 555 000 1111", state: "granted", at: "2026-06-12T12:00:00.000Z",
   capturedVia: "booking_form", disclosure: DISCLOSURE, mode: "express",
 };
 
