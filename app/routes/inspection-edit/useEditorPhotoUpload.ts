@@ -32,17 +32,34 @@ export interface EditorPhotoUploadDeps {
     activeUnitId: string | null;
     cameraInputRef: React.RefObject<HTMLInputElement | null>;
     libraryInputRef: React.RefObject<HTMLInputElement | null>;
+    /** Task 16 — a phone needs the explicit camera-vs-library chooser; a desktop
+     *  file dialog already offers both, so it goes straight to the input. */
+    isMobile: boolean;
+    setAddMediaChooser: (value: { itemId: string } | null) => void;
 }
 
 export interface EditorPhotoUpload {
     handlePhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     handleBurstCommit: (blobs: Blob[]) => void;
     /**
-     * FE-3 — armed by ItemEditor's per-defect chip right before the picker
-     * opens, consumed (and cleared) by `handlePhotoUpload`. Exposed because the
-     * arming happens in the route's JSX, not here.
+     * Open the picker for THIS ITEM's photos.
+     *
+     * ⚠️ OPENING A PICKER AND SAYING WHERE THE PHOTO GOES ARE ONE ACT, WHICH IS
+     * WHY THEY ARE ONE FUNCTION. They used to be two: a bare ref the defect chip
+     * armed, cleared only when a photo actually arrived. Arm it and then CANCEL
+     * the picker and it stayed armed — so the next photo added from the
+     * item-level button silently attached to a finding the inspector had walked
+     * away from. In the editor it just appears somewhere they did not put it; in
+     * the report it is missing from the item and stuck on the finding.
+     *
+     * A test could catch a call site that forgot to clear. Not being able to
+     * open a picker without stating the target is better than catching it.
      */
-    pendingPhotoTargetRef: React.RefObject<PendingPhotoTarget>;
+    openPickerForItem: () => void;
+    /** Open the picker for one defect row's photos (FE-3). */
+    openPickerForDefect: (target: NonNullable<PendingPhotoTarget>) => void;
+    /** The inspector backed out of the chooser — drop any armed target. */
+    clearPhotoTarget: () => void;
 }
 
 // Task 16 — Worker subrequest safety: a single submission fans out one
@@ -76,6 +93,8 @@ export function useEditorPhotoUpload({
     activeUnitId,
     cameraInputRef,
     libraryInputRef,
+    isMobile,
+    setAddMediaChooser,
 }: EditorPhotoUploadDeps): EditorPhotoUpload {
     const pendingPhotoTargetRef = useRef<PendingPhotoTarget>(null);
 
@@ -159,6 +178,11 @@ export function useEditorPhotoUpload({
         (blobs: Blob[]) => {
             if (!state.burstCameraItemId || blobs.length === 0) return;
             const itemId = state.burstCameraItemId;
+            // Burst frames always land on the ITEM, so a defect target armed by
+            // a chip the inspector then walked away from must not survive to
+            // catch the next single photo. Cleared here rather than at the call
+            // site because this path never honours it anyway.
+            pendingPhotoTargetRef.current = null;
 
             // N4 — bake each frame before upload. Burst frames are already
             // canvas-captured JPEGs (no EXIF), so this is purely the downscale; it
@@ -245,5 +269,29 @@ export function useEditorPhotoUpload({
         }
     }, [uploadFetcher.state, uploadFetcher.data, findings]);
 
-    return { handlePhotoUpload, handleBurstCommit, pendingPhotoTargetRef };
+    /** Arms the target, then opens whichever picker this device wants. */
+    const openPicker = useCallback(
+        (target: PendingPhotoTarget) => {
+            if (uploadFetcher.state !== "idle") return;
+            const itemId = state.activeItemId;
+            pendingPhotoTargetRef.current = target;
+            // Task 16 — desktop file pickers already offer camera-vs-library
+            // natively, so go straight to the multi-select library input; mobile
+            // needs the explicit chooser (camera capture has no multi-select).
+            if (isMobile && itemId) setAddMediaChooser({ itemId });
+            else libraryInputRef.current?.click();
+        },
+        [uploadFetcher.state, state.activeItemId, isMobile, setAddMediaChooser, libraryInputRef],
+    );
+
+    const openPickerForItem = useCallback(() => openPicker(null), [openPicker]);
+    const openPickerForDefect = useCallback(
+        (target: NonNullable<PendingPhotoTarget>) => openPicker(target),
+        [openPicker],
+    );
+    const clearPhotoTarget = useCallback(() => {
+        pendingPhotoTargetRef.current = null;
+    }, []);
+
+    return { handlePhotoUpload, handleBurstCommit, openPickerForItem, openPickerForDefect, clearPhotoTarget };
 }

@@ -24,6 +24,11 @@ interface LibraryRow {
  * splitting that state up, which changes behaviour — out of scope for the
  * extraction that created this file. Read it as the seam the monolith already
  * had, exposed rather than introduced.
+ *
+ * It did get shorter once: the photo binding used to take four dependencies to
+ * reimplement the device split and the in-flight guard, and now takes one
+ * `openPickerForItem`. Where a dependency disappears because the BEHAVIOUR moved
+ * somewhere it belongs, the list shrinks honestly.
  */
 export interface EditorKeyboardDeps {
     state: InspectionState;
@@ -38,13 +43,10 @@ export interface EditorKeyboardDeps {
     openSnippets: () => void;
     commentLibraryItems: LibraryRow[];
     serverComments: LibraryRow[];
-    /** `uploadFetcher.state` — the photo binding no-ops while a save is in flight. */
-    uploadFetcherState: string;
-    isMobile: boolean;
-    setAddMediaChooser: (value: { itemId: string } | null) => void;
-    libraryInputRef: React.RefObject<HTMLInputElement | null>;
     setPublishError: (value: string | null) => void;
     setTagPickerOpen: (value: boolean) => void;
+    /** Opens the item photo picker — owns the device split and the target. */
+    openPickerForItem: () => void;
 }
 
 /**
@@ -55,8 +57,8 @@ export interface EditorKeyboardDeps {
  * dependency list are unchanged from that file.
  *
  * ⚠️ THE DEPENDENCY LIST IS DELIBERATELY NOT THE FULL CLOSURE. Several values
- * read inside the handlers — the setters, `libraryInputRef`, `handleCloneLast`,
- * `cloneDefault` — are absent from it, exactly as they were before the move.
+ * read inside the handlers — the setters, `handleCloneLast`, `cloneDefault` —
+ * are absent from it, exactly as they were before the move.
  * That is safe here rather than merely tolerated: `useKeyboard` assigns
  * `handlersRef.current = handlers` on every render, so a stale memo result is
  * still replaced before any key is read, and the memo is a re-render economy
@@ -75,12 +77,9 @@ export function useEditorKeyboard({
     openSnippets,
     commentLibraryItems,
     serverComments,
-    uploadFetcherState,
-    isMobile,
-    setAddMediaChooser,
-    libraryInputRef,
     setPublishError,
     setTagPickerOpen,
+    openPickerForItem,
 }: EditorKeyboardDeps) {
     const keyboardHandlers = useMemo<KeyboardHandlers>(
         () => ({
@@ -171,17 +170,11 @@ export function useEditorKeyboard({
                 }
             },
             onLibraryClose: () => state.setShowCommentLibrary(false),
-            onPhoto: () => {
-                if (!state.activeItemId || uploadFetcherState !== "idle") return;
-                // Task 16 — desktop file pickers already offer camera-vs-library choice
-                // natively, so go straight to the multi-select library input; mobile
-                // still needs the explicit chooser (camera capture has no multi-select).
-                if (isMobile) {
-                    setAddMediaChooser({ itemId: state.activeItemId });
-                } else {
-                    libraryInputRef.current?.click();
-                }
-            },
+            // Adds to the ITEM. The device split (chooser vs. straight to the
+            // input) and the in-flight guard both live in useEditorPhotoUpload,
+            // which is also what makes this incapable of opening a picker
+            // without saying where the photo goes.
+            onPhoto: openPickerForItem,
             onSave: () => findings.saveNow(),
             onPublish: () => { setPublishError(null); state.setShowPublishModal(true); },
             onCloneLast: () => handleCloneLast(cloneDefault),
@@ -216,11 +209,10 @@ export function useEditorKeyboard({
             toggleSpeedMode,
             speedRate,
             openSnippets,
+            openPickerForItem,
             comments,
             commentLibraryItems,
             serverComments,
-            uploadFetcherState,
-            isMobile,
         ],
     );
 

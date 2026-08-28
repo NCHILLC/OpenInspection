@@ -1064,7 +1064,7 @@ export default function InspectionEditPage() {
  /* Photo upload */
  /* ---------------------------------------------------------------- */
 
- const { handlePhotoUpload, handleBurstCommit, pendingPhotoTargetRef } = useEditorPhotoUpload({
+ const { handlePhotoUpload, handleBurstCommit, openPickerForItem, openPickerForDefect, clearPhotoTarget } = useEditorPhotoUpload({
  state,
  findings,
  uploadFetcher,
@@ -1072,6 +1072,8 @@ export default function InspectionEditPage() {
  activeUnitId,
  cameraInputRef,
  libraryInputRef,
+ isMobile,
+ setAddMediaChooser,
  });
 
  /* ---------------------------------------------------------------- */
@@ -1108,12 +1110,9 @@ export default function InspectionEditPage() {
  openSnippets,
  commentLibraryItems,
  serverComments,
- uploadFetcherState: uploadFetcher.state,
- isMobile,
- setAddMediaChooser,
- libraryInputRef,
  setPublishError,
  setTagPickerOpen,
+ openPickerForItem,
  });
 
  /* ---------------------------------------------------------------- */
@@ -1205,22 +1204,8 @@ export default function InspectionEditPage() {
  }
  ratingLevels={state.ratingLevels}
  onRating={handleRating}
- onAddPhoto={() =>
-  state.activeItemId
-   ? setAddMediaChooser({ itemId: state.activeItemId })
-   : libraryInputRef.current?.click()
- }
- onAddDefectPhoto={(target) => {
- if (uploadFetcher.state !== "idle") return;
- pendingPhotoTargetRef.current = target;
- // Task 16 — same camera/library split as onPhoto above, scoped to a
- // specific defect row instead of the item.
- if (isMobile) {
- setAddMediaChooser({ itemId: state.activeItemId ?? "" });
- } else {
- libraryInputRef.current?.click();
- }
- }}
+ onAddPhoto={openPickerForItem}
+ onAddDefectPhoto={openPickerForDefect}
  photoUploading={uploadFetcher.state !== "idle"}
  onAddCustomDefect={(input) => {
  if (state.activeItemId && state.currentSection) {
@@ -1478,7 +1463,9 @@ export default function InspectionEditPage() {
  * disables + hints when offline. */}
  {addMediaChooser && (
  <AddMediaChooser
- onClose={() => setAddMediaChooser(null)}
+ // Dismissing is the inspector backing out: drop any armed defect target
+ // rather than leaving it to catch the next photo they add.
+ onClose={() => { setAddMediaChooser(null); clearPhotoTarget(); }}
  onTakePhoto={() => {
  setAddMediaChooser(null);
  cameraInputRef.current?.click();
