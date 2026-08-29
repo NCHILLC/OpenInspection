@@ -10,7 +10,7 @@
 import { z } from '@hono/zod-openapi';
 
 /** The single severity vocabulary shared by rating levels AND comments (spec §4.F, §9 #1). */
-const SeverityEnum = z.enum(['good', 'marginal', 'significant', 'minor']);
+const SeverityEnum = z.enum(['good', 'marginal', 'significant', 'safety', 'minor']);
 export type Severity = z.infer<typeof SeverityEnum>;
 
 /** A single level inside a rating system. */

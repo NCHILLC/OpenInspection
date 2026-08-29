@@ -11,7 +11,7 @@ import { z } from '@hono/zod-openapi';
 // app/lib/severity.ts / rating-system.schema.ts's SeverityEnum). Retired the
 // legacy `ratingBucket` (satisfactory | monitor | defect) write/read path; its
 // column is gone, so this enum is the only vocabulary a comment can carry.
-const SeverityFieldSchema = z.enum(['good', 'marginal', 'significant', 'minor']);
+const SeverityFieldSchema = z.enum(['good', 'marginal', 'significant', 'safety', 'minor']);
 
 export const CommentSchema = z.object({
     text: z.string().min(1).max(1000).openapi({ example: 'Evidence of previous repair was observed.' }).describe('TODO describe text field for the OpenInspection MCP integration'),

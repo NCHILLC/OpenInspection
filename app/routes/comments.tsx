@@ -122,6 +122,8 @@ const SEVERITY_TONE: Record<Severity, "sat" | "monitor" | "defect" | "gen"> = {
   good: "sat",
   marginal: "monitor",
   significant: "defect",
+  // Safety/Major is a defect for tone purposes; the label carries the grade.
+  safety: "defect",
   minor: "gen",
 };
 

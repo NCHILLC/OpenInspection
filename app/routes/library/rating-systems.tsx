@@ -67,7 +67,7 @@ export async function action({ request, context }: Route.ActionArgs) {
 }
 
 const SEVERITY_RING: Record<Severity, string> = {
-  good: "ring-ih-ok/30", marginal: "ring-ih-watch/30", significant: "ring-ih-bad/30", minor: "ring-ih-border-strong/30",
+  good: "ring-ih-ok/30", marginal: "ring-ih-watch/30", significant: "ring-ih-bad/30", safety: "ring-ih-bad/30", minor: "ring-ih-border-strong/30",
 };
 
 export default function RatingSystemsPage() {

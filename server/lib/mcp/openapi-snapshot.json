@@ -4136,7 +4136,8 @@
                                 "good",
                                 "minor",
                                 "marginal",
-                                "significant"
+                                "significant",
+                                "safety"
                               ],
                               "description": "TODO describe severity field for the OpenInspection MCP integration"
                             },
@@ -4754,6 +4755,7 @@
                     "good",
                     "marginal",
                     "significant",
+                    "safety",
                     "minor"
                   ],
                   "description": "TODO describe severity field for the OpenInspection MCP integration"
@@ -11784,6 +11786,7 @@
               "good",
               "marginal",
               "significant",
+              "safety",
               "minor"
             ],
             "description": "TODO describe severity field for the OpenInspection MCP integration"
@@ -12279,6 +12282,7 @@
               "good",
               "marginal",
               "significant",
+              "safety",
               "minor"
             ],
             "example": "significant",
@@ -15082,7 +15086,8 @@
                             "good",
                             "minor",
                             "marginal",
-                            "significant"
+                            "significant",
+                            "safety"
                           ],
                           "description": "TODO describe severity field for the OpenInspection MCP integration"
                         },
@@ -16833,6 +16838,7 @@
                     "good",
                     "marginal",
                     "significant",
+                    "safety",
                     "minor"
                   ],
                   "description": "TODO describe severity field for the OpenInspection MCP integration"
@@ -21262,7 +21268,8 @@
                                 "good",
                                 "minor",
                                 "marginal",
-                                "significant"
+                                "significant",
+                                "safety"
                               ],
                               "description": "TODO describe severity field for the OpenInspection MCP integration"
                             },

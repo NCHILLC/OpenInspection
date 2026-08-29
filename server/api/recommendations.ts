@@ -10,6 +10,7 @@ import {
     RecommendationListResponseSchema,
     ListRecommendationsQuerySchema,
 } from '../lib/validations/recommendation.schema';
+import type { Severity } from '../lib/validations/rating-system.schema';
 import { RECOMMENDATION_SEEDS } from '../data/recommendation-seeds';
 import { withMcpMetadata } from "../lib/route-metadata-standards";
 
@@ -107,7 +108,10 @@ const recommendationsRoutes = createApiRouter()
     .openapi(listRecommendationsRoute, async (c) => {
         const { category, severity } = c.req.valid('query');
         const tenantId = c.get('tenantId') as string;
-        const filter: { category?: string; severity?: 'good' | 'marginal' | 'significant' | 'minor' } = {};
+        // The shared vocabulary, not a fourth copy of it: this union was written out
+        // by hand and silently went stale when `safety` was added, while the service
+        // it feeds already took `Severity`.
+        const filter: { category?: string; severity?: Severity } = {};
         if (category) filter.category = category;
         if (severity) filter.severity = severity;
         const data = await c.var.services.recommendation.listByTenant(tenantId, filter);
