@@ -217,7 +217,7 @@ export async function diMiddleware(c: Context<HonoConfig>, next: Next) {
                     target.booking = new BookingService(c.env.DB, buildPlanQuota());
                     break;
                 case 'branding':
-                    target.branding = new BrandingService(c.env.DB, c.env.TENANT_CACHE);
+                    target.branding = new BrandingService(c.env.DB, c.env.TENANT_CACHE, c.env.PHOTOS);
                     break;
                 case 'legalVersion':
                     target.legalVersion = new LegalVersionService(drizzle(c.env.DB));
