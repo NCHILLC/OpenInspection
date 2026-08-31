@@ -173,3 +173,22 @@ describe('bucketToSeverity', () => {
     }
   });
 });
+
+/**
+ * A `safety` level must bucket as a DEFECT.
+ *
+ * The bucket domain has four values and no safety slot, so an unhandled
+ * `safety` severity hits the switch `default` and lands in 'other' — the
+ * same bucket as Not Inspected. That is silent: the report renders, the
+ * counts simply omit the hazard. The explicit case is what keeps a
+ * Safety-Major inside the defect count.
+ */
+describe('getRatingBucket — safety severity', () => {
+  const safetyLevels = [
+    { id: 'SM', label: 'Safety-Major', abbreviation: 'S/M', color: '#dc2626', severity: 'safety' as const, isDefect: true },
+  ];
+
+  it('maps safety severity to the defect bucket, never to other', () => {
+    expect(getRatingBucket('SM', safetyLevels)).toBe('defect');
+  });
+});

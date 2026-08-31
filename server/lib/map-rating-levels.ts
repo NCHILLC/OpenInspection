@@ -14,7 +14,7 @@ import type { RatingLevel } from './report-utils';
  * only ever sees this mapped shape.
  */
 export function mapRatingSystemLevels(levels: Array<Record<string, unknown>>): RatingLevel[] {
-    const CANON = new Set(['good', 'marginal', 'significant', 'minor']);
+    const CANON = new Set(['good', 'marginal', 'significant', 'safety', 'minor']);
     return levels
         .slice()
         .sort((a, b) => Number(a.order ?? 0) - Number(b.order ?? 0))
@@ -27,7 +27,7 @@ export function mapRatingSystemLevels(levels: Array<Record<string, unknown>>): R
                 abbreviation: String(lvl.abbreviation ?? lvl.label ?? id),
                 color:        String(lvl.color ?? '#9ca3af'),
                 severity,
-                isDefect:     lvl.isDefect === true || severity === 'significant',
+                isDefect:     lvl.isDefect === true || severity === 'significant' || severity === 'safety',
                 ...(typeof lvl.description === 'string' ? { description: lvl.description } : {}),
                 ...(typeof lvl.pausesAdvance === 'boolean' ? { pausesAdvance: lvl.pausesAdvance } : {}),
             };

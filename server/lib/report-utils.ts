@@ -10,7 +10,7 @@ export interface RatingLevel {
   label: string;
   abbreviation: string;
   color: string;
-  severity: 'good' | 'marginal' | 'significant' | 'minor';
+  severity: 'good' | 'marginal' | 'significant' | 'safety' | 'minor';
   isDefect: boolean;
   description?: string;
   /** B-18: Defect/Monitor-style levels pause auto-advance so the inspector can describe the finding. */
@@ -122,6 +122,10 @@ export function getRatingBucket(
       case 'marginal':
         return 'monitor';
       case 'significant':
+        return 'defect';
+      // A safety hazard IS a defect: it must never fall to the 'other' bucket,
+      // which is where the switch default would silently send it.
+      case 'safety':
         return 'defect';
       case 'minor':
         return 'other';
