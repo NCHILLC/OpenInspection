@@ -4,7 +4,16 @@
 // (API worker + web worker + Service Binding) topology with one deployable.
 import { Hono, type Context } from "hono";
 import { createRequestHandler, RouterContextProvider } from "react-router";
-import { buildOAuthHandler } from "../server/lib/mcp/oauth-provider";
+// buildOAuthHandler is NOT imported here. Importing it statically pulled the
+// MCP SDK, the Cloudflare Agents SDK, the OAuth provider and zod into the EAGER
+// module graph — 1,117 KB of the 1,259 KB evaluated on every cold start, for a
+// surface that answers 404 unless MCP_ENABLED is set. That is what exceeded the
+// Worker STARTUP limit and returned Cloudflare 1102 on ordinary page loads.
+// These two imports are safe at the top level: `flag` and `oauth-paths` import
+// nothing at all, and `deployment-profile` (below) is two constants and a
+// resolver.
+import { mcpEnabled } from "../server/lib/mcp/flag";
+import { isMcpSurfacePath } from "../server/lib/mcp/oauth-paths";
 // Safe at the top level despite this entry's tiny-import-graph rule:
 // `deployment-profile.ts` imports nothing at all — it is two constants and a
 // resolver over `ProfileEnv`. Pulling it in does not drag the API graph in
@@ -138,8 +147,19 @@ app.all("*", ssr);
 // route. When the flag is off the call is a no-op pass-through.
 export default {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fetch: (req: Request, env: any, ctx: ExecutionContext) =>
-    buildOAuthHandler(app.fetch as never, env).fetch(req, env, ctx),
+  fetch: (req: Request, env: any, ctx: ExecutionContext) => {
+    // Gate on the FLAG and the PATH, not the flag alone. Gating only on the
+    // flag would move the whole MCP graph onto the first request of every
+    // isolate the moment MCP is enabled, because this wrapper sits in front of
+    // all traffic. Gating on the path as well means enabling MCP costs nothing
+    // for anyone who is not an MCP client.
+    if (!mcpEnabled(env) || !isMcpSurfacePath(new URL(req.url).pathname, getDeploymentProfile(env).mcpApiRoute)) {
+      return app.fetch(req as never, env, ctx);
+    }
+    return import("../server/lib/mcp/oauth-provider").then((m) =>
+      m.buildOAuthHandler(app.fetch as never, env).fetch(req, env, ctx),
+    );
+  },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   scheduled: async (controller: any, env: any, ctx: any) =>
     (await getApi()).default.scheduled(controller, env, ctx),
@@ -155,5 +175,56 @@ export default {
 export { InspectionPresenceDO } from "../server/durable-objects/inspection-presence";
 export { TenantPresenceDO } from "../server/durable-objects/tenant-presence";
 export { InspectionDocDO } from "../server/durable-objects/inspection-doc";
-export { InspectorMcp } from "../server/durable-objects/inspector-mcp";
+/**
+ * `InspectorMcp` is a LAZY STUB, and the other four re-exports above are not.
+ *
+ * wrangler binds a Durable Object by reading a class off this module at module
+ * scope, so the class must exist eagerly — but its IMPLEMENTATION need not.
+ * Re-exporting the real one dragged the MCP + Agents + OAuth + zod graph into
+ * every cold start (see the buildOAuthHandler note at the top of this file).
+ * The other DOs stay direct re-exports because their graphs are small; this is
+ * the only one worth the indirection.
+ *
+ * ⚠️ UNPROVEN AT RUNTIME. With MCP_ENABLED off nothing routes here, so this
+ * class is dormant and its delegation has never executed. It forwards the
+ * standard Durable Object entry points; `McpAgent` may rely on surface this
+ * does not forward (RPC methods, hibernation hooks added by a future Agents
+ * SDK). EXERCISE AN ACTUAL MCP SESSION BEFORE TRUSTING IT — turning MCP on is
+ * what makes this code live.
+ */
+export class InspectorMcp {
+  #state: unknown;
+  #env: unknown;
+  #real: Promise<{ [k: string]: (...a: unknown[]) => unknown }> | undefined;
+
+  constructor(state: unknown, env: unknown) {
+    this.#state = state;
+    this.#env = env;
+  }
+
+  /** Loads and constructs the real agent once per DO instance. */
+  #load() {
+    return (this.#real ??= import("../server/durable-objects/inspector-mcp").then(
+      (m) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        new (m.InspectorMcp as any)(this.#state, this.#env),
+    ));
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    return (await this.#load()).fetch(request) as Promise<Response>;
+  }
+  async alarm(): Promise<void> {
+    await (await this.#load()).alarm?.();
+  }
+  async webSocketMessage(ws: unknown, message: unknown): Promise<void> {
+    await (await this.#load()).webSocketMessage?.(ws, message);
+  }
+  async webSocketClose(ws: unknown, code: unknown, reason: unknown, wasClean: unknown): Promise<void> {
+    await (await this.#load()).webSocketClose?.(ws, code, reason, wasClean);
+  }
+  async webSocketError(ws: unknown, error: unknown): Promise<void> {
+    await (await this.#load()).webSocketError?.(ws, error);
+  }
+}
 export { SignCompletionWorkflow } from "../server/workflows/sign-completion-workflow";

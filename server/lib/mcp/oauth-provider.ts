@@ -4,6 +4,11 @@ import type { McpProps } from '../../durable-objects/inspector-mcp';
 import { mcpEnabled } from './flag';
 import { assertCompanySlugMatches, companySlugFromMcpPath, stripCompanyPrefix } from './identity-bridge';
 import { getDeploymentProfile, type ProfileEnv } from '../deployment-profile';
+import {
+    OAUTH_AUTHORIZE_ENDPOINT,
+    OAUTH_REGISTER_ENDPOINT,
+    OAUTH_TOKEN_ENDPOINT,
+} from './oauth-paths';
 
 /**
  * Loose fetch signature used for both the app handler and the returned handler.
@@ -95,9 +100,11 @@ export function buildOAuthHandler(
         apiHandler,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         defaultHandler: { fetch: appFetch } as any,
-        authorizeEndpoint: '/oauth/authorize',
-        tokenEndpoint: '/oauth/token',
-        clientRegistrationEndpoint: '/oauth/register',
+        // From ./oauth-paths so the worker entry's lazy-load gate reads the
+        // same values this provider is configured with — they cannot drift.
+        authorizeEndpoint: OAUTH_AUTHORIZE_ENDPOINT,
+        tokenEndpoint: OAUTH_TOKEN_ENDPOINT,
+        clientRegistrationEndpoint: OAUTH_REGISTER_ENDPOINT,
     });
 
     return { fetch: (req, e, ctx) => provider.fetch(req, e, ctx) };
