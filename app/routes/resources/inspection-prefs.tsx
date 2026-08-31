@@ -25,6 +25,28 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     }
 }
 
+/**
+ * NEVER REVALIDATE. React Router re-runs every ACTIVE fetcher after each
+ * navigation and each action, and this route is loaded through one
+ * (`useInspectionPrefs`). The editor submits an action on essentially every
+ * interaction — a rating, a note, a defect field — so the default behaviour
+ * re-fetched tenant preferences once per interaction.
+ *
+ * That is what took the Worker down: a single editor session issued ~1,000
+ * requests here, D1 queries backed up past 15s, the isolate exceeded its
+ * MEMORY limit and returned 503 — which the app rendered as its error card.
+ * The database errors in the logs were the symptom of saturation, not a
+ * schema fault.
+ *
+ * These preferences are read once per mount and updated only through this
+ * route's own action, whose response carries the merged result back. There is
+ * no path by which a navigation makes them stale, so there is nothing for a
+ * revalidation to discover.
+ */
+export function shouldRevalidate() {
+    return false;
+}
+
 export async function action({ request, context }: Route.ActionArgs) {
     const token = await getToken(context, request);
     if (!token) return { ok: false as const, prefs: null };
