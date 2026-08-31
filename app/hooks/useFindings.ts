@@ -96,6 +96,8 @@ export function useFindings(
     },
     addCustomDefect: noop,
     toggleCustomDefect: noop,
+    addCustomLimitation: noop,
+    toggleCustomLimitation: noop,
     attachRepairItem: noop,
     detachRepairItem: noop,
     debounceSave: settled,

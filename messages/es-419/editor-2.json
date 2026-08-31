@@ -224,5 +224,15 @@
   "editor_mobile_search": "Buscar en el informe",
   "editor_search_result_count_one": "1 resultado",
   "editor_search_result_count_other": "{count} resultados",
-  "editor_mobile_next_item": "Siguiente"
+  "editor_mobile_next_item": "Siguiente",
+  "editor_limitation_required_notice": "Marcado como No Inspeccionado. Indique el motivo antes de publicar el informe.",
+  "editor_limitation_add": "Agregar",
+  "editor_limitation_placeholder": "Otro motivo…",
+  "editor_limitation_aria": "Motivo de la limitación",
+  "editor_limitation_reason_no_access": "Sin acceso",
+  "editor_limitation_reason_locked": "Cerrado con llave",
+  "editor_limitation_reason_not_in_service": "Fuera de servicio",
+  "editor_limitation_reason_weather": "Condiciones climáticas",
+  "editor_limitation_reason_belongings": "Pertenencias almacenadas obstruyen el paso",
+  "editor_limitation_reason_unsafe": "Acceso inseguro"
 }

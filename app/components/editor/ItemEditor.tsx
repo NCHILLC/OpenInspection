@@ -28,6 +28,9 @@ import {
  hasIncludedFindings,
 } from "../editor-shared/item-tab-projections";
 import { FindingsIndicator } from "../editor-shared/FindingsIndicator";
+import { makeDefectPhotoChip } from "./DefectPhotoChip";
+import { LimitationsPanel } from "../editor-shared/LimitationsPanel";
+import { requiresLimitation, createCustomLimitation, type CustomLimitation } from "../../lib/limitations";
 import { CANNED_TAB_IDS, cannedTabLabel } from "../editor-shared/canned-comment-types";
 import { ItemPhotoStrip, type StripPhoto } from "../media-studio/ItemPhotoStrip";
 import type { AttachedRepairItem } from "../../hooks/useFindings";
@@ -64,6 +67,9 @@ interface ItemEditorProps {
  photoUploading?: boolean;
  /** B-20 — add a field-authored defect into result.customComments.defects. */
  onAddCustomDefect?: (input: { title: string; comment: string; category: CustomDefectCategory; trade?: DefectTrade | null }) => void;
+ /** Recording WHY an item was Not Inspected. */
+ onAddCustomLimitation?: (entry: CustomLimitation) => void;
+ onToggleCustomLimitation?: (customId: string, included: boolean) => void;
  /** Track H (B-20 back-flow) — save the custom defect into the tenant library
   *  (best-effort; failure must not block the defect itself). */
  onSaveDefectToLibrary?: (input: { title: string; comment: string; category: CustomDefectCategory }) => void;
@@ -156,6 +162,8 @@ export function ItemEditor({
  onAddDefectPhoto,
  photoUploading,
  onAddCustomDefect,
+ onAddCustomLimitation,
+ onToggleCustomLimitation,
  onToggleCustomDefect,
  defectStates,
  locationSuggestions,
@@ -285,25 +293,14 @@ export function ItemEditor({
   .map((hit) => hit as typeof hit & { tab: "information" | "limitations" })
  : [];
 
+ // Limitations the inspector has recorded on this item.
+ const customLimitations = (((result.customComments as { limitations?: CustomLimitation[] } | undefined)?.limitations) ?? []);
  // B-20 — field-authored custom defects already persisted on this item.
  const customDefects = (((result.customComments as { defects?: (CustomDefect & { photos?: Array<{ key: string }> })[] } | undefined)?.defects) ?? []);
 
 
  // Shared per-defect photo chip (canned + custom rows).
- const addPhotoIcon = (
- <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
- <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
- </svg>
- );
- const defectPhotoChip = (target: { kind: "canned" | "custom"; id: string }, count: number) =>
- onAddDefectPhoto ? (
- <Button variant="ghost" size="sm" disabled={photoUploading} aria-label={m.editor_item_add_defect_photo_aria()} icon={addPhotoIcon}
- onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddDefectPhoto(target); }}
- className="mt-1.5 h-auto px-2 py-1 border border-dashed border-ih-border-strong text-ih-fg-3 hover:bg-transparent hover:border-ih-primary hover:text-ih-primary-text"
- >
- {count > 0 ? (count === 1 ? m.editor_item_defect_photo_count_one({ count }) : m.editor_item_defect_photo_count_other({ count })) : m.editor_item_add_photo()}
- </Button>
- ) : null;
+ const defectPhotoChip = makeDefectPhotoChip(onAddDefectPhoto, photoUploading);
 
  const submitCustomDefect = () => {
  const title = customTitle.trim();
@@ -401,6 +398,14 @@ export function ItemEditor({
    }}
   />
  </div>
+ )}
+ {/* The reason for a Not Inspected answer, under the answer that demands it —
+     not behind a tab, which on a phone is where reasons go to die. Stays put
+     once recorded, so a later rating change cannot strand one. */}
+ {item.type === "rich" && onAddCustomLimitation && (requiresLimitation(activeLevel) || customLimitations.length > 0) && (
+  <LimitationsPanel entries={customLimitations} required={requiresLimitation(activeLevel)}
+   onAdd={(title) => onAddCustomLimitation(createCustomLimitation(title))}
+   onToggle={(id, included) => onToggleCustomLimitation?.(id, included)} />
  )}
 
  {/* Module B — non-rich typed inputs (text/number/boolean/select/
