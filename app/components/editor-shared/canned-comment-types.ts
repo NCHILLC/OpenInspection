@@ -1,3 +1,5 @@
+import { m } from "~/paraglide/messages";
+
 /**
  * What a template's canned comments look like, and the three tabs they sit in.
  *
@@ -33,3 +35,15 @@ export interface CannedDefect {
 }
 
 export type CannedTabId = "information" | "limitations" | "defects";
+
+/** The three tabs, in the order every surface renders them. */
+export const CANNED_TAB_IDS: CannedTabId[] = ["information", "limitations", "defects"];
+
+/** The tab's display name under the active locale. */
+export function cannedTabLabel(id: CannedTabId): string {
+    return id === "information"
+        ? m.editor_item_tab_information()
+        : id === "limitations"
+        ? m.editor_item_tab_limitations()
+        : m.editor_item_tab_defects();
+}

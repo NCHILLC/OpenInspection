@@ -34,6 +34,8 @@ import {
     appendNote as bindingAppendNote,
     addCustomDefect as bindingAddCustomDefect,
     toggleCustomDefect as bindingToggleCustomDefect,
+    addCustomLimitation as bindingAddCustomLimitation,
+    toggleCustomLimitation as bindingToggleCustomLimitation,
     attachRepairItem as bindingAttachRepairItem,
     detachRepairItem as bindingDetachRepairItem,
     addPhotoToCannedDefect as bindingAddPhotoToCannedDefect,
@@ -136,6 +138,8 @@ export interface CollabFindingsApi {
     getPhotoCount: (itemId: string) => number;
     addCustomDefect: (sectionId: string, itemId: string, defect: CustomCommentEntry) => void;
     toggleCustomDefect: (sectionId: string, itemId: string, customId: string, included: boolean) => void;
+    addCustomLimitation: (sectionId: string, itemId: string, limitation: CustomCommentEntry) => void;
+    toggleCustomLimitation: (sectionId: string, itemId: string, customId: string, included: boolean) => void;
     attachRepairItem: (itemId: string, snap: AttachedRepairItem) => void;
     detachRepairItem: (itemId: string, recommendationId: string) => void;
     debounceSave: () => void;
@@ -340,6 +344,21 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
         setDirty(true);
     };
 
+    const addCustomLimitation = (sectionId: string, itemId: string, limitation: CustomCommentEntry): void => {
+        bindingAddCustomLimitation(doc, sectionId, itemId, limitation as unknown as { id: string } & Record<string, unknown>, unit);
+        setDirty(true);
+    };
+
+    const toggleCustomLimitation = (
+        sectionId: string,
+        itemId: string,
+        customId: string,
+        included: boolean,
+    ): void => {
+        bindingToggleCustomLimitation(doc, sectionId, itemId, customId, included, unit);
+        setDirty(true);
+    };
+
     const toggleCustomDefect = (
         sectionId: string,
         itemId: string,
@@ -393,6 +412,8 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
         getPhotoCount,
         addCustomDefect,
         toggleCustomDefect,
+        addCustomLimitation,
+        toggleCustomLimitation,
         attachRepairItem,
         detachRepairItem,
         debounceSave,

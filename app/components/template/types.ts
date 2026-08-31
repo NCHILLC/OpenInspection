@@ -122,6 +122,15 @@ export interface TemplateSchema {
 /* ------------------------------------------------------------------ */
 
 export const RATING_PRESETS: { name: string; levels: RatingLevel[] }[] = [
+  // Findings are NOT a level here. `F` is derived from the item's included
+  // defects and rendered beside this row by `FindingsIndicator`, so IN and F
+  // light together — see `findings-not-a-rating-level.test.ts`. A fourth level
+  // called F would be mutually exclusive with IN and would erase it.
+  { name: "Inspected / Not Inspected / Not Present", levels: [
+    { id: "IN", label: "Inspected", abbreviation: "IN", color: "#22c55e", severity: "good", isDefect: false, default: true, description: "Inspected. Anything wrong with it is recorded as a defect." },
+    { id: "NI", label: "Not Inspected", abbreviation: "NI", color: "#9ca3af", severity: "minor", isDefect: false, default: false, description: "Could not be inspected; a limitation states why." },
+    { id: "NP", label: "Not Present", abbreviation: "NP", color: "#6b7280", severity: "minor", isDefect: false, default: false, description: "Not present at this property." },
+  ]},
   { name: "Standard 3-Level", levels: [
     { id: "S", label: "Satisfactory", abbreviation: "S", color: "#22c55e", severity: "good", isDefect: false, default: true, description: "Item is functioning as intended." },
     { id: "M", label: "Monitor", abbreviation: "M", color: "#f59e0b", severity: "marginal", isDefect: false, default: false, description: "Functional but warrants periodic re-inspection." },

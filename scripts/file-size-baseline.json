@@ -20,7 +20,7 @@
   "app/components/editor/ItemEditor.tsx": 656,
   "app/components/inspection-edit/CompliancePanel.tsx": 638,
   "server/api/auth.ts": 611,
-  "app/lib/collab/results-binding.ts": 608,
+  "app/lib/collab/results-binding.ts": 637,
   "app/hooks/useInspection.ts": 600,
   "server/services/concierge.service.ts": 595,
   "server/api/public-report.ts": 586,
@@ -67,5 +67,5 @@
   "server/lib/db/schema/inspection/core.ts": 415,
   "server/services/agreement/signer-state.ts": 413,
   "playwright.config.ts": 409,
-  "app/lib/collab/collab-findings-api.ts": 402
+  "app/lib/collab/collab-findings-api.ts": 423
 }

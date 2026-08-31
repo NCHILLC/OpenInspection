@@ -78,6 +78,7 @@ import type { ResultMap } from "~/hooks/useInspection";
 import type { PublishReadiness, PublishBlockingDefect } from "~/lib/types";
 import { Button, IconButton, SegmentedControl } from "@core/shared-ui";
 import { m } from "~/paraglide/messages";
+import { PRESET_TAGS } from "~/lib/preset-tags";
 
 export function meta() {
  return [{ title: m.editor_route_meta_title() }];
@@ -791,14 +792,6 @@ export default function InspectionEditPage() {
  setActiveItemId: state.setActiveItemId,
  });
 
- const PRESET_TAGS = useMemo(() => [
-  { id: "follow-up", name: "Follow Up", color: "#ef4444" },
-  { id: "urgent", name: "Urgent", color: "#f97316" },
-  { id: "photo-needed", name: "Photo Needed", color: "#eab308" },
-  { id: "re-inspect", name: "Re-inspect", color: "#3b82f6" },
-  { id: "client-question", name: "Client Question", color: "#a855f7" },
- ], []);
-
  const toggleTag = useCallback((tag: { id: string; name: string; color: string }) => {
   if (!state.activeItemId) return;
   const current = state.tagsByItem[state.activeItemId] || [];
@@ -1230,6 +1223,13 @@ export default function InspectionEditPage() {
  included,
  );
  }
+ }}
+ onAddCustomLimitation={(entry) => {
+ // Spread WHOLE, as the custom defect above is — see `trade` there.
+ if (state.activeItemId && state.currentSection) findings.addCustomLimitation(state.currentSection.id, state.activeItemId, { ...entry });
+ }}
+ onToggleCustomLimitation={(customId, included) => {
+ if (state.activeItemId && state.currentSection) findings.toggleCustomLimitation(state.currentSection.id, state.activeItemId, customId, included);
  }}
  onNotes={(notes) => {
  if (state.activeItemId && state.currentSection) {

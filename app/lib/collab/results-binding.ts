@@ -472,6 +472,35 @@ export function addCustomDefect(
 }
 
 /**
+ * Add (or merge) a custom limitation into `customComments.limitations`.
+ *
+ * The reason an item could not be inspected. Same storage as a custom defect —
+ * `upsertCustomComment` is tab-generic — so the report reads one kind of
+ * hand-written entry whichever tab it came from.
+ */
+export function addCustomLimitation(
+    doc: Y.Doc,
+    sectionId: string,
+    itemId: string,
+    entry: { id: string } & Record<string, unknown>,
+    unitId: string | null = null,
+): void {
+    upsertCustomComment(doc, findingKey(unitId, sectionId, itemId), 'limitations', entry);
+}
+
+/** Flip `included` on a custom limitation, keyed by id. */
+export function toggleCustomLimitation(
+    doc: Y.Doc,
+    sectionId: string,
+    itemId: string,
+    customId: string,
+    included: boolean,
+    unitId: string | null = null,
+): void {
+    upsertCustomComment(doc, findingKey(unitId, sectionId, itemId), 'limitations', { id: customId, included });
+}
+
+/**
  * Attach a repair-item snapshot to the finding's recommendations list.
  * Keyed by `rec.recommendationId`.
  */

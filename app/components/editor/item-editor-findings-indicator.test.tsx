@@ -1,15 +1,21 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, fireEvent, within } from "@testing-library/react";
 import { ItemEditor } from "./ItemEditor";
 
 /**
- * D2, asserted on the rendered output rather than trusted to a code comment.
+ * F reaches the screen as something SEPARATE from the rating radiogroup —
+ * asserted on the rendered output rather than trusted to a code comment.
+ * `hasIncludedFindings` is unit-tested beside the projection it lives in; this
+ * covers what a pure-function test cannot see. Both editors render this same
+ * component, so there is one place for it to be wrong.
  *
- * `hasIncludedFindings` is unit-tested next to the projection it lives in; what
- * these cover is the part a pure-function test cannot see — that F reaches the
- * screen as something SEPARATE from the rating radiogroup. Both editors render
- * this same component, so there is one place for it to be wrong.
+ * F IS NOW A CONTROL, and that is a deliberate change. It reads as the fourth
+ * tile of IN / NI / NP / F and pressing it is how an inspector says "something
+ * is wrong here" — it opens the defects and answers the rating question, since
+ * a finding implies the item was inspected. What has NOT changed, and must not,
+ * is that F is never a rating VALUE: it stays outside the radiogroup, so
+ * choosing it can never clear the IN / NI / NP the inspector recorded.
  */
 
 const base = {
@@ -47,12 +53,14 @@ describe("ItemEditor — the findings indicator is beside the rating, not in it"
         expect(group?.contains(indicator(container)!)).toBe(false);
     });
 
-    // A control nobody can choose must not claim to be one.
-    it("is not exposed as a radio or a button", () => {
+    // It is a button, because it does something. It is NOT a radio, because a
+    // radio is one of a mutually exclusive set and F coexists with IN.
+    it("is a button and never a radio", () => {
         const { container } = render(<ItemEditor {...base} item={richItem} result={{}} />);
         const el = indicator(container)!;
+        expect(el.tagName.toLowerCase()).toBe("button");
         expect(el.getAttribute("role")).toBeNull();
-        expect(el.tagName.toLowerCase()).toBe("output");
+        expect(el.getAttribute("aria-checked")).toBeNull();
     });
 
     it("reads inactive when the item has no included findings", () => {
@@ -89,5 +97,40 @@ describe("ItemEditor — the findings indicator is beside the rating, not in it"
             <ItemEditor {...base} item={{ id: "i2", label: "Year Built", type: "number" }} result={{}} />,
         );
         expect(indicator(container)).toBeNull();
+    });
+
+    // Findings imply inspection: an unanswered item gets the satisfactory tier
+    // so IN and F light together, which is what the row is telling the reader.
+    it("answers the rating when F is pressed on an unrated item", () => {
+        const onRating = vi.fn();
+        const { container } = render(
+            <ItemEditor {...base} onRating={onRating} item={richItem} result={{}} />,
+        );
+        fireEvent.click(indicator(container)!);
+        expect(onRating).toHaveBeenCalledTimes(1);
+        // ItemEditor's FALLBACK_RATING_LEVELS satisfactory tier.
+        expect(onRating.mock.calls[0][0]).toBeTruthy();
+    });
+
+    // The inspector's own answer wins. Overwriting an explicit Not Inspected
+    // would discard both their statement and the limitation explaining it.
+    it("leaves an existing rating alone when F is pressed", () => {
+        const onRating = vi.fn();
+        const { container } = render(
+            <ItemEditor {...base} onRating={onRating} item={richItem} result={{ rating: "Not Inspected" }} />,
+        );
+        fireEvent.click(indicator(container)!);
+        expect(onRating).not.toHaveBeenCalled();
+    });
+
+    // "There are no defects if there are no findings" — pressing F is how the
+    // inspector gets to the place where a finding is recorded.
+    it("opens the Defects tab when F is pressed", () => {
+        const { container } = render(<ItemEditor {...base} item={richItem} result={{}} />);
+        // The item opens on Information, which this template leaves empty, so
+        // the defect is not on screen yet.
+        expect(within(container).queryByText(/Lifted shingle/)).toBeNull();
+        fireEvent.click(indicator(container)!);
+        expect(within(container).getByText(/Lifted shingle/)).toBeTruthy();
     });
 });

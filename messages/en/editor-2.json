@@ -225,5 +225,15 @@
   "editor_mobile_search": "Search report",
   "editor_search_result_count_one": "1 result",
   "editor_search_result_count_other": "{count} results",
-  "editor_mobile_next_item": "Next"
+  "editor_mobile_next_item": "Next",
+  "editor_limitation_required_notice": "Marked Not Inspected. Give the reason before the report is published.",
+  "editor_limitation_add": "Add",
+  "editor_limitation_placeholder": "Another reason…",
+  "editor_limitation_aria": "Limitation reason",
+  "editor_limitation_reason_no_access": "No access",
+  "editor_limitation_reason_locked": "Locked",
+  "editor_limitation_reason_not_in_service": "Not in service",
+  "editor_limitation_reason_weather": "Weather conditions",
+  "editor_limitation_reason_belongings": "Stored belongings in the way",
+  "editor_limitation_reason_unsafe": "Unsafe to access"
 }
