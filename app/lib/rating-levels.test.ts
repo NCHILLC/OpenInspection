@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { findRatingLevel, ratingAdvanceDecision, findInspectedLevel, ratingForFindingsActivation } from '~/lib/rating-levels';
+import { findRatingLevel, ratingAdvanceDecision, findInspectedLevel, ratingForFindingsActivation, FALLBACK_RATING_LEVELS } from '~/lib/rating-levels';
 
 /**
  * B-18 — the editor looked ratings up via `levels.find(l => l.id === rating)`
@@ -113,4 +113,27 @@ describe('findings activation', () => {
     it('changes nothing when the system has no satisfactory tier', () => {
         expect(ratingForFindingsActivation(null, [{ id: 'D', severity: 'significant' }])).toBeNull();
     });
+});
+
+/**
+ * The shipped default is IN / NI / NP. Both assertions below guard failures
+ * that are SILENT: nothing throws, the report is simply wrong.
+ */
+describe("FALLBACK_RATING_LEVELS is the IN/NI/NP default", () => {
+  it("offers exactly Inspected, Not Inspected, Not Present", () => {
+    expect(FALLBACK_RATING_LEVELS.map((l) => l.abbreviation)).toEqual(["IN", "NI", "NP"]);
+  });
+
+  // findInspectedLevel resolves the inspected tier by SEVERITY, not by the
+  // letters "IN". Give IN any other severity and activating F stops selecting
+  // it, and every inspected item files under "other" rather than satisfactory.
+  it("marks IN with severity 'good' so F can resolve it", () => {
+    expect(findInspectedLevel(FALLBACK_RATING_LEVELS)?.abbreviation).toBe("IN");
+  });
+
+  it("treats NI and NP as the not-applicable tier, and neither as a defect", () => {
+    const na = FALLBACK_RATING_LEVELS.filter((l) => l.abbreviation !== "IN");
+    expect(na.map((l) => l.severity)).toEqual(["minor", "minor"]);
+    expect(FALLBACK_RATING_LEVELS.some((l) => l.isDefect)).toBe(false);
+  });
 });

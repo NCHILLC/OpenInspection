@@ -97,6 +97,6 @@ describe("ItemEditor — non-rich FormField inputs", () => {
       />
     );
     // FALLBACK_LEVELS render Satisfactory/Monitor/Defect labels.
-    expect(screen.getByText("Satisfactory")).toBeTruthy();
+    expect(screen.getByText("Inspected")).toBeTruthy();
   });
 });

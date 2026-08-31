@@ -82,10 +82,10 @@ describe("ItemEditor — the findings indicator is beside the rating, not in it"
             <ItemEditor
                 {...base}
                 item={richItem}
-                // "Satisfactory" is one of ItemEditor's FALLBACK_LEVELS ids —
+                // "Inspected" is one of ItemEditor's FALLBACK_LEVELS ids —
                 // and it is the honest pairing to assert: the inspector found
                 // the item satisfactory AND still recorded something on it.
-                result={{ rating: "Satisfactory", tabs: { defects: [{ cannedId: "d1", included: true }] } }}
+                result={{ rating: "Inspected", tabs: { defects: [{ cannedId: "d1", included: true }] } }}
             />,
         );
         expect(indicator(container)?.getAttribute("data-active")).toBe("true");

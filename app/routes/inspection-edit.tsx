@@ -1,3 +1,4 @@
+import { buildDefectStates } from "./inspection-edit/defect-states";
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useLoaderData, useFetcher, useRevalidator } from "react-router";
 import { INSPECTION_STATUS } from "~/lib/status";
@@ -28,7 +29,6 @@ import { FullscreenToggle } from "~/components/editor/FullscreenToggle";
 import { ItemList } from "~/components/editor-shared/ItemList";
 import { ItemEditor } from "~/components/editor/ItemEditor";
 import { TagChipRow, type TagPin } from "~/components/editor/TagChipRow";
-import type { DefectFieldsValue } from "~/components/editor/DefectFieldsRow";
 import { SideRail } from "~/components/editor/SideRail";
 import { SpeedMode } from "~/components/editor/SpeedMode";
 import { FooterBar } from "~/components/editor/FooterBar";
@@ -364,24 +364,7 @@ export default function InspectionEditPage() {
  ? findings.getResult(state.activeItemId, state.currentSection?.id)
  : null;
 
- const defectStates = useMemo(() => {
- const map = new Map<string, DefectFieldsValue>();
- const defects = (activeResult as Record<string, unknown> | null)?.tabs as
- | { defects?: Array<Record<string, unknown>> }
- | undefined;
- const rows = Array.isArray(defects?.defects) ? defects!.defects : [];
- for (const d of rows) {
- const cannedId = typeof d.cannedId === "string" ? d.cannedId : "";
- if (!cannedId) continue;
- map.set(cannedId, {
- location:  typeof d.location  === "string" ? d.location  : null,
- trade:     typeof d.trade     === "string" ? (d.trade     as DefectFieldsValue["trade"])     : null,
- deadline:  typeof d.deadline  === "string" ? (d.deadline  as DefectFieldsValue["deadline"])  : null,
- timeframe: typeof d.timeframe === "string" ? (d.timeframe as DefectFieldsValue["timeframe"]) : null,
- });
- }
- return map;
- }, [activeResult]);
+ const defectStates = useMemo(() => buildDefectStates(activeResult), [activeResult]);
 
  // Whole-inspection photo count for the Photos tab badge (P3). Sums per-item
  // result.photos across the results map.

@@ -87,11 +87,14 @@ export function ratingAdvanceDecision(opts: {
  * default INSTANCE of that type, and a second editing surface reaching for a
  * fallback should reach for this one rather than write its own. */
 export const FALLBACK_RATING_LEVELS: EditorRatingLevel[] = [
-    { id: "Satisfactory", label: "Satisfactory", abbreviation: "Sat", severity: "good" },
-    { id: "Monitor", label: "Monitor", abbreviation: "Mon", severity: "marginal", pausesAdvance: true },
-    { id: "Defect", label: "Defect", abbreviation: "Def", severity: "significant", isDefect: true, pausesAdvance: true },
-    { id: "Not Inspected", label: "Not Inspected", abbreviation: "N/I", severity: "minor" },
-    { id: "Not Present", label: "Not Present", abbreviation: "N/P", severity: "minor" },
+    // IN carries severity 'good' because that is how `findInspectedLevel` below
+    // identifies the inspected tier — by severity, never by id or abbreviation.
+    // Give it any other severity and activating F stops selecting IN, and every
+    // inspected item files under "other" instead of satisfactory. Both failures
+    // are silent.
+    { id: "Inspected", label: "Inspected", abbreviation: "IN", severity: "good" },
+    { id: "Not Inspected", label: "Not Inspected", abbreviation: "NI", severity: "minor" },
+    { id: "Not Present", label: "Not Present", abbreviation: "NP", severity: "minor" },
 ];
 
 /**
