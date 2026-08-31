@@ -4,6 +4,7 @@
   "editor_shortcuts_heading": "Keyboard shortcuts",
   "editor_shortcuts_label": "Shortcuts",
   "editor_defect_location_label": "Location",
+  "editor_defect_severity_label": "Severity",
   "editor_defect_location_placeholder": "e.g. master bathroom, NE corner of basement",
   "editor_defect_trade_label": "Trade",
   "editor_defect_trade_select_placeholder": "— select —",

@@ -47,10 +47,11 @@ describe("CannedCommentTabs rows (behavior-preserving swap)", () => {
     expect((out.match(/type="checkbox"/g) || []).length).toBe(2);
   });
 
-  it("shows the canned title and chip regardless of inclusion", () => {
+  it("shows the canned title regardless of inclusion, without a category chip", () => {
     const out = html([]);
     expect(out).toContain("Roof shingles lifted");
-    expect(out).toContain(">safety<");
+    // The chip went with the read-only category — see the chips spec.
+    expect(out).not.toContain(">safety<");
   });
 
   it("renders the Mustache-rendered body when the defect is included (vars only built for isDefectIncluded)", () => {

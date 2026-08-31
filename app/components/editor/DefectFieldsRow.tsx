@@ -1,15 +1,21 @@
-import { useMemo } from 'react';
-import {
-    DEFECT_TRADE_OPTIONS, DEFECT_DEADLINE_OPTIONS, DEFECT_TIMEFRAME_OPTIONS,
-    type DefectTrade, type DefectDeadline, type DefectTimeframe,
-} from '../../lib/defect-fields';
+import { useEffect, useMemo } from 'react';
+import type { DefectTrade, DefectDeadline, DefectTimeframe } from '../../lib/defect-fields';
 import { m } from '~/paraglide/messages';
 
 export interface DefectFieldsValue {
     location?: string | null;
+    /** Tenant `defect_categories.id` — the per-defect severity override. */
+    category?: string | null;
+    /** Retained in the stored shape (and in the comment template's variables)
+     *  but no longer authored here — see the note on the removed controls. */
     trade?: DefectTrade | null;
     deadline?: DefectDeadline | null;
     timeframe?: DefectTimeframe | null;
+}
+
+interface DefectCategoryOption {
+    id: string;
+    name: string;
 }
 
 export interface DefectFieldsRowProps {
@@ -20,24 +26,92 @@ export interface DefectFieldsRowProps {
     onChange: (cannedId: string, patch: Partial<DefectFieldsValue>) => void;
     /** Marks the location input as visually required when the publish gate flagged it. */
     locationRequired?: boolean;
-    /** Marks the trade select as visually required when the publish gate flagged it. */
-    tradeRequired?: boolean;
+    /** The tenant's configured severities, in `sort_order`. The FIRST is the
+     *  default applied to a defect that has never been given one. */
+    categories?: DefectCategoryOption[];
+    /** `defect_categories.color` by id — the selected tile is filled with it. */
+    categoryColor?: Map<string, string>;
 }
 
 const DATALIST_ID = 'defect-location-suggestions';
 
+/**
+ * The per-defect fields an inspector fills in on an included defect.
+ *
+ * SEVERITY IS THE POINT OF THIS ROW. It writes `category`, the per-defect
+ * override of the template's category, using the tenant's own configured
+ * severities (Minor / Moderate / Safety-Major). Before this control existed the
+ * category was fixed by the template and rendered as a read-only chip, so every
+ * defect in a report carried whatever the canned library said — most of them the
+ * built-in "recommendation", which is not a severity anyone chose.
+ *
+ * The trade / deadline / timeframe selects were REMOVED (they are not part of
+ * this product's reporting), but their fields stay in `DefectFieldsValue`
+ * because the stored shape and the comment template's variables still carry
+ * them. They simply stay null now. Do not delete the fields to "tidy up" —
+ * that is a data change wearing a cleanup's clothes.
+ */
 export function DefectFieldsRow({
-    cannedId, value, locationSuggestions, onChange, locationRequired, tradeRequired,
+    cannedId, value, locationSuggestions, onChange, locationRequired, categories, categoryColor,
 }: DefectFieldsRowProps) {
     const dedupedSuggestions = useMemo(
         () => Array.from(new Set(locationSuggestions.filter(s => s.length > 0))),
         [locationSuggestions],
     );
 
+    const defaultCategoryId = categories?.[0]?.id;
+
+    // A defect that has never been given a severity takes the first configured
+    // one. Persisted rather than merely displayed: a severity the inspector can
+    // see on screen but that was never written would publish as the template's
+    // category, and the report would disagree with the screen.
+    useEffect(() => {
+        if (!value.category && defaultCategoryId) {
+            onChange(cannedId, { category: defaultCategoryId });
+        }
+    }, [cannedId, value.category, defaultCategoryId, onChange]);
+
+    const selectedCategory = value.category ?? defaultCategoryId ?? null;
+
     return (
         <div className="mt-2 grid grid-cols-12 gap-2 text-[11px]" data-defect-id={cannedId}>
+            {/* Severity */}
+            {categories && categories.length > 0 && (
+                <div className="col-span-12">
+                    <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">
+                        {m.editor_defect_severity_label()}
+                    </label>
+                    <div role="radiogroup" aria-label={m.editor_defect_severity_label()} className="flex gap-1.5 flex-wrap">
+                        {categories.map(c => {
+                            const isSelected = c.id === selectedCategory;
+                            const color = categoryColor?.get(c.id);
+                            return (
+                                <button
+                                    key={c.id}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={isSelected}
+                                    data-testid={`defect-severity-${c.id}`}
+                                    onClick={() => onChange(cannedId, { category: c.id })}
+                                    // h-11 is the 44px touch floor — this row is used one-handed
+                                    // on a phone, which is the surface it was built for.
+                                    className={`h-11 px-3 rounded border text-[13px] font-bold transition-colors ${
+                                        isSelected
+                                            ? 'text-ih-fg-inverse border-transparent'
+                                            : 'bg-transparent text-ih-fg-3 border-ih-border'
+                                    }`}
+                                    style={isSelected && color ? { backgroundColor: color } : undefined}
+                                >
+                                    {c.name}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             {/* Location text */}
-            <div className="col-span-12 md:col-span-5">
+            <div className="col-span-12">
                 <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">
                     {m.editor_defect_location_label()} {locationRequired && <span className="text-ih-bad-fg">*</span>}
                 </label>
@@ -54,55 +128,6 @@ export function DefectFieldsRow({
                 <datalist id={DATALIST_ID}>
                     {dedupedSuggestions.map(s => <option key={s} value={s} />)}
                 </datalist>
-            </div>
-
-            {/* Trade select */}
-            <div className="col-span-12 md:col-span-3">
-                <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">
-                    {m.editor_defect_trade_label()} {tradeRequired && <span className="text-ih-bad-fg">*</span>}
-                </label>
-                <select
-                    value={value.trade ?? ''}
-                    onChange={e => onChange(cannedId, { trade: (e.target.value || null) as DefectTrade | null })}
-                    className={`w-full px-2 h-11 rounded border bg-ih-bg-app text-ih-fg-1 ${
-                        tradeRequired && !value.trade ? 'border-ih-bad' : 'border-ih-border'
-                    }`}
-                >
-                    <option value="">{m.editor_defect_trade_select_placeholder()}</option>
-                    {DEFECT_TRADE_OPTIONS.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                </select>
-            </div>
-
-            {/* Deadline select */}
-            <div className="col-span-6 md:col-span-2">
-                <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">{m.editor_defect_deadline_label()}</label>
-                <select
-                    value={value.deadline ?? ''}
-                    onChange={e => onChange(cannedId, { deadline: (e.target.value || null) as DefectDeadline | null })}
-                    className="w-full px-2 h-11 rounded border border-ih-border bg-ih-bg-app text-ih-fg-1"
-                >
-                    <option value="">—</option>
-                    {DEFECT_DEADLINE_OPTIONS.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                </select>
-            </div>
-
-            {/* Timeframe select */}
-            <div className="col-span-6 md:col-span-2">
-                <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">{m.editor_defect_timeframe_label()}</label>
-                <select
-                    value={value.timeframe ?? ''}
-                    onChange={e => onChange(cannedId, { timeframe: (e.target.value || null) as DefectTimeframe | null })}
-                    className="w-full px-2 h-11 rounded border border-ih-border bg-ih-bg-app text-ih-fg-1"
-                >
-                    <option value="">—</option>
-                    {DEFECT_TIMEFRAME_OPTIONS.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                </select>
             </div>
         </div>
     );

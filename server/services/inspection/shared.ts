@@ -351,16 +351,8 @@ interface PublishBlockingDefect {
 
 /** Track H (IA-7 / P-6②) — which defect fields the publish gate REQUIRES.
  *  Resolved as inspection override ?? tenant default ?? 'none' (loose). */
-export type RequireDefectFields = 'none' | 'location' | 'trade' | 'both';
-
-/** Pure resolution of the two-level config — override (NULL = inherit)
- *  beats the tenant default; both unset → 'none' (loose). */
-export function resolveRequireDefectFields(
-    override: RequireDefectFields | null | undefined,
-    tenantDefault: RequireDefectFields | null | undefined,
-): RequireDefectFields {
-    return override ?? tenantDefault ?? 'none';
-}
+import type { RequireDefectFields } from './require-defect-fields';
+export { resolveRequireDefectFields, type RequireDefectFields } from './require-defect-fields';
 
 export interface PublishReadiness {
     ready: boolean;

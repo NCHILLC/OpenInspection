@@ -50,10 +50,14 @@ function html(includedIds: string[]) {
 }
 
 describe("CannedCommentTabs category pills", () => {
-  it("renders the canned-defect safety pill with the bad tokens", () => {
+  // The canned-defect row no longer carries a read-only category pill. It
+  // showed the TEMPLATE's category — for most seeded defects the built-in
+  // "recommendation", which is not a severity anyone chose — and severity is
+  // now set on the row itself via DefectFieldsRow. A pill repeating a
+  // different value beside that control would contradict it.
+  it("renders no read-only category pill on a canned defect", () => {
     const out = html([]);
-    expect(out).toContain("bg-ih-bad-bg");
-    expect(out).toContain(">safety<");
+    expect(out).not.toContain(">safety<");
   });
 
   it("renders the custom-defect maintenance pill with the canonical muted tokens", () => {

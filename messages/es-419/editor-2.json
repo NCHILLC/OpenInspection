@@ -4,6 +4,7 @@
   "editor_shortcuts_heading": "Atajos de teclado",
   "editor_shortcuts_label": "Atajos",
   "editor_defect_location_label": "Ubicación",
+  "editor_defect_severity_label": "Gravedad",
   "editor_defect_location_placeholder": "p. ej. baño principal, esquina NE del sótano",
   "editor_defect_trade_label": "Oficio",
   "editor_defect_trade_select_placeholder": "— seleccione —",

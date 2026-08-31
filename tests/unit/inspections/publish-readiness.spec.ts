@@ -5,16 +5,28 @@ import { computePublishReadinessFromState, resolveRequireDefectFields } from '..
 // the tenant default; both unset → loose.
 describe('resolveRequireDefectFields', () => {
     it('override wins over tenant default', () => {
-        expect(resolveRequireDefectFields('both', 'none')).toBe('both');
+        expect(resolveRequireDefectFields('location', 'none')).toBe('location');
         expect(resolveRequireDefectFields('none', 'both')).toBe('none');
     });
     it('null/undefined override inherits the tenant default', () => {
         expect(resolveRequireDefectFields(null, 'location')).toBe('location');
-        expect(resolveRequireDefectFields(undefined, 'trade')).toBe('trade');
     });
     it('both unset → none (loose)', () => {
         expect(resolveRequireDefectFields(null, null)).toBe('none');
         expect(resolveRequireDefectFields(undefined, undefined)).toBe('none');
+    });
+
+    // The trade selector no longer exists in the defect editor, so a stored
+    // requirement naming it would demand a field nothing can fill and block
+    // publishing forever. The requirement is collapsed rather than the stored
+    // value rewritten: rows keep reading back what they were set to.
+    it('collapses trade out — it is no longer an authorable field', () => {
+        expect(resolveRequireDefectFields(null, 'trade')).toBe('none');
+        expect(resolveRequireDefectFields('trade', null)).toBe('none');
+    });
+    it('reduces both to location rather than dropping the location requirement', () => {
+        expect(resolveRequireDefectFields(null, 'both')).toBe('location');
+        expect(resolveRequireDefectFields('both', 'none')).toBe('location');
     });
 });
 

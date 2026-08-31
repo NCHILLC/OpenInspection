@@ -263,8 +263,6 @@ export function CannedCommentTabs({
                     )}
                   </span>
                 }
-                category={"category" in entry ? (entry as CannedDefect).category || undefined : undefined}
-                categoryColor={"category" in entry ? categoryColor?.get((entry as CannedDefect).category) : undefined}
                 leading={
                   <input
                     type="checkbox"
@@ -328,7 +326,8 @@ export function CannedCommentTabs({
                     locationSuggestions={locationSuggestions ?? []}
                     onChange={onDefectFields ?? (() => {})}
                     locationRequired={(requiredDefectFields?.location ?? false) || missingFields?.get(entry.id)?.location}
-                    tradeRequired={(requiredDefectFields?.trade ?? false) || missingFields?.get(entry.id)?.trade}
+                    categories={customCategories}
+                    categoryColor={categoryColor}
                   />
                 )}
               </CannedCommentRow>
