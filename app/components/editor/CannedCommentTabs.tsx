@@ -6,6 +6,7 @@ import { RepairItemsPanel } from "./RepairItemsPanel";
 import { CustomDefectForm } from "./CustomDefectForm";
 import type { AttachedRepairItem } from "../../hooks/useFindings";
 import { renderTemplate } from "../../lib/mustache";
+import { htmlToPlainText } from "../../lib/html-text";
 import {
   DEFECT_TRADE_LABELS,
   DEFECT_DEADLINE_LABELS,
@@ -198,14 +199,14 @@ export function CannedCommentTabs({
           onChange={(e) => onDefectQueryChange(e.target.value)}
           placeholder={m.editor_canned_search_placeholder()}
           aria-label={m.editor_canned_search_aria()}
-          className="w-full h-9 px-3 mb-2 rounded-lg border border-ih-border bg-ih-bg-card text-[13px] focus:shadow-ih-focus focus:border-ih-primary outline-none placeholder:text-ih-fg-4"
+          className="w-full h-9 px-3 mb-2 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] focus:shadow-ih-focus focus:border-ih-primary outline-none placeholder:text-ih-fg-4"
         />
       )}
 
       {/* Tab content: list of canned comments with toggles */}
       <div className="space-y-1.5">
         {currentTabEntries.length === 0 ? (
-          <p className="text-[13px] text-ih-fg-3 text-center py-8">
+          <p className="text-[16px] text-ih-fg-3 text-center py-8">
             {activeTab === "defects" && defectQuery.trim()
               ? m.editor_canned_no_match({ query: defectQuery.trim() })
               : m.editor_canned_no_prebuilt()}
@@ -288,11 +289,11 @@ export function CannedCommentTabs({
                       onBlur={(e) => { onCommentChange?.(activeTab, entry.id, e.target.value); setEditingCommentId(null); }}
                       rows={2}
                       autoFocus
-                      className="w-full mt-1 text-[11px] bg-transparent border border-ih-border rounded px-1 py-0.5 outline-none text-ih-fg-3"
+                      className="w-full mt-1 text-[14px] bg-transparent border border-ih-border rounded px-1 py-0.5 outline-none text-ih-fg-3"
                     />
                   ) : (
-                    <p className={`text-[11px] mt-0.5 leading-relaxed ${isIncluded ? "text-ih-fg-3" : "text-ih-fg-4"}`}>
-                      {vars ? renderTemplate(effectiveComment, vars) : effectiveComment}
+                    <p className={`text-[14px] mt-0.5 leading-relaxed ${isIncluded ? "text-ih-fg-3" : "text-ih-fg-4"}`}>
+                      {htmlToPlainText(vars ? renderTemplate(effectiveComment, vars) : effectiveComment)}
                     </p>
                   )
                 }
@@ -303,7 +304,7 @@ export function CannedCommentTabs({
                       const selected = selectedChoicesByCannedId?.get(entry.id) ?? [];
                       const checked = selected.includes(choice);
                       return (
-                        <label key={choice} className="flex items-center gap-2 text-[12px] text-ih-fg-3">
+                        <label key={choice} className="flex items-center gap-2 text-[15px] text-ih-fg-3">
                           <input
                             type="checkbox"
                             checked={checked}
@@ -341,7 +342,7 @@ export function CannedCommentTabs({
             committing — a library comment is language, not a finished defect. */}
         {activeTab === "defects" && libraryMatches.length > 0 && (
           <div className="pt-1">
-            <div className="text-[10px] font-bold uppercase tracking-[0.08em] text-ih-fg-3 px-1 pb-1">
+            <div className="text-[13px] font-bold uppercase tracking-[0.08em] text-ih-fg-3 px-1 pb-1">
               {m.editor_canned_from_library()}
             </div>
             <div className="space-y-1.5">
@@ -352,8 +353,8 @@ export function CannedCommentTabs({
                   onClick={() => onSeedFromLibrary(match)}
                   className="w-full text-left p-2.5 rounded-lg bg-ih-bg-app/50 hover:bg-ih-bg-muted border border-dashed border-ih-border transition-colors"
                 >
-                  <p className="text-[12px] leading-relaxed text-ih-fg-2 line-clamp-2">{match.text}</p>
-                  <span className="text-[10px] text-ih-fg-3">
+                  <p className="text-[15px] leading-relaxed text-ih-fg-2 line-clamp-2">{match.text}</p>
+                  <span className="text-[13px] text-ih-fg-3">
                     {match.severity !== "all" ? match.severity : m.editor_canned_any_severity()}
                     {match.section ? ` · ${match.section}` : ""} · {m.editor_canned_tap_to_use()}
                   </span>
@@ -375,7 +376,7 @@ export function CannedCommentTabs({
                 category={cd.category}
                 categoryColor={categoryColor?.get(cd.category)}
                 extraBadge={
-                  <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-ih-primary-tint text-ih-primary-text">
+                  <span className="ml-1.5 text-[12px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-ih-primary-tint text-ih-primary-text">
                     {m.editor_canned_custom_badge()}
                   </span>
                 }
@@ -397,7 +398,7 @@ export function CannedCommentTabs({
                   (cd.comment || cd.trade) ? (
                     <>
                       {cd.comment && (
-                        <p className="text-[12px] mt-0.5 leading-relaxed text-ih-fg-3">{cd.comment}</p>
+                        <p className="text-[15px] mt-0.5 leading-relaxed text-ih-fg-3">{cd.comment}</p>
                       )}
                       {/* fg-3, not fg-4: fg-4 measured 2.64:1 against the selected
                           row's tinted background at 11px, under the 4.5:1 AA floor
@@ -405,7 +406,7 @@ export function CannedCommentTabs({
                           `lint:contrast` cannot see this — it reads the stylesheet,
                           not a background composited from a row tint at runtime. */}
                       {cd.trade && DEFECT_TRADE_LABELS[cd.trade] && (
-                        <p className="text-[11px] mt-0.5 text-ih-fg-3">
+                        <p className="text-[14px] mt-0.5 text-ih-fg-3">
                           {m.editor_customdefect_trade_summary({ trade: DEFECT_TRADE_LABELS[cd.trade] })}
                         </p>
                       )}

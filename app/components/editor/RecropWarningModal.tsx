@@ -21,7 +21,7 @@ export function RecropWarningModal({ open, onCancel, onConfirm }: RecropWarningM
  </>
  }
  >
- <p className="text-[13px] text-ih-fg-3">
+ <p className="text-[16px] text-ih-fg-3">
  {m.editor_recrop_body()}
  </p>
  </Modal>

@@ -57,7 +57,7 @@ export function CloneLastButton({ defaultScope, onClone, disabled }: CloneLastBu
                 aria-expanded={open}
             >
                 {m.editor_clone_last()}
-                <span className="text-[10px]">▾</span>
+                <span className="text-[13px]">▾</span>
             </Button>
             {open && (
                 <div role="menu" className="absolute z-10 mt-1 min-w-[160px] bg-ih-bg-card border border-ih-border rounded shadow-ih-popover py-1">

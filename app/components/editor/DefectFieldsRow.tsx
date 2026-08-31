@@ -83,7 +83,7 @@ export function DefectFieldsRow({
     const selectedCategory = value.category ?? defaultCategoryId ?? null;
 
     return (
-        <div className="mt-2 grid grid-cols-12 gap-2 text-[11px]" data-defect-id={cannedId}>
+        <div className="mt-2 grid grid-cols-12 gap-2 text-[14px]" data-defect-id={cannedId}>
             {/* Severity */}
             {categories && categories.length > 0 && (
                 <div className="col-span-12">
@@ -115,7 +115,7 @@ export function DefectFieldsRow({
                                     }}
                                     // h-11 is the 44px touch floor — this row is used one-handed
                                     // on a phone, which is the surface it was built for.
-                                    className={`h-11 px-3 rounded border text-[13px] font-bold transition-colors ${
+                                    className={`h-11 px-3 rounded border text-[16px] font-bold transition-colors ${
                                         isSelected
                                             ? 'text-ih-fg-inverse border-transparent'
                                             : 'bg-transparent text-ih-fg-3 border-ih-border'

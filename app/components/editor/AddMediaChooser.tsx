@@ -24,14 +24,14 @@ export function AddMediaChooser({ onClose, onTakePhoto, onAddFromLibrary, onPick
     <button
      type="button"
      onClick={onTakePhoto}
-     className="min-h-[44px] rounded-xl border border-ih-border bg-ih-bg-muted px-2 py-3 text-center text-[13px] font-bold leading-tight text-ih-fg-1 hover:border-ih-primary"
+     className="min-h-[44px] rounded-xl border border-ih-border bg-ih-bg-muted px-2 py-3 text-center text-[16px] font-bold leading-tight text-ih-fg-1 hover:border-ih-primary"
     >
      {m.editor_addmedia_take_photo()}
     </button>
     <button
      type="button"
      onClick={onAddFromLibrary}
-     className="min-h-[44px] rounded-xl border border-ih-border bg-ih-bg-muted px-2 py-3 text-center text-[13px] font-bold leading-tight text-ih-fg-1 hover:border-ih-primary"
+     className="min-h-[44px] rounded-xl border border-ih-border bg-ih-bg-muted px-2 py-3 text-center text-[16px] font-bold leading-tight text-ih-fg-1 hover:border-ih-primary"
     >
      {m.editor_addmedia_add_from_library()}
     </button>
@@ -43,10 +43,10 @@ export function AddMediaChooser({ onClose, onTakePhoto, onAddFromLibrary, onPick
        disabled={offline}
        onClick={onPickVideo}
        title={offline ? m.editor_addmedia_video_offline_title() : undefined}
-       className="min-h-[44px] rounded-xl border border-ih-border bg-ih-bg-muted px-2 py-3 text-center text-[13px] font-bold leading-tight text-ih-fg-1 hover:border-ih-primary disabled:opacity-40"
+       className="min-h-[44px] rounded-xl border border-ih-border bg-ih-bg-muted px-2 py-3 text-center text-[16px] font-bold leading-tight text-ih-fg-1 hover:border-ih-primary disabled:opacity-40"
       >
        {m.editor_addmedia_video()}
-       {offline && <span className="mt-1 block text-[10px] font-normal text-ih-fg-3">{m.editor_addmedia_requires_connection()}</span>}
+       {offline && <span className="mt-1 block text-[13px] font-normal text-ih-fg-3">{m.editor_addmedia_requires_connection()}</span>}
       </button>
      );
     })()}

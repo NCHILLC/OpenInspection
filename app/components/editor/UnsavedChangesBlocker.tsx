@@ -37,7 +37,7 @@ export function UnsavedChangesBlocker({ open, onStay, onLeave }: UnsavedChangesB
  </>
  }
  >
- <p className="text-[13px] text-ih-fg-3">
+ <p className="text-[16px] text-ih-fg-3">
  {m.editor_unsavedchanges_body()}
  </p>
  </Modal>

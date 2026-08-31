@@ -61,7 +61,7 @@ export function StructureDeleteModal({ open, title, noun = 'section', impact, on
         </>
       }
     >
-      <p className="text-[13px] text-ih-fg-3">
+      <p className="text-[16px] text-ih-fg-3">
         {m.editor_structuredelete_body({ parts: impactParts.join(' · '), noun: nounLabel })}
       </p>
     </Modal>

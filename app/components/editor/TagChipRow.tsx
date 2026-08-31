@@ -34,7 +34,7 @@ export function TagChipRow({ pinnedTags, activeTagIds, onToggle, onOpenLibrary }
                     <button
                         key={tag.id}
                         onClick={() => onToggle(tag)}
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-bold transition-colors border ${
+                        className={`px-2 py-0.5 rounded-full text-[14px] font-bold transition-colors border ${
                             active
                                 ? 'text-white border-transparent'
                                 : 'text-ih-fg-3 border-ih-border bg-transparent hover:bg-ih-bg-muted'

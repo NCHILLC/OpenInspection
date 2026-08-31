@@ -103,7 +103,7 @@ export function MobileDrillShell({
                         }}
                         aria-hidden="true"
                     />
-                    <span className="text-[12px] font-bold tabular-nums text-ih-fg-2">
+                    <span className="text-[15px] font-bold tabular-nums text-ih-fg-2">
                         {m.editor_mobile_percent_complete({ percent: percentComplete })}
                     </span>
                 </div>
@@ -112,7 +112,7 @@ export function MobileDrillShell({
                     className="flex-1 flex flex-col items-center justify-center text-ih-fg-2 hover:bg-ih-bg-muted active:bg-ih-bg-muted min-h-11"
                 >
                     <span className="text-[16px]" aria-hidden="true">👁</span>
-                    <span className="text-[10px] uppercase tracking-[0.1em]">{m.editor_route_drawer_preview()}</span>
+                    <span className="text-[13px] uppercase tracking-[0.1em]">{m.editor_route_drawer_preview()}</span>
                 </button>
                 {/* Forward, in the slot Theme used to hold. Walking to the next
                     item is the single most repeated action of an inspection —
@@ -126,7 +126,7 @@ export function MobileDrillShell({
                     className="flex-1 flex flex-col items-center justify-center text-ih-fg-2 hover:bg-ih-bg-muted active:bg-ih-bg-muted min-h-11 disabled:opacity-40"
                 >
                     <span className="text-[16px]" aria-hidden="true">→</span>
-                    <span className="text-[10px] uppercase tracking-[0.1em]">{m.editor_mobile_next_item()}</span>
+                    <span className="text-[13px] uppercase tracking-[0.1em]">{m.editor_mobile_next_item()}</span>
                 </button>
             </nav>
 

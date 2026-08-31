@@ -51,7 +51,7 @@ export function RepairItemsPanel({
   return (
     <div className="mt-3 border-t border-ih-border pt-3">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-ih-fg-3">{m.editor_repair_label()}</span>
+        <span className="text-[14px] font-bold uppercase tracking-widest text-ih-fg-3">{m.editor_repair_label()}</span>
         <Button
           variant="link"
           size="sm"
@@ -67,11 +67,11 @@ export function RepairItemsPanel({
         <ul className="mt-2 space-y-1.5">
           {attached.map((a) => {
             return (
-              <li key={a.recommendationId} className="flex items-start justify-between gap-2 text-[12px]">
+              <li key={a.recommendationId} className="flex items-start justify-between gap-2 text-[15px]">
                 <div>
                   <p className="text-ih-fg-2">{a.summarySnapshot}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                    {a.contractorTypeSnapshot && <span className="text-[11px] text-ih-info-fg">{a.contractorTypeSnapshot}</span>}
+                    {a.contractorTypeSnapshot && <span className="text-[14px] text-ih-info-fg">{a.contractorTypeSnapshot}</span>}
                   </div>
                 </div>
                 <Button
@@ -92,15 +92,15 @@ export function RepairItemsPanel({
       {open && (
         <div id="repair-items-disclosure" className="mt-2 border border-ih-border rounded-md p-2 bg-ih-bg-muted/40">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={m.editor_repair_search_placeholder()} aria-label={m.editor_repair_search_aria()} autoFocus
-            className="w-full px-2 py-1.5 rounded border border-ih-border bg-ih-bg-card text-[12px] text-ih-fg-1 focus:border-ih-primary outline-none" />
+            className="w-full px-2 py-1.5 rounded border border-ih-border bg-ih-bg-card text-[15px] text-ih-fg-1 focus:border-ih-primary outline-none" />
           <ul role="listbox" aria-label={m.editor_repair_label()} className="mt-2 max-h-48 overflow-auto divide-y divide-ih-border">
             {filtered.length === 0 ? (
-              <li className="py-2 text-[12px] text-ih-fg-3">{m.editor_repair_empty()}</li>
+              <li className="py-2 text-[15px] text-ih-fg-3">{m.editor_repair_empty()}</li>
             ) : filtered.map((o) => (
               <li key={o.id} role="option" aria-selected={false}>
                 <button type="button" onClick={() => attach(o)} className="w-full text-left flex items-center py-2 hover:bg-ih-bg-card rounded px-1">
-                  <span className="text-[12px] font-semibold text-ih-fg-1">{o.name}</span>
-                  {o.contractorTypeName && <span className="ml-2 text-[11px] text-ih-info-fg">{o.contractorTypeName}</span>}
+                  <span className="text-[15px] font-semibold text-ih-fg-1">{o.name}</span>
+                  {o.contractorTypeName && <span className="ml-2 text-[14px] text-ih-info-fg">{o.contractorTypeName}</span>}
                 </button>
               </li>
             ))}

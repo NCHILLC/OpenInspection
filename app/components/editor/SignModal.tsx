@@ -12,7 +12,7 @@ export interface SignModalProps {
 export function SignModal({ open, onSubmit, onCancel, failed }: SignModalProps) {
  return (
  <Modal open={open} onClose={onCancel} title={m.editor_signmodal_title()}>
- <p className="text-[13px] text-ih-fg-3 mb-4">
+ <p className="text-[16px] text-ih-fg-3 mb-4">
  {m.editor_signmodal_body()}
  </p>
  <SignaturePad

@@ -127,7 +127,7 @@ export function ItemList({
                   setEditingId(item.id);
                 }
               }}
-              className={`group relative flex items-stretch rounded-md text-[13px] transition-all ${
+              className={`group relative flex items-stretch rounded-md text-[16px] transition-all ${
                 activeItemId === item.id
                   ? "bg-ih-bg-card shadow-ih-card border-l-[3px] border-ih-primary font-medium"
                   : "text-ih-fg-3 hover:bg-ih-bg-muted"
@@ -146,13 +146,13 @@ export function ItemList({
 
               {editing && onRenameItem ? (
                 <div className="min-w-0 flex-1 flex items-center gap-2 px-2 py-2">
-                  <span className="text-[10px] text-ih-fg-3 font-mono w-5 shrink-0">{String(idx + 1).padStart(2, "0")}</span>
+                  <span className="text-[13px] text-ih-fg-3 font-mono w-5 shrink-0">{String(idx + 1).padStart(2, "0")}</span>
                   <InlineRename
                     value={item.label}
                     ariaLabel={m.editor_shared_item_name_aria()}
                     onCommit={(next) => { onRenameItem(item.id, next); setEditingId(null); }}
                     onCancel={() => setEditingId(null)}
-                    className="min-w-0 flex-1 bg-transparent border-b border-ih-primary outline-none text-[13px] text-ih-fg-1"
+                    className="min-w-0 flex-1 bg-transparent border-b border-ih-primary outline-none text-[16px] text-ih-fg-1"
                   />
                 </div>
               ) : (
@@ -188,7 +188,7 @@ export function ItemList({
                     </span>
                   )}
                   {/* Number, label and rating dot are ALWAYS visible. */}
-                  <span className="text-[10px] text-ih-fg-3 font-mono w-5 shrink-0">
+                  <span className="text-[13px] text-ih-fg-3 font-mono w-5 shrink-0">
                     {String(idx + 1).padStart(2, "0")}
                   </span>
                   <span className="flex-1 truncate">{item.label}</span>
@@ -198,7 +198,7 @@ export function ItemList({
                     />
                   )}
                   {mode === "author" && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ih-bg-muted text-ih-fg-2 flex-shrink-0">
+                    <span className="text-[13px] font-mono px-1.5 py-0.5 rounded bg-ih-bg-muted text-ih-fg-2 flex-shrink-0">
                       {item.type}
                     </span>
                   )}
@@ -224,7 +224,7 @@ export function ItemList({
                       <div
                         role="menu"
                         style={{ top: menuAnchor.y + 4, left: menuAnchor.x }}
-                        className="fixed -translate-x-full z-[61] w-36 py-1 bg-ih-bg-card border border-ih-border rounded-md shadow-ih-popover text-[12px]"
+                        className="fixed -translate-x-full z-[61] w-36 py-1 bg-ih-bg-card border border-ih-border rounded-md shadow-ih-popover text-[15px]"
                       >
                         {onRenameItem && (
                           <MenuItem onClick={(e) => { e.stopPropagation(); closeItemMenu(); setEditingId(item.id); }}>{m.editor_shared_menu_rename()}</MenuItem>

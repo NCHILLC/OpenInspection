@@ -35,7 +35,7 @@ export function UnitProgress({ units, completedUnitIds, onSelectUnit, activeUnit
 
   return (
     <div
-      className="flex items-center gap-2 text-[12px] font-mono tabular-nums"
+      className="flex items-center gap-2 text-[15px] font-mono tabular-nums"
       aria-label={m.editor_unitprogress_summary_aria({ completed, total: units.length })}
     >
       <span className="text-ih-fg-2">

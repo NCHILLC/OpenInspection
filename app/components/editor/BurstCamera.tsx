@@ -192,7 +192,7 @@ export function BurstCamera({ open, onClose, onCommit }: BurstCameraProps) {
             <span className="text-ih-bad-fg text-xs font-bold animate-pulse">{m.editor_burst_progress({ count: burstCount })}</span>
           ) : (
             /* ds-allow: dark label on the white shutter button (fixed-dark camera overlay) */
-            <span className="text-slate-700 text-[10px] font-bold tracking-widest uppercase">{m.editor_burst_shoot()}</span>
+            <span className="text-slate-700 text-[13px] font-bold tracking-widest uppercase">{m.editor_burst_shoot()}</span>
           )}
         </button>
 

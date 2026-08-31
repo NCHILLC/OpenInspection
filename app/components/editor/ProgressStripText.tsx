@@ -18,7 +18,7 @@ const Dot = ({ color }: { color: string }) => (
 export function ProgressStripText({ rated, total, defects, monitor, etaMinutes }: ProgressStripTextProps) {
     const isComplete = rated === total && total > 0;
     return (
-        <div className="flex items-center gap-3 text-[12px] font-mono tabular-nums">
+        <div className="flex items-center gap-3 text-[15px] font-mono tabular-nums">
             <span>
                 <Dot color="var(--ih-ok)" />
                 {m.editor_progress_rated({ rated, total })}

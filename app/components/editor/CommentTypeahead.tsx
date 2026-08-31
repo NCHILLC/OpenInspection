@@ -46,19 +46,19 @@ export function CommentTypeahead({
           }`}
         >
           <div className="flex items-center gap-1.5">
-            <span className="text-[12px] font-bold text-ih-fg-2">{match.title}</span>
+            <span className="text-[15px] font-bold text-ih-fg-2">{match.title}</span>
             {match.abbrev && (
-              <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-ih-bg-muted text-ih-fg-2">
+              <span className="text-[12px] font-mono px-1 py-0.5 rounded bg-ih-bg-muted text-ih-fg-2">
                 {match.abbrev}
               </span>
             )}
             {match.kind && (
-              <span className="ml-auto text-[9px] uppercase tracking-wider text-ih-fg-3">
+              <span className="ml-auto text-[12px] uppercase tracking-wider text-ih-fg-3">
                 {KIND_LABEL[match.kind]}
               </span>
             )}
           </div>
-          <p className="text-[11px] text-ih-fg-3 mt-0.5 line-clamp-2">{match.comment}</p>
+          <p className="text-[14px] text-ih-fg-3 mt-0.5 line-clamp-2">{match.comment}</p>
         </li>
       ))}
     </ul>

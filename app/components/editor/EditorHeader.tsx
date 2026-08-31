@@ -97,7 +97,7 @@ export function EditorHeader({
   <div className="text-[14px] font-bold truncate">
   {(state.inspection.propertyAddress as string) || m.editor_header_property_fallback()}
   </div>
-  <div className="text-[11px] text-ih-fg-3 truncate">
+  <div className="text-[14px] text-ih-fg-3 truncate">
   #{String(state.inspection.id).slice(0, 8).toUpperCase()}
   {state.formattedDate && (
    <span className="ml-2">{state.formattedDate}</span>
@@ -125,7 +125,7 @@ export function EditorHeader({
  {/* Save status indicator */}
  {state.saveStatus !== "idle" && (
   <span
-  className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${
+  className={`inline-flex items-center gap-1.5 text-[14px] font-bold ${
    state.saveStatus === "saving"
    ? "text-ih-watch"
    : state.saveStatus === "saved"
@@ -165,7 +165,7 @@ export function EditorHeader({
  )}
 
  {/* Status badge */}
- <span className="px-2 h-7 rounded-md text-[11px] font-bold uppercase tracking-wide ring-1 ring-inset bg-ih-bg-muted text-ih-fg-2 ring-ih-border inline-flex items-center">
+ <span className="px-2 h-7 rounded-md text-[14px] font-bold uppercase tracking-wide ring-1 ring-inset bg-ih-bg-muted text-ih-fg-2 ring-ih-border inline-flex items-center">
   {state.inspection.status as string}
  </span>
 
@@ -192,7 +192,7 @@ export function EditorHeader({
   placeholder={m.editor_header_search_placeholder()}
   value={state.searchQuery}
   onChange={(e) => state.setSearchQuery(e.target.value)}
-  className="w-44 h-8 px-3 rounded-md border border-ih-border bg-ih-bg-app text-[12px]"
+  className="w-44 h-8 px-3 rounded-md border border-ih-border bg-ih-bg-app text-[15px]"
  />
 
  {/* Item fullscreen + batch mode moved OUT of the header — object-scoped

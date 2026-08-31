@@ -195,11 +195,11 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
     <div className="px-6 py-6 max-w-5xl" data-testid="property-info-form">
       <header className="mb-6">
         <div className="flex items-center gap-2 mb-1">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-ih-fg-3">
+          <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-ih-fg-3">
             {m.editor_property_progress({ filled, total: metaFields.length })}
           </p>
           {filled === metaFields.length && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-ih-ok-bg text-ih-ok-fg ring-1 ring-inset ring-ih-ok/30">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[13px] font-bold bg-ih-ok-bg text-ih-ok-fg ring-1 ring-inset ring-ih-ok/30">
               {m.editor_property_complete()}
             </span>
           )}
@@ -212,24 +212,24 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
             type="button"
             onClick={runAutofill}
             disabled={addressString.length < 5 || autofilling}
-            className="h-8 px-3 rounded-md border border-ih-border text-[12px] font-bold text-ih-primary-text hover:bg-ih-primary-tint disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-8 px-3 rounded-md border border-ih-border text-[15px] font-bold text-ih-primary-text hover:bg-ih-primary-tint disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {autofilling ? m.editor_property_autofill_loading() : m.editor_property_autofill_button()}
           </button>
         </div>
-        {autofillMsg && <p className="mt-2 text-[12px] text-ih-fg-3">{autofillMsg}</p>}
+        {autofillMsg && <p className="mt-2 text-[15px] text-ih-fg-3">{autofillMsg}</p>}
       </header>
 
       {groups.map((g) => (
         <fieldset key={g} className="mb-6">
-          <legend className="text-[11px] font-bold uppercase tracking-[0.15em] text-ih-fg-3 mb-2">{g}</legend>
+          <legend className="text-[14px] font-bold uppercase tracking-[0.15em] text-ih-fg-3 mb-2">{g}</legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {fieldsByGroup(g).map((f) => (
               <label key={f.id} className="block">
-                <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.18em] text-ih-fg-3">
+                <span className="flex items-center gap-1 text-[13px] font-bold uppercase tracking-[0.18em] text-ih-fg-3">
                   <span>{f.label}</span>
                   {Boolean(inspection[`_prefilled_${f.id}`]) && (
-                    <span className="text-[9px] font-semibold text-ih-primary-text normal-case tracking-normal">{m.editor_property_prefilled()}</span>
+                    <span className="text-[12px] font-semibold text-ih-primary-text normal-case tracking-normal">{m.editor_property_prefilled()}</span>
                   )}
                 </span>
                 {(f.type === "text" || f.type === "number" || f.type === "date") && (

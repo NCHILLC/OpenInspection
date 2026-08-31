@@ -38,7 +38,7 @@ export function DefectCategoryChip({ category, className, color }: DefectCategor
   const tokens = color ? "bg-ih-bg-muted" : (CATEGORY_TOKENS[category] ?? DEFAULT_TOKENS);
   return (
     <span
-      className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${tokens}${
+      className={`text-[12px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${tokens}${
         className ? ` ${className}` : ""
       }`}
       style={color ? { color } : undefined}

@@ -59,7 +59,7 @@ export function CannedCommentRow({
     <Shell className={shellClass}>
       {leading}
       <div className="flex-1 min-w-0">
-        <div className="text-[12px] font-bold text-ih-fg-2">
+        <div className="text-[15px] font-bold text-ih-fg-2">
           {titleSlot ?? title}
           {category && <DefectCategoryChip category={category} color={categoryColor} className="ml-1.5" />}
           {extraBadge}

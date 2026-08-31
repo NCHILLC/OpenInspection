@@ -59,7 +59,7 @@ export function CommercialReportControls({
  return (
  <div className="space-y-5" data-testid="commercial-report-controls">
  <div>
- <label className="block text-[12px] font-bold text-ih-fg-3 mb-1.5">
+ <label className="block text-[15px] font-bold text-ih-fg-3 mb-1.5">
  {m.editor_commercial_subtype_label()}{" "}
  {saving ? <span className="text-ih-fg-4 font-normal normal-case">{m.editor_commercial_saving()}</span> : null}
  </label>
@@ -77,7 +77,7 @@ export function CommercialReportControls({
  </div>
 
  <div>
- <label className="block text-[12px] font-bold text-ih-fg-3 mb-1.5">{m.editor_commercial_tier_label()}</label>
+ <label className="block text-[15px] font-bold text-ih-fg-3 mb-1.5">{m.editor_commercial_tier_label()}</label>
  <SegmentedControl
  ariaLabel={m.editor_commercial_tier_label()}
  value={activeTier}
@@ -85,7 +85,7 @@ export function CommercialReportControls({
  options={TIERS.map((t) => ({ value: t.value, label: t.label }))}
  className="max-w-sm"
  />
- <p className="mt-1.5 text-[11px] text-ih-fg-3">
+ <p className="mt-1.5 text-[14px] text-ih-fg-3">
  {m.editor_commercial_pca_description()}
  </p>
  </div>

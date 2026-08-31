@@ -168,7 +168,7 @@ export function CostItemsPanel({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[13px] font-bold uppercase tracking-widest text-ih-fg-3">{m.editor_cost_items_title()}</h2>
+        <h2 className="text-[16px] font-bold uppercase tracking-widest text-ih-fg-3">{m.editor_cost_items_title()}</h2>
         <div className="flex items-center gap-3">
           {/* Export the current Opinion of Cost — only worth offering once at
               least one line exists (empty exports are just a header row). */}
@@ -181,29 +181,29 @@ export function CostItemsPanel({
 
       <div className="rounded-ih-card border border-ih-border bg-ih-bg-card p-3">
         {rows.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 text-[12px] mb-2 pb-2 border-b border-ih-border">
+          <div className="grid grid-cols-3 gap-3 text-[15px] mb-2 pb-2 border-b border-ih-border">
             <div>
-              <div className="text-ih-fg-3 uppercase tracking-wide text-[10px] font-bold">{m.editor_cost_total_immediate()}</div>
+              <div className="text-ih-fg-3 uppercase tracking-wide text-[13px] font-bold">{m.editor_cost_total_immediate()}</div>
               <div className="tabular-nums text-ih-fg-1 font-bold">{formatDollars(bucketTotals.immediate)}</div>
             </div>
             <div>
-              <div className="text-ih-fg-3 uppercase tracking-wide text-[10px] font-bold">{m.editor_cost_total_short_term()}</div>
+              <div className="text-ih-fg-3 uppercase tracking-wide text-[13px] font-bold">{m.editor_cost_total_short_term()}</div>
               <div className="tabular-nums text-ih-fg-1 font-bold">{formatDollars(bucketTotals.short_term)}</div>
             </div>
             <div>
-              <div className="text-ih-fg-3 uppercase tracking-wide text-[10px] font-bold">{m.editor_cost_total_long_term()}</div>
+              <div className="text-ih-fg-3 uppercase tracking-wide text-[13px] font-bold">{m.editor_cost_total_long_term()}</div>
               <div className="tabular-nums text-ih-fg-1 font-bold">{formatDollars(bucketTotals.long_term)}</div>
             </div>
           </div>
         )}
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-ih-fg-3">{m.editor_cost_running_total()}</span>
+          <span className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3">{m.editor_cost_running_total()}</span>
           <span className="tabular-nums text-ih-fg-1 font-bold text-[14px]">{formatDollars(grandTotalCents)}</span>
         </div>
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-[12px] text-ih-fg-3">{m.editor_cost_empty()}</p>
+        <p className="text-[15px] text-ih-fg-3">{m.editor_cost_empty()}</p>
       ) : (
         <ul className="space-y-3">
           {rows.map((row) => (
@@ -256,7 +256,7 @@ function CostItemRow({
 
   return (
     <li className="rounded-ih-card border border-ih-border bg-ih-bg-card p-3 space-y-2">
-      <div className="grid grid-cols-12 gap-2 text-[11px]">
+      <div className="grid grid-cols-12 gap-2 text-[14px]">
         <div className="col-span-6 md:col-span-3">
           <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">{m.editor_cost_field_system()}</label>
           <input
@@ -377,7 +377,7 @@ function CostItemRow({
 
         {reserveEnabled && (
           <div className="col-span-12 rounded-md border border-ih-border bg-ih-bg-muted/40 p-2.5">
-            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-ih-fg-3">
+            <div className="mb-1.5 text-[13px] font-bold uppercase tracking-[0.15em] text-ih-fg-3">
               {m.editor_cost_reserve_schedule()}
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -431,10 +431,10 @@ function CostItemRow({
       </div>
 
       <div className="flex items-center justify-between pt-1">
-        <div className="text-[12px] tabular-nums text-ih-fg-2 font-bold">
+        <div className="text-[15px] tabular-nums text-ih-fg-2 font-bold">
           {formatDollars(total)}
           {underThreshold && (
-            <span className="ml-2 px-1.5 py-0.5 rounded bg-ih-bg-muted text-ih-info-fg text-[11px] font-normal normal-case tracking-normal">
+            <span className="ml-2 px-1.5 py-0.5 rounded bg-ih-bg-muted text-ih-info-fg text-[14px] font-normal normal-case tracking-normal">
               {m.editor_cost_below_threshold()}
             </span>
           )}

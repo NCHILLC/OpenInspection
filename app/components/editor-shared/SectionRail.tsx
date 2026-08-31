@@ -130,7 +130,7 @@ export function SectionRail({
    aria-current={overviewActive ? "true" : undefined}
    onClick={onSelectOverview}
    title={m.editor_shared_inspection_details()}
-   className={`w-full text-left px-3 py-2 rounded-md text-[13px] transition-all ${
+   className={`w-full text-left px-3 py-2 rounded-md text-[16px] transition-all ${
     overviewActive
      ? "bg-ih-primary-tint text-ih-primary-text font-bold border-l-2 border-ih-primary"
      : "text-ih-fg-3 hover:bg-ih-bg-muted"
@@ -180,7 +180,7 @@ export function SectionRail({
     setEditingId(section.id);
    }
   }}
-  className={`group relative flex items-stretch rounded-md text-[13px] transition-all ${
+  className={`group relative flex items-stretch rounded-md text-[16px] transition-all ${
    activeSection === section.id
     ? "bg-ih-primary-tint text-ih-primary-text font-bold border-l-2 border-ih-primary"
     : "text-ih-fg-3 hover:bg-ih-bg-muted"
@@ -206,7 +206,7 @@ export function SectionRail({
      ariaLabel={m.editor_shared_section_name_aria()}
      onCommit={(next) => { onRenameSection(section.id, next); setEditingId(null); }}
      onCancel={() => setEditingId(null)}
-     className="min-w-0 flex-1 bg-transparent border-b border-ih-primary outline-none text-[13px] text-ih-fg-1"
+     className="min-w-0 flex-1 bg-transparent border-b border-ih-primary outline-none text-[16px] text-ih-fg-1"
     />
    </div>
   ) : (
@@ -222,7 +222,7 @@ export function SectionRail({
     <span className="ml-1 shrink-0 flex items-center">
     {mode === 'fill'
      ? <SectionDonut rated={rated} total={total} hasDefect={hasDefect} />
-     : <span className="text-[10px] text-ih-fg-3 font-mono">{section.items.length}</span>}
+     : <span className="text-[13px] text-ih-fg-3 font-mono">{section.items.length}</span>}
     </span>
    </button>
   )}
@@ -245,7 +245,7 @@ export function SectionRail({
    <div className="fixed inset-0 z-[60]" onClick={closeSectionMenu} />
    <div
     style={{ top: menuAnchor.y + 4, left: menuAnchor.x }}
-    className="fixed -translate-x-full z-[61] w-36 rounded-md shadow-ih-popover bg-ih-bg-card border border-ih-border py-0.5 text-[12px]"
+    className="fixed -translate-x-full z-[61] w-36 rounded-md shadow-ih-popover bg-ih-bg-card border border-ih-border py-0.5 text-[15px]"
     role="menu"
    >
     {onRenameSection && (

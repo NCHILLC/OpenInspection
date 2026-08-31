@@ -49,13 +49,13 @@ export function SaveTemplateModal({ mode, name, onChangeName, onConfirm, onCance
         </>
       }
     >
-      <p className="text-[13px] text-ih-fg-3">
+      <p className="text-[16px] text-ih-fg-3">
         {isNew
           ? m.editor_savetpl_body_new()
           : m.editor_savetpl_body_back()}
       </p>
       {isNew && (
-        <label className="block mt-4 text-[12px] font-bold text-ih-fg-2">
+        <label className="block mt-4 text-[15px] font-bold text-ih-fg-2">
           {m.editor_savetpl_name_label()}
           <input
             ref={nameRef}
@@ -63,7 +63,7 @@ export function SaveTemplateModal({ mode, name, onChangeName, onConfirm, onCance
             value={name}
             onChange={(e) => onChangeName(e.target.value)}
             placeholder={m.editor_savetpl_name_placeholder()}
-            className="mt-1 w-full h-9 px-3 rounded-md border border-ih-border bg-ih-bg-app text-[13px] font-normal"
+            className="mt-1 w-full h-9 px-3 rounded-md border border-ih-border bg-ih-bg-app text-[16px] font-normal"
             onKeyDown={(e) => { if (e.key === "Enter") onConfirm(); }}
             data-testid="save-template-name"
           />

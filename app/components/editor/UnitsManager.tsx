@@ -65,14 +65,14 @@ export function UnitsManager({ open, onClose, inspectionId, units, mode, fetcher
         <div className="space-y-6">
           {/* Mode section */}
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-ih-fg-3 mb-2">{m.editor_unitsmanager_mode_heading()}</h3>
+            <h3 className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3 mb-2">{m.editor_unitsmanager_mode_heading()}</h3>
             <div className="rounded-ih-card border border-ih-border p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[13px] font-bold text-ih-fg-1">
+                  <div className="text-[16px] font-bold text-ih-fg-1">
                     {mode === "per_unit" ? m.editor_unitsmanager_mode_per_unit() : m.editor_unitsmanager_mode_tagged()}
                   </div>
-                  <p className="text-[12px] text-ih-fg-3 mt-0.5">
+                  <p className="text-[15px] text-ih-fg-3 mt-0.5">
                     {mode === "per_unit"
                       ? m.editor_unitsmanager_mode_per_unit_desc()
                       : m.editor_unitsmanager_mode_tagged_desc()}
@@ -98,11 +98,11 @@ export function UnitsManager({ open, onClose, inspectionId, units, mode, fetcher
 
           {/* Unit list */}
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-ih-fg-3 mb-2">
+            <h3 className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3 mb-2">
               {m.editor_unitsmanager_title()}{unitRows.length > 0 ? ` (${unitRows.length})` : ""}
             </h3>
             {unitRows.length === 0 ? (
-              <p className="text-[12px] text-ih-fg-3 mb-3">{m.editor_unitsmanager_no_units()}</p>
+              <p className="text-[15px] text-ih-fg-3 mb-3">{m.editor_unitsmanager_no_units()}</p>
             ) : (
               <ul className="space-y-1.5 mb-3">
                 {unitRows.map((u) => (
@@ -115,7 +115,7 @@ export function UnitsManager({ open, onClose, inspectionId, units, mode, fetcher
 
           {/* Bulk create */}
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-ih-fg-3 mb-2">{m.editor_unitsmanager_bulk_create_heading()}</h3>
+            <h3 className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3 mb-2">{m.editor_unitsmanager_bulk_create_heading()}</h3>
             <BulkCreateForm busy={busy} onSubmit={submit} />
           </section>
         </div>
@@ -142,7 +142,7 @@ export function UnitsManager({ open, onClose, inspectionId, units, mode, fetcher
           </>
         }
       >
-        <p className="text-[13px] text-ih-fg-2">
+        <p className="text-[16px] text-ih-fg-2">
           {m.editor_unitsmanager_lossy_body_1()}{" "}
           <span className="font-bold">{unitRows.length === 1 ? m.editor_unitsmanager_lossy_delete_one({ count: unitRows.length }) : m.editor_unitsmanager_lossy_delete_many({ count: unitRows.length })}</span>
           {m.editor_unitsmanager_lossy_body_2()}
@@ -192,7 +192,7 @@ function UnitRow({
         }}
         aria-label={m.editor_unitsmanager_rename_aria({ name: unit.name })}
         maxLength={80}
-        className="flex-1 h-8 px-2.5 rounded-ih-input border border-ih-border bg-ih-bg-app text-[13px] text-ih-fg-1"
+        className="flex-1 h-8 px-2.5 rounded-ih-input border border-ih-border bg-ih-bg-app text-[16px] text-ih-fg-1"
       />
       <IconButton
         disabled={busy}
@@ -250,7 +250,7 @@ function AddUnitForm({ busy, onSubmit }: { busy: boolean; onSubmit: (fields: Rec
         placeholder={m.editor_unitsmanager_new_unit_name()}
         maxLength={80}
         aria-label={m.editor_unitsmanager_new_unit_name()}
-        className="flex-1 h-8 px-2.5 rounded-ih-input border border-ih-border bg-ih-bg-app text-[13px] text-ih-fg-1 placeholder:text-ih-fg-4"
+        className="flex-1 h-8 px-2.5 rounded-ih-input border border-ih-border bg-ih-bg-app text-[16px] text-ih-fg-1 placeholder:text-ih-fg-4"
       />
       <Button variant="secondary" size="sm" disabled={busy || !trimmed} onClick={add}>
         {m.common_add()}
@@ -307,7 +307,7 @@ function BulkCreateForm({ busy, onSubmit }: { busy: boolean; onSubmit: (fields: 
       {tab === "grid" ? (
         <div className="space-y-2">
           <div className="grid grid-cols-3 gap-2">
-            <label className="text-[11px] font-bold text-ih-fg-3">
+            <label className="text-[14px] font-bold text-ih-fg-3">
               {m.editor_unitsmanager_floors_label()}
               <Input
                 type="number"
@@ -319,7 +319,7 @@ function BulkCreateForm({ busy, onSubmit }: { busy: boolean; onSubmit: (fields: 
                 className="mt-1"
               />
             </label>
-            <label className="text-[11px] font-bold text-ih-fg-3">
+            <label className="text-[14px] font-bold text-ih-fg-3">
               {m.editor_unitsmanager_units_per_floor_label()}
               <Input
                 type="number"
@@ -331,7 +331,7 @@ function BulkCreateForm({ busy, onSubmit }: { busy: boolean; onSubmit: (fields: 
                 className="mt-1"
               />
             </label>
-            <label className="text-[11px] font-bold text-ih-fg-3">
+            <label className="text-[14px] font-bold text-ih-fg-3">
               {m.editor_unitsmanager_start_at_label()}
               <Input
                 type="number"
@@ -344,7 +344,7 @@ function BulkCreateForm({ busy, onSubmit }: { busy: boolean; onSubmit: (fields: 
             </label>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-ih-fg-3 tabular-nums">
+            <span className="text-[14px] text-ih-fg-3 tabular-nums">
               {gridCount > 0 ? (gridCount === 1 ? m.editor_unitsmanager_creates_one({ count: gridCount }) : m.editor_unitsmanager_creates_many({ count: gridCount })) : m.editor_unitsmanager_grid_hint()}
             </span>
             <Button variant="primary" size="sm" disabled={busy || gridCount <= 0} onClick={createGrid}>
@@ -360,10 +360,10 @@ function BulkCreateForm({ busy, onSubmit }: { busy: boolean; onSubmit: (fields: 
             placeholder={m.editor_unitsmanager_csv_placeholder()}
             rows={5}
             aria-label={m.editor_unitsmanager_csv_aria()}
-            className="w-full px-2.5 py-2 rounded-ih-input border border-ih-border bg-ih-bg-app text-[13px] text-ih-fg-1 font-mono"
+            className="w-full px-2.5 py-2 rounded-ih-input border border-ih-border bg-ih-bg-app text-[16px] text-ih-fg-1 font-mono"
           />
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-ih-fg-3 tabular-nums">
+            <span className="text-[14px] text-ih-fg-3 tabular-nums">
               {csvCount > 0 ? (csvCount === 1 ? m.editor_unitsmanager_row_one({ count: csvCount }) : m.editor_unitsmanager_row_many({ count: csvCount })) : m.editor_unitsmanager_csv_hint()}
             </span>
             <Button variant="primary" size="sm" disabled={busy || csvCount <= 0} onClick={createCsv}>

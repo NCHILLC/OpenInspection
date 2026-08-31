@@ -26,11 +26,11 @@ function DefectList({ entries, onJump, tone }: {
                         className={`mt-1 inline-block w-2 h-2 rounded-full shrink-0 ${tone === 'blocking' ? 'bg-ih-bad-fg' : 'bg-ih-watch-fg'}`}
                     />
                     <div className="flex-1 min-w-0">
-                        <div className="text-[11px] uppercase tracking-[0.1em] text-ih-fg-3">
+                        <div className="text-[14px] uppercase tracking-[0.1em] text-ih-fg-3">
                             {b.sectionTitle} &rsaquo; {b.itemLabel}
                         </div>
-                        <div className="text-[13px] font-bold">{b.cannedTitle}</div>
-                        <div className="mt-1 text-[12px] text-ih-fg-3">
+                        <div className="text-[16px] font-bold">{b.cannedTitle}</div>
+                        <div className="mt-1 text-[15px] text-ih-fg-3">
                             {m.editor_gate_missing()}{b.missing.length === 0 ? <em>{m.editor_gate_none()}</em> : b.missing.join(', ')}
                             {b.unresolvedTokens.length > 0 && (
                                 <>{m.editor_gate_unresolved()}{b.unresolvedTokens.map(t => `{{${t}}}`).join(', ')}</>
@@ -79,7 +79,7 @@ export function PublishGateModal({ open, readiness, onClose, onJump, onProceed }
                     {blocking.length > 0 && <DefectList entries={blocking} onJump={onJump} tone="blocking" />}
                     {warnings.length > 0 && (
                         <>
-                            <div className="px-5 py-2 bg-ih-watch-bg text-ih-watch-fg text-[11px] font-bold uppercase tracking-[0.1em] border-y border-ih-border">
+                            <div className="px-5 py-2 bg-ih-watch-bg text-ih-watch-fg text-[14px] font-bold uppercase tracking-[0.1em] border-y border-ih-border">
                                 {m.editor_gate_warnings_banner()}
                             </div>
                             <DefectList entries={warnings} onJump={onJump} tone="warning" />

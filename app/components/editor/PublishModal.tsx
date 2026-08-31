@@ -68,7 +68,7 @@ export function PublishModal({ open, progress, status, publishError, isSubmittin
  )
  }
  >
- <p className="text-[13px] text-ih-fg-3">
+ <p className="text-[16px] text-ih-fg-3">
  {m.editor_publish_body()}
  {progress.pct < 100 && (
  <span className="block mt-2 text-ih-watch font-medium">
@@ -79,34 +79,34 @@ export function PublishModal({ open, progress, status, publishError, isSubmittin
  {/* No weight class here, and that is not an oversight: Banner hardcodes
   `font-semibold` in its base, so a `font-medium` passed through
   `className` loses the tie on stylesheet order and silently does
-  nothing — while `text-[12px]` on the same string DOES win, because
+  nothing — while `text-[15px]` on the same string DOES win, because
   Tailwind v4 sorts arbitrary values after the named scale. One
   override landing and the other not, from one attribute, is not
   something a reader can see. The notice is kept SHORT instead, so
   semibold does not out-shout the rating warning above it. */}
  {unlockAtMs !== null && (
- <Banner tone="info" className="mt-3 text-[12px]">
+ <Banner tone="info" className="mt-3 text-[15px]">
  {m.editor_publish_cooling_notice({
  unlockAt: formatShapedDateTime(unlockAtMs, timeZone, dtFormat),
  })}
  </Banner>
  )}
- <div className="mt-4 p-3 rounded-lg bg-ih-bg-muted text-[12px] space-y-1">
+ <div className="mt-4 p-3 rounded-lg bg-ih-bg-muted text-[15px] space-y-1">
  <div className="flex justify-between"><span className="text-ih-fg-3">{m.editor_publish_stat_items_rated()}</span><span className="font-bold">{progress.rated}/{progress.total}</span></div>
  <div className="flex justify-between"><span className="text-ih-fg-3">{m.editor_publish_stat_completion()}</span><span className="font-bold">{progress.pct}%</span></div>
  <div className="flex justify-between"><span className="text-ih-fg-3">{m.editor_publish_stat_status()}</span><span className="font-bold uppercase">{status}</span></div>
  </div>
  {notCompleted && (
- <p className="mt-3 text-[12px] text-ih-fg-3">
+ <p className="mt-3 text-[15px] text-ih-fg-3">
  {m.editor_publish_not_completed_prompt()}
  </p>
  )}
  {publishError && (
- <div role="alert" className="mt-4 p-3 rounded-lg bg-ih-bad/10 border border-ih-bad/30 text-[12px] text-ih-bad font-medium">
+ <div role="alert" className="mt-4 p-3 rounded-lg bg-ih-bad/10 border border-ih-bad/30 text-[15px] text-ih-bad font-medium">
  {publishError}
  </div>
  )}
- <label className="mt-4 inline-flex items-center gap-2 text-[12px] font-medium text-ih-fg-3 cursor-pointer select-none">
+ <label className="mt-4 inline-flex items-center gap-2 text-[15px] font-medium text-ih-fg-3 cursor-pointer select-none">
  <input
   type="checkbox"
   checked={autoSign}

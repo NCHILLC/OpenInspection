@@ -67,8 +67,8 @@ const TONE_IDLE: Record<RatingTone, string> = {
 };
 
 const SIZE_CLASSES: Record<NonNullable<RatingSegmentProps["size"]>, string> = {
-  sm: "h-8 min-w-8 px-2 rounded text-[11px] font-bold",
-  md: "h-11 min-w-0 flex-1 px-3 rounded-lg text-[13px] font-bold",
+  sm: "h-8 min-w-8 px-2 rounded text-[14px] font-bold",
+  md: "h-11 min-w-0 flex-1 px-3 rounded-lg text-[16px] font-bold",
   lg: "h-20 w-20 rounded-xl text-sm font-bold",
 };
 
@@ -183,7 +183,7 @@ export function RatingSegment({
           >
             <span className="truncate px-0.5">{text}</span>
             {r.hint != null && (
-              <span className="block text-[9px] font-mono opacity-60 mt-0.5">{r.hint}</span>
+              <span className="block text-[12px] font-mono opacity-60 mt-0.5">{r.hint}</span>
             )}
           </button>
         );

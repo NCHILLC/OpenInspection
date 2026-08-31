@@ -27,7 +27,7 @@ describe("ItemHeader", () => {
   });
 
   it("uses the small size by default and the large size on demand", () => {
-    expect(html({ label: "x" })).toContain("text-[13px]");
+    expect(html({ label: "x" })).toContain("text-[16px]");
     expect(html({ label: "x", size: "lg" })).toContain("text-[19px]");
   });
 });

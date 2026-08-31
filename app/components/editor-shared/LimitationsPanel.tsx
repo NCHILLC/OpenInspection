@@ -54,14 +54,14 @@ export function LimitationsPanel({ entries, onAdd, onToggle, required = false }:
             {required && recorded.length === 0 && (
                 <p
                     data-testid="limitation-required"
-                    className="text-[13px] text-ih-bad-fg bg-ih-bad-bg rounded-lg px-3 py-2"
+                    className="text-[16px] text-ih-bad-fg bg-ih-bad-bg rounded-lg px-3 py-2"
                 >
                     {m.editor_limitation_required_notice()}
                 </p>
             )}
 
             {entries.map((e) => (
-                <label key={e.id} className="flex items-start gap-2 text-[13px] text-ih-fg-1">
+                <label key={e.id} className="flex items-start gap-2 text-[16px] text-ih-fg-1">
                     <input
                         type="checkbox"
                         className="mt-0.5"

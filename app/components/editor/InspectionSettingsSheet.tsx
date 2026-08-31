@@ -231,7 +231,7 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
   }
 
   const inputClass = "mt-1 w-full h-10 px-3 rounded-md border border-ih-border bg-ih-bg-card text-ih-fg-1 text-[14px] font-medium focus:border-ih-primary focus:shadow-ih-focus outline-none";
-  const labelClass = "text-[10px] font-bold uppercase tracking-[0.2em] text-ih-fg-3";
+  const labelClass = "text-[13px] font-bold uppercase tracking-[0.2em] text-ih-fg-3";
 
   return (
     <>
@@ -242,9 +242,9 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
         wide
         footer={loading ? undefined : (
           <>
-            {saveState === "saving" && <span className="text-[12px] text-ih-watch-fg font-bold self-center">{m.editor_header_save_saving()}</span>}
-            {saveState === "saved" && <span className="text-[12px] text-ih-ok-fg font-bold self-center">{m.editor_header_save_saved()}</span>}
-            {saveState === "error" && <span className="text-[12px] text-ih-bad-fg font-bold self-center">{m.editor_settings_save_error()}</span>}
+            {saveState === "saving" && <span className="text-[15px] text-ih-watch-fg font-bold self-center">{m.editor_header_save_saving()}</span>}
+            {saveState === "saved" && <span className="text-[15px] text-ih-ok-fg font-bold self-center">{m.editor_header_save_saved()}</span>}
+            {saveState === "error" && <span className="text-[15px] text-ih-bad-fg font-bold self-center">{m.editor_settings_save_error()}</span>}
             <Button variant="primary" type="submit" form="inspection-settings-form" disabled={saveState === "saving"}>
               {m.editor_settings_save_changes()}
             </Button>
@@ -286,7 +286,7 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
                     <option value="trade">{m.editor_settings_required_trade()}</option>
                     <option value="both">{m.editor_settings_required_both()}</option>
                   </select>
-                  <p className="mt-1 text-[11px] text-ih-fg-3">{m.editor_settings_required_defect_help()}</p>
+                  <p className="mt-1 text-[14px] text-ih-fg-3">{m.editor_settings_required_defect_help()}</p>
                 </label>
               </fieldset>
 
@@ -313,7 +313,7 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
                   }}
                 />
                 {photos.length === 0 ? (
-                  <p className="text-[12px] text-ih-fg-3">{m.editor_settings_cover_empty()}</p>
+                  <p className="text-[15px] text-ih-fg-3">{m.editor_settings_cover_empty()}</p>
                 ) : (
                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
                     {photos.map((p) => {
@@ -328,7 +328,7 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
                         >
                           <img src={p.url} alt={p.label || m.editor_settings_cover_photo_alt()} className="w-full h-full object-cover" loading="lazy" />
                           {selected && (
-                            <span className="absolute inset-x-0 bottom-0 bg-ih-primary text-ih-fg-inverse text-[9px] font-bold text-center py-0.5">{m.editor_settings_cover_badge()}</span>
+                            <span className="absolute inset-x-0 bottom-0 bg-ih-primary text-ih-fg-inverse text-[12px] font-bold text-center py-0.5">{m.editor_settings_cover_badge()}</span>
                           )}
                         </button>
                       );
@@ -342,13 +342,13 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
                   <Button variant="secondary" size="sm" onClick={() => coverFileRef.current?.click()} disabled={coverFetcher.state !== "idle"} className="hover:border-ih-primary hover:text-ih-primary-text">
                     {coverFetcher.state !== "idle" && coverFetcher.formData?.get("intent") === "upload-cover" ? m.editor_uploading() : m.editor_settings_cover_upload()}
                   </Button>
-                  <p className="text-[11px] text-ih-fg-3">{m.editor_settings_cover_hint()}</p>
+                  <p className="text-[14px] text-ih-fg-3">{m.editor_settings_cover_hint()}</p>
                 </div>
 
                 {/* Report Style Presets — collapsed by default (progressive
                     disclosure: the default path never touches this). */}
                 <details className="pt-2">
-                  <summary className="text-[12px] text-ih-fg-3 cursor-pointer select-none">{m.editor_settings_appearance_summary()}</summary>
+                  <summary className="text-[15px] text-ih-fg-3 cursor-pointer select-none">{m.editor_settings_appearance_summary()}</summary>
                   <label className="block mt-3">
                     <select
                       value={form.profileOverride}
@@ -361,7 +361,7 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
                         <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
-                    <p className="mt-1 text-[11px] text-ih-fg-3">{m.editor_settings_appearance_help()}</p>
+                    <p className="mt-1 text-[14px] text-ih-fg-3">{m.editor_settings_appearance_help()}</p>
                   </label>
                 </details>
               </fieldset>
@@ -370,7 +370,7 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
                   localStorage (not the inspection row); applies to this browser. */}
               <fieldset className="space-y-2">
                 <legend className="text-[15px] font-semibold tracking-tight text-ih-fg-1">{m.editor_settings_legend_photo_uploads()}</legend>
-                <label className="inline-flex items-start gap-2 text-[13px] text-ih-fg-3">
+                <label className="inline-flex items-start gap-2 text-[16px] text-ih-fg-3">
                   <input
                     type="checkbox"
                     checked={originalQuality}
@@ -380,7 +380,7 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
                   />
                   <span>
                     {m.editor_settings_original_quality()}
-                    <span className="block text-[11px] text-ih-fg-3">
+                    <span className="block text-[14px] text-ih-fg-3">
                       {m.editor_settings_original_quality_help()}
                     </span>
                   </span>

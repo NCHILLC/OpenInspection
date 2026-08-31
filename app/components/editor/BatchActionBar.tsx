@@ -48,7 +48,7 @@ export function BatchActionBar({
       {/* Selected count */}
       <span
         data-testid="batch-count"
-        className="text-[11px] font-bold text-ih-fg-2 whitespace-nowrap"
+        className="text-[14px] font-bold text-ih-fg-2 whitespace-nowrap"
       >
         {m.editor_batch_selected_count({ count })}
       </span>

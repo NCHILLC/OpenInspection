@@ -49,7 +49,7 @@ export function NotesFieldHeader({
 }: NotesFieldHeaderProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
-      <label htmlFor={fieldId} className="text-[11px] font-bold uppercase tracking-wide text-ih-fg-3">
+      <label htmlFor={fieldId} className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3">
         {m.editor_item_notes_label()}
       </label>
       {canInsertCanned && (
@@ -64,11 +64,11 @@ export function NotesFieldHeader({
           onClick={onOpenSuggestions}
         >
           {m.editor_item_recommended()}
-          <span className="text-[10px]" aria-hidden="true">▾</span>
+          <span className="text-[13px]" aria-hidden="true">▾</span>
         </Button>
       )}
       <span
-        className={`ml-auto text-[10px] font-mono tabular-nums ${
+        className={`ml-auto text-[13px] font-mono tabular-nums ${
           charCount > NOTES_SOFT_LIMIT ? "text-ih-bad-fg" : "text-ih-fg-4"
         }`}
       >

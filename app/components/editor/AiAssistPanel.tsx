@@ -113,7 +113,7 @@ export function AiAssistPanel({ notes, context, resultId, onAccept }: AiAssistPa
             size="sm"
             onClick={improve}
             disabled={busy || !notes.trim()}
-            className="h-auto px-0 py-0 text-[11px]"
+            className="h-auto px-0 py-0 text-[14px]"
           >
             {busy ? m.editor_ai_assist_working() : m.editor_ai_assist_improve()}
           </Button>
@@ -128,12 +128,12 @@ export function AiAssistPanel({ notes, context, resultId, onAccept }: AiAssistPa
         // (There is no `ih-warn` in this design system — a class naming one
         // compiles to nothing and the rule silently disappears.)
         <div className="rounded-lg border border-ih-border-strong border-l-4 border-l-ih-watch bg-ih-bg-app p-3 space-y-2.5">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-ih-fg-3">
+          <div className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3">
             {m.editor_ai_assist_draft_eyebrow()}
           </div>
           {/* Same size and face as the note above it, so the inspector reads
               the text it would become rather than a styled quotation. */}
-          <p className="text-[13px] leading-relaxed text-ih-fg-1 whitespace-pre-wrap">
+          <p className="text-[16px] leading-relaxed text-ih-fg-1 whitespace-pre-wrap">
             {draft.text}
           </p>
           <div>
@@ -142,7 +142,7 @@ export function AiAssistPanel({ notes, context, resultId, onAccept }: AiAssistPa
               checked={reviewed}
               onChange={(e) => setReviewed(e.target.checked)}
             />
-            <p className="text-[11px] text-ih-fg-3 mt-1 ml-6">
+            <p className="text-[14px] text-ih-fg-3 mt-1 ml-6">
               {m.editor_ai_assist_reviewed_help()}
             </p>
           </div>
@@ -158,7 +158,7 @@ export function AiAssistPanel({ notes, context, resultId, onAccept }: AiAssistPa
       )}
 
       {error && (
-        <Banner tone="warn" className="mt-2 text-[12px] font-medium">
+        <Banner tone="warn" className="mt-2 text-[15px] font-medium">
           {/* Two SEPARATE lines, not one run-on. The first is the API's own
               refusal text — `checkAiCapability` writes its denial "for the
               inspector who triggered the call" and this is the first thing

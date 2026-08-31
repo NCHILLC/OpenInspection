@@ -31,21 +31,21 @@ export function SectionPickerModal({
  placeholder={m.editor_sectionpicker_placeholder()}
  value={sectionPickerQuery}
  onChange={(e) => setSectionPickerQuery(e.target.value)}
- className="w-full px-3 py-2 rounded-md border border-ih-border bg-ih-bg-app text-[13px]"
+ className="w-full px-3 py-2 rounded-md border border-ih-border bg-ih-bg-app text-[16px]"
  />
  <div className="mt-3 -mx-4 max-h-60 overflow-y-auto border-t border-ih-border">
  {filteredSectionsForPicker.map((sec) => (
  <button
  key={sec.idx}
  onClick={() => pickSection(sec.idx)}
- className="w-full text-left px-4 py-2.5 text-[13px] hover:bg-ih-bg-muted flex items-center justify-between"
+ className="w-full text-left px-4 py-2.5 text-[16px] hover:bg-ih-bg-muted flex items-center justify-between"
  >
  <span className="font-medium text-ih-fg-1">{sec.title}</span>
- <span className="text-[11px] text-ih-fg-3">{m.editor_sectionpicker_item_count({ count: sections[sec.idx]?.items?.length || 0 })}</span>
+ <span className="text-[14px] text-ih-fg-3">{m.editor_sectionpicker_item_count({ count: sections[sec.idx]?.items?.length || 0 })}</span>
  </button>
  ))}
  {filteredSectionsForPicker.length === 0 && (
- <p className="text-center text-[13px] text-ih-fg-3 py-6">{m.editor_sectionpicker_no_match()}</p>
+ <p className="text-center text-[16px] text-ih-fg-3 py-6">{m.editor_sectionpicker_no_match()}</p>
  )}
  </div>
  </Modal>

@@ -5,7 +5,6 @@ import { useCommentTypeahead } from "../../hooks/useCommentTypeahead";
 import {
   flattenItemTabs, fragmentBeforeCaret, replaceFragmentBeforeCaret,
 } from "../../lib/comment-typeahead";
-import { AiAssistPanel } from "./AiAssistPanel";
 import { NotesFieldHeader } from "./NotesFieldHeader";
 import { CloneLastButton } from "./CloneLastButton";
 import type { DefectFieldsValue } from "./DefectFieldsRow";
@@ -141,6 +140,8 @@ interface ItemEditorProps {
  /** #61 — `inspection_results.id`, the artifact an AI content-review row cites.
   *  Absent/null ⇒ the AI writing-assistance affordance is not offered at all,
   *  because a review recorded against no artifact is not evidence of anything. */
+ /** Accepted but unused since the AI wording panel was unmounted — callers
+  *  still pass it, and it is what the panel would need if restored. */
  resultId?: string | null;
 }
 
@@ -196,7 +197,6 @@ export function ItemEditor({
  onBulkMovePhotos,
  videoPosterUrl,
  pendingPhotoUrl,
- resultId,
 }: ItemEditorProps) {
  const [activeTab, setActiveTab] = useState<CannedTabId>("information");
  const [defectQuery, setDefectQuery] = useState("");
@@ -347,12 +347,12 @@ export function ItemEditor({
  <div className="max-w-2xl space-y-6">
  {/* Eyebrow + title */}
  <div>
- <div className="text-[11px] text-ih-primary-text font-bold uppercase tracking-wide">
+ <div className="text-[14px] text-ih-primary-text font-bold uppercase tracking-wide">
  {sectionTitle}
  </div>
  <ItemHeader label={item.label} size="lg" className="mt-1 text-ih-fg-1" as="h2" />
  {item.description && (
- <p data-testid="item-description-hint" className="mt-1 text-[12px] text-ih-fg-3 leading-relaxed">
+ <p data-testid="item-description-hint" className="mt-1 text-[15px] text-ih-fg-3 leading-relaxed">
  {item.description}
  </p>
  )}
@@ -431,17 +431,17 @@ export function ItemEditor({
  included canned narrative still claims "no visible defects". */}
  {contradictions.length > 0 && (
  <div className="rounded-lg border border-ih-watch/40 bg-ih-watch-bg px-3 py-2">
- <p className="text-[12px] font-bold text-ih-watch-fg">
+ <p className="text-[15px] font-bold text-ih-watch-fg">
  {contradictions.length === 1 ? m.editor_item_contradiction_one() : m.editor_item_contradiction_other({ count: contradictions.length })}
  </p>
  <ul className="mt-1 space-y-1">
  {contradictions.map((hit) => (
- <li key={hit.id} className="flex items-center justify-between gap-2 text-[12px] text-ih-watch-fg">
+ <li key={hit.id} className="flex items-center justify-between gap-2 text-[15px] text-ih-watch-fg">
  <span className="truncate">{m.editor_item_contradiction_item({ title: hit.title })}</span>
  <Button
  variant="link" size="sm"
  onClick={() => onToggleCanned?.(hit.tab, hit.id, false)}
- className="shrink-0 h-auto px-0 py-0 text-[11px] text-ih-watch-fg underline decoration-ih-watch hover:text-ih-fg-1"
+ className="shrink-0 h-auto px-0 py-0 text-[14px] text-ih-watch-fg underline decoration-ih-watch hover:text-ih-fg-1"
  >
  {m.editor_item_uncheck()}
  </Button>
@@ -492,7 +492,7 @@ export function ItemEditor({
    }
   }}
   placeholder={m.editor_item_notes_placeholder()}
-  className="w-full h-28 px-3 py-2 rounded-lg border border-ih-border bg-ih-bg-card text-[13px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
+  className="w-full h-28 px-3 py-2 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
  />
  <CommentTypeahead
   entries={taEntries}
@@ -505,24 +505,11 @@ export function ItemEditor({
   onClose={() => setTaOpen(false)}
  />
  </div>
- {/* #61 — sits BELOW the textarea on purpose: the model's draft and the
-     inspector's own words stay visible at the same time, and the draft only
-     becomes the note once the review is on file.
-
-     Mounted only when there IS an artifact. The panel refuses on a null
-     `resultId` too (that is its own invariant, and where the spec pins it);
-     this outer check is about not mounting a router-subscribed component
-     with nothing to offer — `AiAssistPanel` calls `useFetcher`, which throws
-     outside a data router, and several ItemEditor specs render this tree
-     bare on purpose. */}
- {resultId && (
-  <AiAssistPanel
-   notes={(result.notes as string) || ""}
-   context={`${sectionTitle} — ${item.label}`}
-   resultId={resultId}
-   onAccept={(text) => { onNotes(text); onNotesBlur(text); }}
-  />
- )}
+ {/* The AI "Improve wording" panel was REMOVED from the notes field at the
+     operator's request — model-assisted prose is not wanted in this
+     deployment's report flow. `AiAssistPanel` and its review-evidence
+     invariants are left intact and still specced; only the mount is gone,
+     so restoring it here is the whole job if that decision changes. */}
  {tagChipRow}
  </div>
 
@@ -595,11 +582,11 @@ export function ItemEditor({
  {/* Photo strip with count badge */}
  <div>
  <div className="flex items-center justify-between mb-1">
- <label className="text-[11px] font-bold uppercase tracking-wide text-ih-fg-3">
+ <label className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3">
  {m.editor_item_photos_label()}
  </label>
  {photoCount > 0 && (
- <span className="inline-flex items-center gap-1 text-[10px] font-bold text-ih-primary-text bg-ih-primary-tint px-1.5 py-0.5 rounded">
+ <span className="inline-flex items-center gap-1 text-[13px] font-bold text-ih-primary-text bg-ih-primary-tint px-1.5 py-0.5 rounded">
  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
  </svg>
@@ -638,7 +625,7 @@ export function ItemEditor({
   className="w-full h-full object-cover opacity-70"
   />
   <span className="absolute bottom-0 left-0 right-0 flex justify-center pb-0.5">
-  <span className="text-[9px] font-bold uppercase bg-ih-watch-bg text-ih-watch-fg rounded px-1">
+  <span className="text-[12px] font-bold uppercase bg-ih-watch-bg text-ih-watch-fg rounded px-1">
    {m.editor_item_photo_queued_badge()}
   </span>
   </span>
@@ -646,7 +633,7 @@ export function ItemEditor({
  ))}
  </div>
  )}
- <span className="block mt-1 text-[12px] text-ih-fg-3">
+ <span className="block mt-1 text-[15px] text-ih-fg-3">
  {photoStatus}
  </span>
  </div>

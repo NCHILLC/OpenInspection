@@ -62,26 +62,26 @@ export function KeyboardHud({ onClose }: { onClose: () => void }) {
         <header className="px-6 py-4 border-b border-ih-border flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-ih-fg-1">{m.editor_shortcuts_heading()}</h2>
-            <p className="text-xs text-ih-fg-3 mt-0.5">{m.editor_hud_press()}<kbd className="px-1.5 py-0.5 bg-ih-bg-muted border border-ih-border rounded text-[10px] font-mono">?</kbd>{m.editor_hud_toggle()}<kbd className="px-1.5 py-0.5 bg-ih-bg-muted border border-ih-border rounded text-[10px] font-mono">Esc</kbd>{m.editor_hud_close()}</p>
+            <p className="text-xs text-ih-fg-3 mt-0.5">{m.editor_hud_press()}<kbd className="px-1.5 py-0.5 bg-ih-bg-muted border border-ih-border rounded text-[13px] font-mono">?</kbd>{m.editor_hud_toggle()}<kbd className="px-1.5 py-0.5 bg-ih-bg-muted border border-ih-border rounded text-[13px] font-mono">Esc</kbd>{m.editor_hud_close()}</p>
           </div>
           <IconButton onClick={onClose} aria-label={m.common_close()} size="sm">&times;</IconButton>
         </header>
         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {COLUMNS.map((col) => (
             <div key={col.title}>
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-ih-fg-3 mb-3">{col.title}</h3>
+              <h3 className="text-[13px] font-bold uppercase tracking-widest text-ih-fg-3 mb-3">{col.title}</h3>
               <ul className="space-y-2">
                 {col.rows.map((row) => (
                   <li key={row.key} className="flex items-center justify-between gap-3 text-xs">
                     <span className="text-ih-fg-2 leading-tight">{row.label}</span>
-                    <kbd className="shrink-0 px-2 py-0.5 bg-ih-bg-muted border border-ih-border rounded text-[11px] font-mono text-ih-fg-2 min-w-[28px] text-center">{row.key}</kbd>
+                    <kbd className="shrink-0 px-2 py-0.5 bg-ih-bg-muted border border-ih-border rounded text-[14px] font-mono text-ih-fg-2 min-w-[28px] text-center">{row.key}</kbd>
                   </li>
                 ))}
               </ul>
             </div>
           ))}
         </div>
-        <footer className="px-6 py-3 border-t border-ih-border text-[10px] text-ih-fg-3 italic">
+        <footer className="px-6 py-3 border-t border-ih-border text-[13px] text-ih-fg-3 italic">
           {m.editor_hud_footer()}
         </footer>
       </div>

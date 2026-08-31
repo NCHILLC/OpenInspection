@@ -10,7 +10,7 @@ export interface ItemAttributesPanelProps {
 export function ItemAttributesPanel({ itemId, attributes, values, onChange }: ItemAttributesPanelProps) {
     if (!attributes || attributes.length === 0) return null;
     return (
-        <div className="mb-3 grid grid-cols-12 gap-2 text-[11px]">
+        <div className="mb-3 grid grid-cols-12 gap-2 text-[14px]">
             {attributes.map(attr => {
                 const v = values[attr.id];
                 const key = `${itemId}:${attr.id}`;
@@ -53,7 +53,7 @@ export function ItemAttributesPanel({ itemId, attributes, values, onChange }: It
                                 onChange={e => onChange(itemId, attr.id, e.target.checked)}
                                 className="w-4 h-4 rounded border-ih-border-strong text-ih-primary focus:ring-ih-primary/30"
                             />
-                            <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-ih-fg-3">{attr.name}</label>
+                            <label className="text-[14px] font-bold uppercase tracking-[0.1em] text-ih-fg-3">{attr.name}</label>
                         </div>
                     );
                 }

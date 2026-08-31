@@ -135,8 +135,8 @@ export function SpeedMode({
     >
       {/* Top bar */}
       <div className="h-12 flex items-center justify-between px-4 border-b border-ih-border">
-        <span className="text-[12px] text-ih-fg-3 font-bold uppercase tracking-wide">{sectionTitle}</span>
-        <span className="text-[12px] text-ih-fg-3 font-mono">{currentIndex + 1} / {totalCount}</span>
+        <span className="text-[15px] text-ih-fg-3 font-bold uppercase tracking-wide">{sectionTitle}</span>
+        <span className="text-[15px] text-ih-fg-3 font-mono">{currentIndex + 1} / {totalCount}</span>
         <Button variant="ghost" size="sm" onClick={onExit}>{m.editor_speedmode_exit()}</Button>
       </div>
 
@@ -147,7 +147,7 @@ export function SpeedMode({
           {...gesture}
         >
           <h2 className="text-2xl font-bold text-ih-fg-1 mb-2 text-center">{item.label}</h2>
-          <p className="text-[11px] text-ih-fg-3 uppercase tracking-wide">
+          <p className="text-[14px] text-ih-fg-3 uppercase tracking-wide">
             {m.editor_speedmode_gesture_hint()}
           </p>
         </div>
@@ -163,7 +163,7 @@ export function SpeedMode({
                 className={`w-20 h-20 rounded-xl text-sm font-bold transition-all ${ratingButtonClass(r.severity, result.rating === r.id)}`}
               >
                 {(r.abbreviation ?? label).split(" ")[0]}
-                <span className="block text-[10px] opacity-50 mt-1">{idx + 1}</span>
+                <span className="block text-[13px] opacity-50 mt-1">{idx + 1}</span>
               </button>
             );
           })}
@@ -177,8 +177,8 @@ export function SpeedMode({
       </div>
 
       {/* Footer */}
-      <div className="h-10 flex items-center justify-center text-[11px] text-ih-fg-3 border-t border-ih-border">
-        {m.editor_speedmode_footer_press()} <kbd className="mx-1 px-1.5 py-0.5 bg-ih-bg-muted rounded text-[10px] font-mono border border-ih-border">Z</kbd> {m.editor_speedmode_footer_or()} <kbd className="mx-1 px-1.5 py-0.5 bg-ih-bg-muted rounded text-[10px] font-mono border border-ih-border">Esc</kbd> {m.editor_speedmode_footer_exit()}
+      <div className="h-10 flex items-center justify-center text-[14px] text-ih-fg-3 border-t border-ih-border">
+        {m.editor_speedmode_footer_press()} <kbd className="mx-1 px-1.5 py-0.5 bg-ih-bg-muted rounded text-[13px] font-mono border border-ih-border">Z</kbd> {m.editor_speedmode_footer_or()} <kbd className="mx-1 px-1.5 py-0.5 bg-ih-bg-muted rounded text-[13px] font-mono border border-ih-border">Esc</kbd> {m.editor_speedmode_footer_exit()}
       </div>
 
       {/* IA-17 — first-run coach mark: tap anywhere (or press any key) to dismiss */}
@@ -192,9 +192,9 @@ export function SpeedMode({
         >
           <div className="mx-6 max-w-sm rounded-xl border border-ih-border bg-ih-bg-card px-6 py-5 text-ih-fg-2 shadow-ih-popover">
             <h3 className="text-[15px] font-bold text-ih-fg-1 mb-3">{m.editor_speedmode_coach_title()}</h3>
-            <ul className="space-y-2 text-[13px]">
+            <ul className="space-y-2 text-[16px]">
               <li className="flex items-center gap-3">
-                <kbd className="px-1.5 py-0.5 bg-ih-bg-muted rounded text-[11px] font-mono border border-ih-border shrink-0">1–5</kbd>
+                <kbd className="px-1.5 py-0.5 bg-ih-bg-muted rounded text-[14px] font-mono border border-ih-border shrink-0">1–5</kbd>
                 <span>{m.editor_speedmode_coach_rate()}</span>
               </li>
               <li className="flex items-center gap-3">
@@ -206,7 +206,7 @@ export function SpeedMode({
                 <span>{m.editor_speedmode_coach_longpress()}</span>
               </li>
             </ul>
-            <p className="mt-4 text-[11px] text-ih-fg-3">{m.editor_speedmode_coach_start()}</p>
+            <p className="mt-4 text-[14px] text-ih-fg-3">{m.editor_speedmode_coach_start()}</p>
           </div>
         </div>
       )}
@@ -224,18 +224,18 @@ export function SpeedMode({
         title={m.editor_speedmode_jumpto_title()}
         heightFraction={0.85}
       >
-        <div className="p-2 text-[13px]">
+        <div className="p-2 text-[16px]">
           {sections && sections.length > 0 ? (
             sections.map((sec) => {
               const secTitle = sec.title || sec.name || sec.id;
               const items = sec.items || [];
               return (
                 <div key={sec.id} className="mb-3">
-                  <div className="px-2 py-1 text-[11px] uppercase tracking-wide font-bold text-ih-fg-3">
+                  <div className="px-2 py-1 text-[14px] uppercase tracking-wide font-bold text-ih-fg-3">
                     {secTitle}
                   </div>
                   {items.length === 0 ? (
-                    <div className="px-3 py-1 text-[12px] text-ih-fg-3 italic">{m.editor_speedmode_no_items()}</div>
+                    <div className="px-3 py-1 text-[15px] text-ih-fg-3 italic">{m.editor_speedmode_no_items()}</div>
                   ) : (
                     <ul>
                       {items.map((it) => {

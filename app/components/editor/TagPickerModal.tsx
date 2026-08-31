@@ -21,7 +21,7 @@ export function TagPickerModal({ open, activeItemId, tagsByItem, presetTags, onT
     <button
     key={tag.id}
     onClick={() => onToggle(tag)}
-    className={`w-full text-left px-3 py-2.5 rounded-lg text-[13px] font-medium flex items-center gap-3 transition-colors ${
+    className={`w-full text-left px-3 py-2.5 rounded-lg text-[16px] font-medium flex items-center gap-3 transition-colors ${
      isActive
      ? "bg-ih-bg-muted ring-1 ring-inset"
      : "hover:bg-ih-bg-muted"
@@ -48,7 +48,7 @@ export function TagPickerModal({ open, activeItemId, tagsByItem, presetTags, onT
     {selected.map(tag => (
     <span
      key={tag.id}
-     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[13px] font-bold text-white"
      style={{ backgroundColor: tag.color || '#6b7280' }}
     >
      {tag.name}

@@ -42,7 +42,7 @@ export function FindingsIndicator({ active, onActivate, className = "" }: Findin
     // so it reads as part of the same row.
     const shape =
         `inline-flex items-center justify-center h-11 min-w-11 px-3 rounded-lg ` +
-        `text-[13px] font-bold select-none transition-colors ` +
+        `text-[16px] font-bold select-none transition-colors ` +
         (active
             ? "bg-ih-bad text-ih-fg-inverse"
             : "bg-transparent text-ih-fg-3 border border-ih-border") +

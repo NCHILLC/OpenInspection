@@ -45,22 +45,22 @@ export function CommentLibraryDrawer({ open, comments, state, serverComments, on
  {/* Sort + Filter mode header */}
  <div className="flex items-center gap-3 px-3 py-2 border-b border-ih-border">
  <div className="flex items-center gap-1.5">
- <span className="text-[10px] uppercase tracking-[0.1em] text-ih-fg-3">{m.editor_comment_library_filter_label()}</span>
+ <span className="text-[13px] uppercase tracking-[0.1em] text-ih-fg-3">{m.editor_comment_library_filter_label()}</span>
  <select
  value={comments.filterMode}
  onChange={e => comments.setFilterMode(e.target.value as 'auto' | 'all')}
- className="px-2 py-1 rounded border border-ih-border bg-ih-bg-app text-[11px]"
+ className="px-2 py-1 rounded border border-ih-border bg-ih-bg-app text-[14px]"
  >
  <option value="auto">{m.editor_comment_library_filter_auto()}</option>
  <option value="all">{m.editor_comment_library_all()}</option>
  </select>
  </div>
  <div className="flex items-center gap-1.5 ml-auto">
- <span className="text-[10px] uppercase tracking-[0.1em] text-ih-fg-3">{m.editor_comment_library_sort_label()}</span>
+ <span className="text-[13px] uppercase tracking-[0.1em] text-ih-fg-3">{m.editor_comment_library_sort_label()}</span>
  <select
  value={comments.sort}
  onChange={e => comments.setSort(e.target.value)}
- className="px-2 py-1 rounded border border-ih-border bg-ih-bg-app text-[11px]"
+ className="px-2 py-1 rounded border border-ih-border bg-ih-bg-app text-[14px]"
  >
  <option value="relevance">{m.editor_comment_library_sort_relevance()}</option>
  <option value="recent">{m.editor_comment_library_sort_recent()}</option>
@@ -73,7 +73,7 @@ export function CommentLibraryDrawer({ open, comments, state, serverComments, on
 
  {/* Context strip (auto mode + active item) */}
  {comments.filterMode === 'auto' && state.activeItem && (
- <div className="flex items-center gap-2 px-3 py-1.5 text-[11px] bg-ih-bg-muted border-b border-ih-border">
+ <div className="flex items-center gap-2 px-3 py-1.5 text-[14px] bg-ih-bg-muted border-b border-ih-border">
  <span className="text-ih-fg-4">{m.editor_comment_library_context()}</span>
  <span>
  {state.currentSection?.title} › {(state.activeItem.label || state.activeItem.name) as string}
@@ -127,9 +127,9 @@ export function CommentLibraryDrawer({ open, comments, state, serverComments, on
  state.setCommentLibrarySearch(e.target.value);
  state.setCommentLibrarySelectedIdx(0);
  }}
- className="w-full px-3 py-2 rounded-md border border-ih-border bg-ih-bg-app text-[12px]"
+ className="w-full px-3 py-2 rounded-md border border-ih-border bg-ih-bg-app text-[15px]"
  />
- <p className="text-[10px] text-ih-fg-3 mt-1">
+ <p className="text-[13px] text-ih-fg-3 mt-1">
  {m.editor_comment_library_count({ count: serverComments.length })}
  </p>
  </div>

@@ -51,21 +51,21 @@ export function CustomDefectForm({
         placeholder={m.editor_customdefect_title_placeholder()}
         aria-label={m.editor_customdefect_title_aria()}
         autoFocus
-        className="w-full h-9 px-3 rounded-lg border border-ih-border bg-ih-bg-card text-[13px] focus:shadow-ih-focus focus:border-ih-primary outline-none"
+        className="w-full h-9 px-3 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] focus:shadow-ih-focus focus:border-ih-primary outline-none"
       />
       <textarea
         value={comment}
         onChange={(e) => onCommentChange(e.target.value)}
         placeholder={m.editor_customdefect_narrative_placeholder()}
         aria-label={m.editor_customdefect_narrative_aria()}
-        className="w-full h-16 px-3 py-2 rounded-lg border border-ih-border bg-ih-bg-card text-[13px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
+        className="w-full h-16 px-3 py-2 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
       />
       <div className="flex items-center flex-wrap gap-2">
         <select
           value={category}
           onChange={(e) => onCategoryChange(e.target.value as CustomDefectCategory)}
           aria-label={m.editor_customdefect_category_aria()}
-          className="h-8 px-2 rounded-lg border border-ih-border bg-ih-bg-card text-[12px] outline-none"
+          className="h-8 px-2 rounded-lg border border-ih-border bg-ih-bg-card text-[15px] outline-none"
         >
           <option value="safety">{m.editor_customdefect_category_safety()}</option>
           <option value="recommendation">{m.editor_customdefect_category_recommendation()}</option>
@@ -88,7 +88,7 @@ export function CustomDefectForm({
           value={trade}
           onChange={(e) => onTradeChange(e.target.value as DefectTrade | "")}
           aria-label={m.editor_defect_trade_label()}
-          className="h-8 px-2 rounded-lg border border-ih-border bg-ih-bg-card text-[12px] outline-none"
+          className="h-8 px-2 rounded-lg border border-ih-border bg-ih-bg-card text-[15px] outline-none"
         >
           <option value="">{m.editor_customdefect_trade_placeholder()}</option>
           {DEFECT_TRADE_OPTIONS.map((o) => (
@@ -97,7 +97,7 @@ export function CustomDefectForm({
         </select>
         {/* Track H (B-20 back-flow) — default OFF so one-off findings don't pollute the library */}
         {showSaveToLibrary && (
-          <label className="flex items-center gap-1.5 text-[11px] text-ih-fg-3 cursor-pointer select-none">
+          <label className="flex items-center gap-1.5 text-[14px] text-ih-fg-3 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={saveToLibrary}
