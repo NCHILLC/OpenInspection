@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { DefectTrade, DefectDeadline, DefectTimeframe } from '../../lib/defect-fields';
 import { m } from '~/paraglide/messages';
 
@@ -65,11 +65,20 @@ export function DefectFieldsRow({
     // one. Persisted rather than merely displayed: a severity the inspector can
     // see on screen but that was never written would publish as the template's
     // category, and the report would disagree with the screen.
+    //
+    // `onChange` is deliberately NOT a dependency, and is read through a ref.
+    // The editor passes a fresh inline arrow on every render, so depending on
+    // its identity re-runs this effect every render — and if the write ever
+    // fails to round-trip into `value.category`, that is an unbounded loop of
+    // writes rather than a one-time default. The guard below must be the only
+    // thing that decides whether this fires.
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
     useEffect(() => {
         if (!value.category && defaultCategoryId) {
-            onChange(cannedId, { category: defaultCategoryId });
+            onChangeRef.current(cannedId, { category: defaultCategoryId });
         }
-    }, [cannedId, value.category, defaultCategoryId, onChange]);
+    }, [cannedId, value.category, defaultCategoryId]);
 
     const selectedCategory = value.category ?? defaultCategoryId ?? null;
 
@@ -92,7 +101,18 @@ export function DefectFieldsRow({
                                     role="radio"
                                     aria-checked={isSelected}
                                     data-testid={`defect-severity-${c.id}`}
-                                    onClick={() => onChange(cannedId, { category: c.id })}
+                                    // THE ROW IS A <label> (CannedCommentRow renders
+                                    // as="label"), and a click on a button inside a
+                                    // label is forwarded to that label's control —
+                                    // here the inclusion checkbox. Without both calls
+                                    // the tap toggles the defect off instead of
+                                    // setting its severity, which is exactly how this
+                                    // shipped unusable.
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onChange(cannedId, { category: c.id });
+                                    }}
                                     // h-11 is the 44px touch floor — this row is used one-handed
                                     // on a phone, which is the surface it was built for.
                                     className={`h-11 px-3 rounded border text-[13px] font-bold transition-colors ${
