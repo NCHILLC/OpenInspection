@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { findRatingLevel, ratingAdvanceDecision } from '~/lib/rating-levels';
+import { findRatingLevel, ratingAdvanceDecision, findInspectedLevel, ratingForFindingsActivation } from '~/lib/rating-levels';
 
 /**
  * B-18 — the editor looked ratings up via `levels.find(l => l.id === rating)`
@@ -75,4 +75,42 @@ describe('ratingAdvanceDecision', () => {
     const d = ratingAdvanceDecision({ source: 'keyboard', level: undefined, mode: 'keyboard' });
     expect(d).toEqual({ advance: true, focusNotes: false });
   });
+});
+
+
+/**
+ * F implies IN. Activating the findings tile on an unanswered item answers the
+ * rating question too, because an inspector who recorded a defect plainly
+ * looked at the item — but it must never overwrite an answer already given.
+ */
+describe('findings activation', () => {
+    const IN_NI_NP = [
+        { id: 'IN', label: 'Inspected', abbreviation: 'IN', severity: 'good' },
+        { id: 'NI', label: 'Not Inspected', abbreviation: 'NI', severity: 'minor' },
+        { id: 'NP', label: 'Not Present', abbreviation: 'NP', severity: 'minor' },
+    ];
+
+    it('resolves the inspected tier by severity, not by id', () => {
+        // 'I' in TREC, 'S' in the standard presets, 'IN' here — the id differs
+        // per standard, the severity does not.
+        expect(findInspectedLevel(IN_NI_NP)?.id).toBe('IN');
+        expect(findInspectedLevel([{ id: 'I', severity: 'good' }])?.id).toBe('I');
+    });
+
+    it('answers the rating when the item has none yet', () => {
+        expect(ratingForFindingsActivation(null, IN_NI_NP)).toBe('IN');
+    });
+
+    it('leaves an explicit Not Inspected alone', () => {
+        const ni = IN_NI_NP[1];
+        expect(ratingForFindingsActivation(ni, IN_NI_NP)).toBeNull();
+    });
+
+    it('leaves an explicit Inspected alone rather than re-emitting it', () => {
+        expect(ratingForFindingsActivation(IN_NI_NP[0], IN_NI_NP)).toBeNull();
+    });
+
+    it('changes nothing when the system has no satisfactory tier', () => {
+        expect(ratingForFindingsActivation(null, [{ id: 'D', severity: 'significant' }])).toBeNull();
+    });
 });

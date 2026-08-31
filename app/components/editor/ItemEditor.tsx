@@ -28,11 +28,12 @@ import {
  hasIncludedFindings,
 } from "../editor-shared/item-tab-projections";
 import { FindingsIndicator } from "../editor-shared/FindingsIndicator";
+import { CANNED_TAB_IDS, cannedTabLabel } from "../editor-shared/canned-comment-types";
 import { ItemPhotoStrip, type StripPhoto } from "../media-studio/ItemPhotoStrip";
 import type { AttachedRepairItem } from "../../hooks/useFindings";
 import type { ItemAttribute } from "../../lib/types";
 import { shouldTriggerSlash } from "../../lib/slash-trigger";
-import { findRatingLevel, FALLBACK_RATING_LEVELS, type EditorRatingLevel } from "../../lib/rating-levels";
+import { findRatingLevel, ratingForFindingsActivation, FALLBACK_RATING_LEVELS, type EditorRatingLevel } from "../../lib/rating-levels";
 import { findRatingContradictions } from "../../lib/contradiction-lint";
 import { filterCannedEntries, deriveDefectTitle, type CustomDefect, type CustomDefectCategory } from "../../lib/custom-defects";
 import type { DefectTrade } from "../../lib/defect-fields";
@@ -41,20 +42,6 @@ import { FormField, type ItemOptions, type TemplateItem } from "../form/FormFiel
 import { m } from "~/paraglide/messages";
 
 export type { LibraryMatch };
-
-/* ------------------------------------------------------------------ */
-/* Canned comment tabs */
-/* ------------------------------------------------------------------ */
-
-const CANNED_TAB_IDS: CannedTabId[] = ["information", "limitations", "defects"];
-
-function cannedTabLabel(id: CannedTabId): string {
- return id === "information"
-  ? m.editor_item_tab_information()
-  : id === "limitations"
-  ? m.editor_item_tab_limitations()
-  : m.editor_item_tab_defects();
-}
 
 /* ------------------------------------------------------------------ */
 /* Props */
@@ -404,7 +391,15 @@ export function ItemEditor({
  {/* Beside the radiogroup, never inside it — the rating says what was DONE
      with the item, this says whether anything is WRONG with it, and both
      can be true at once. See FindingsIndicator. */}
- <FindingsIndicator active={hasIncludedFindings(tabs, result)} />
+ <FindingsIndicator
+   active={hasIncludedFindings(tabs, result)}
+   onActivate={() => {
+    // Findings imply inspection — see ratingForFindingsActivation.
+    const next = ratingForFindingsActivation(activeLevel, levels);
+    if (next) onRating(next);
+    setActiveTab("defects");
+   }}
+  />
  </div>
  )}
 

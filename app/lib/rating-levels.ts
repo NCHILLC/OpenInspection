@@ -93,3 +93,42 @@ export const FALLBACK_RATING_LEVELS: EditorRatingLevel[] = [
     { id: "Not Inspected", label: "Not Inspected", abbreviation: "N/I", severity: "minor" },
     { id: "Not Present", label: "Not Present", abbreviation: "N/P", severity: "minor" },
 ];
+
+/**
+ * The level that means "I inspected this and it is satisfactory".
+ *
+ * Findings imply inspection: an inspector who recorded a defect plainly looked
+ * at the item, so activating `F` on an unrated item selects this level rather
+ * than leaving the item unanswered. Resolved from `severity: 'good'` — the
+ * semantic marker every shipped preset gives its Inspected/Satisfactory tier —
+ * and NOT from an id or abbreviation, because those differ per standard
+ * ('S', 'I', 'IN') while the severity does not.
+ *
+ * Returns undefined for a rating system with no satisfactory tier, in which
+ * case the caller must leave the rating alone rather than invent one.
+ */
+export function findInspectedLevel<T extends EditorRatingLevel>(
+  levels: readonly T[],
+): T | undefined {
+  return levels.find((l) => l.severity === 'good');
+}
+
+/**
+ * The rating to apply when the inspector activates `F`, or null to leave the
+ * item's rating exactly as it is.
+ *
+ * Findings imply inspection, so an item with no answer yet gets the
+ * satisfactory tier — F and IN then light together, which is what the row is
+ * telling the inspector. An item that ALREADY carries an answer keeps it, even
+ * when that answer is Not Inspected: silently rewriting an explicit NI would
+ * discard the inspector's own statement about the item, and with it the
+ * limitation that explains the NI. A defect recorded against a Not Inspected
+ * item is a contradiction for the report to surface, not for this to paper over.
+ */
+export function ratingForFindingsActivation<T extends EditorRatingLevel>(
+  activeLevel: T | null | undefined,
+  levels: readonly T[],
+): string | null {
+  if (activeLevel) return null;
+  return findInspectedLevel(levels)?.id ?? null;
+}
