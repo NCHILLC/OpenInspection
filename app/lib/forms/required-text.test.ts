@@ -50,7 +50,10 @@ describe("every form schema, submitted empty", () => {
     it("covers every schema factory the forms directory exports", () => {
         // A guard on the guard: if the filter above stops matching, this spec
         // would pass by testing nothing.
-        expect(factories.length).toBeGreaterThanOrEqual(18);
+        // 16 since the agent portal's three login/terms factories were removed
+        // with it. The floor exists so a filter that stops matching cannot pass
+        // by testing nothing — it tracks the real count, it is not a target.
+        expect(factories.length).toBeGreaterThanOrEqual(16);
     });
 
     for (const [name, factory] of factories) {

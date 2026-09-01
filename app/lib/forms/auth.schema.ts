@@ -144,45 +144,5 @@ export function makeAgentSignupSchema() {
   });
 }
 
-/**
- * The same tick, for an account that already exists (`/agent-accept-terms`).
- *
- * Deliberately its own schema rather than a `.pick()` off the signup one. They
- * validate different forms with different fields, and the day signup gains a
- * field, a derived schema would either drag it onto this page or need a second
- * edit anyway. The one field they share is the one that matters, and it carries
- * the same message on both.
- */
-export function makeAgentTermsAcceptSchema() {
-  return z.object({
-    agentTerms: requiredText(m.auth_validation_agent_terms_required())
-      .refine((v) => v === "on", m.auth_validation_agent_terms_required()),
-  });
-}
 
-/**
- * Task 5 — core agent password login (`/agent-login`, primary form). Mirrors
- * the API's `AgentLoginSchema` (server/lib/validations/agent-login.schema.ts):
- * email + password min(1) — this authenticates an EXISTING account, so no
- * strength rule applies here (unlike signup's makeAgentSignupSchema).
- */
-export function makeAgentLoginSchema() {
-  return z.object({
-    email: requiredText(m.auth_validation_email_required())
-      .min(1, m.auth_validation_email_required())
-      .email(m.auth_validation_email_invalid()),
-    password: requiredText(m.auth_validation_password_required()).min(1, m.auth_validation_password_required()),
-  });
-}
 
-/**
- * Task 5 — core agent login's magic-link fallback form (`/agent-login`,
- * secondary form). Mirrors the API's `AgentLoginLinkSchema`: email only.
- */
-export function makeAgentLoginLinkSchema() {
-  return z.object({
-    email: requiredText(m.auth_validation_email_required())
-      .min(1, m.auth_validation_email_required())
-      .email(m.auth_validation_email_invalid()),
-  });
-}

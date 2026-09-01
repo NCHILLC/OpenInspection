@@ -14,7 +14,7 @@
 import { m } from "~/paraglide/messages";
 import { DEFECT_PHOTO_GRID_CLASS, PRINT_FIGURE_CLASS } from "../report/types";
 
-export interface RepairDefectPhoto {
+interface RepairDefectPhoto {
   key: string;
   /** Already resolved by the caller through ITS OWN auth path. */
   url: string;

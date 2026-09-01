@@ -16,7 +16,6 @@ export default [
   // sign-in page the session ends on. `/logout` would send an agent to the
   // STAFF login (and, in SaaS, on to the portal's), which is not a door they
   // have a key to. See app/lib/session.server.ts.
-  route("agent-logout", "routes/logout.tsx", { id: "agent-logout" }),
   // Remote MCP OAuth consent screen (B3). Bare route (own chrome, own auth
   // handling); the OAuthProvider wrapper routes /oauth/authorize here via the
   // defaultHandler, injecting env.OAUTH_PROVIDER for the loader/action.
@@ -86,14 +85,11 @@ export default [
   // (no inspector slug); the server auto-assigns the first available inspector.
   route("embed/:tenant", "routes/public/booking-embed-company.tsx"),
   // Standalone agent pages — no agent-layout chrome
-  route("agent-signup", "routes/agent/signup.tsx"),
   // Spec 3 Task 5 — core dual-mode agent front door (password + magic-link).
-  route("agent-login", "routes/agent/login.tsx"),
   // The way out of the agent-terms gate. Standalone on purpose: agent-layout's
   // loader is what redirects a gated agent here, so a page under that layout
   // would redirect to itself. Keeps the `agent-` prefix so loginPathFor() sends
   // an expired session on this page to the agent door, not the staff one.
-  route("agent-accept-terms", "routes/agent/accept-terms.tsx"),
   // Error / utility pages (bare, outside auth)
   route("not-found", "routes/not-found.tsx"),
   route("feature-disabled", "routes/feature-disabled.tsx"),
@@ -126,7 +122,6 @@ export default [
   route("resources/recent-inspections", "routes/resources/recent-inspections.tsx"),
   route("resources/entity-audit", "routes/resources/entity-audit.tsx"),
   // C3 — the agent bell's writes (its reads ride the agent-layout loader).
-  route("resources/agent-notices", "routes/resources/agent-notices.tsx"),
   route("resources/staff-notices", "routes/resources/staff-notices.tsx"),
   route("resources/inspection-communication", "routes/resources/inspection-communication.tsx"),
   // #67 — the cancellation quote (loader) and the cancel itself (action). Both
@@ -239,17 +234,5 @@ export default [
       // #348 — reviewing what a library update would overwrite, before it does.
       route("library/marketplace/:libraryId/update", "routes/library/marketplace-update.tsx"),
     ]),
-  ]),
-  layout("routes/agent-layout.tsx", [
-    route("agent-dashboard", "routes/agent/dashboard.tsx"),
-    route("agent-settings/profile", "routes/agent/settings-profile.tsx"),
-    // The agent's own acceptance record. Under agent-layout like every other
-    // account page, so a gated agent is sent to accept before reading history —
-    // which is the ordinary ordering and needs no exemption anywhere.
-    route("agent-settings/legal", "routes/agent/settings-legal.tsx"),
-    route("agent-inspectors", "routes/agent/inspectors.tsx"),
-    route("agent-repair-items", "routes/agent/repair-items.tsx"),
-    // IA-54 — old path 301s to the renamed one.
-    route("agent-recommendations", "routes/agent/agent-repair-items-redirect.tsx"),
   ]),
 ] satisfies RouteConfig;

@@ -98,7 +98,6 @@ vi.doMock("~/lib/session.server", () => ({
 type RouteAction = (args: any) => Promise<unknown>;
 
 let builderAction: RouteAction;
-let agentAction: RouteAction;
 
 // Explicit timeout, not the 10s default. This hook transforms and imports two
 // route modules and everything they pull in; under a loaded machine that
@@ -111,7 +110,6 @@ let agentAction: RouteAction;
 // the acquittal.
 beforeAll(async () => {
   builderAction = (await import("./repair-builder.$tenant.$id")).action;
-  agentAction = (await import("../agent/repair-items")).action;
 }, 60_000);
 
 beforeEach(() => {
@@ -191,25 +189,5 @@ describe("client write path — update-item branch", () => {
 
     const body = (patch.mock.calls[0]?.[0] as { json: Record<string, unknown> }).json;
     expect("repairActionTag" in body).toBe(false);
-  });
-});
-
-describe("agent bulk-add — the third, separate field list", () => {
-  it("forwards trade AND an explicit null tag for every defect", async () => {
-    const fd = new FormData();
-    fd.append("_intent", "share");
-    fd.append("inspectionId", "insp1");
-    fd.append("tenantSlug", "t1");
-
-    await agentAction({
-      request: new Request("https://x/agent/repair-items", { method: "POST", body: fd }),
-      context: {},
-    });
-
-    expect(post).toHaveBeenCalledWith(
-      expect.objectContaining({
-        json: expect.objectContaining({ trade: "licensed roofer", repairActionTag: null }),
-      }),
-    );
   });
 });
