@@ -178,6 +178,16 @@ export function useEditorUrlNav({
     const atRoot = level === "sections";
 
     const goUp = useCallback(() => {
+        // ROOT FIRST. At the top of the drill stack there is nothing of ours
+        // left to pop, and popping browser history there lands on whatever
+        // preceded this page — in practice another entry for this same editor,
+        // so the chevron looks dead and the inspector cannot get out. Leaving
+        // the editor is the only thing "up" can mean from the section list.
+        if (!searchParams.get("item") && !searchParams.get("section")) {
+            pushedDepth.current = 0;
+            void navigate("/inspections");
+            return;
+        }
         if (pushedDepth.current > 0) {
             pushedDepth.current -= 1;
             void navigate(-1);

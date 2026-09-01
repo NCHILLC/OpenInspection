@@ -862,11 +862,11 @@ export class InspectionReportService extends InspectionSubService {
             // the renderer decides whether to display the appendix (mode === 'appendix').
             photoMode,
             photoAppendix,
+            // No rating system named. IN must stay 'good' — findInspectedLevel resolves by severity.
             ratingLevels: levels.length > 0 ? levels : [
-                { id: 'Satisfactory', label: 'Satisfactory', abbreviation: 'SAT', color: '#22c55e', severity: 'good', isDefect: false },
-                { id: 'Monitor', label: 'Monitor', abbreviation: 'MON', color: '#f59e0b', severity: 'marginal', isDefect: false },
-                { id: 'Defect', label: 'Defect', abbreviation: 'DEF', color: '#f43f5e', severity: 'significant', isDefect: true },
-                { id: 'Not Inspected', label: 'Not Inspected', abbreviation: 'NI', color: '#3b82f6', severity: 'minor', isDefect: false },
+                { id: 'Inspected', label: 'Inspected', abbreviation: 'IN', color: '#22c55e', severity: 'good', isDefect: false },
+                { id: 'Not Inspected', label: 'Not Inspected', abbreviation: 'NI', color: '#f59e0b', severity: 'minor', isDefect: false },
+                { id: 'Not Present', label: 'Not Present', abbreviation: 'NP', color: '#94a3b8', severity: 'minor', isDefect: false },
             ],
             showEstimates,
             enableRepairList,

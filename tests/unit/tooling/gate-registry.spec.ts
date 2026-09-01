@@ -159,6 +159,8 @@ describe('gate registry', () => {
         // exactly `lint:gates-full`, same members, same order. `lint:docs-markers`
         // left the list when the user-guide prose left this repository — the
         // marker gate went with the files it reads.
+        // `lint:agent-routes` left the same way: its whole subject was the
+        // agent-layout route block, and the gate went with the portal.
         const CHAINED_NODE_GATES = [
             'lint:ds', 'lint:contrast', 'lint:svg', 'lint:erasure', 'lint:retention',
             'lint:retention-policy', 'lint:processing-stores', 'lint:platform-defaults',
@@ -169,7 +171,7 @@ describe('gate registry', () => {
             'lint:provider-helpers', 'lint:notification-dispatch', 'lint:tests',
             'lint:tests-tsconfig', 'lint:test-imports', 'lint:deadcode', 'lint:timestamps',
             'lint:tz', 'lint:idempotency', 'lint:ext-collisions', 'lint:i18n',
-            'lint:i18n-catalog', 'lint:i18n-glossary', 'lint:naming', 'lint:agent-routes',
+            'lint:i18n-catalog', 'lint:i18n-glossary', 'lint:naming',
             'lint:submit-guard', 'lint:doclinks', 'lint:seed-sql',
             'lint:schema-doc', 'lint:verification-copy', 'lint:fabricated-names',
             'lint:sigcompare', 'lint:signature-dynamics', 'lint:sms-gate-args',
@@ -181,7 +183,8 @@ describe('gate registry', () => {
             missing,
             `${missing.length} of ${CHAINED_NODE_GATES.length} chained gates are unregistered: ${missing.join(', ')}`,
         ).toEqual([]);
-        expect(CHAINED_NODE_GATES.length).toBe(47);
+        // 46 since lint:agent-routes retired with the agent portal.
+        expect(CHAINED_NODE_GATES.length).toBe(46);
     });
 
     it('passes --check to the schema-doc gate, which is a generator by default', () => {
