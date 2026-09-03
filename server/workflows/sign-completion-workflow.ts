@@ -6,7 +6,6 @@ import { AuditLogService } from '../services/audit-log.service';
 import { m2mAgreementRenderUrl } from '../lib/public-urls';
 import { envelopeVerifyUrl } from '../lib/agreement-verify-url';
 import { buildEvidencePack } from '../services/evidence-pack.service';
-import { buildTenantEmailService } from '../lib/email/build-email-service';
 import { getDeploymentProfile } from '../lib/deployment-profile';
 import { PlanQuotaGuard, readTenantTier } from '../features/plan-quota/guard';
 import { tenantAiCapsLoader } from '../features/plan-quota/ai-caps';
@@ -273,6 +272,19 @@ export class SignCompletionWorkflow extends WorkflowEntrypoint<AppEnv, SignCompl
                     ? new PlanQuotaGuard(env.DB, { enforced: true, billingPortalUrl: profile.billingPortalUrl, aiCaps: tenantAiCapsLoader(env.DB) })
                     : undefined;
                 const tenantTier = quotaGuard ? await readTenantTier(env.DB, req.tenantId) : undefined;
+                // ⚠️ IMPORTED HERE, NOT AT THE TOP, AND THAT IS LOAD-BEARING.
+                // A Workflow class must be EXPORTED FROM THE WORKER ENTRY for
+                // the runtime to bind it, so everything this module imports
+                // statically is evaluated on every cold start — including, via
+                // the email builder → branding service, the whole
+                // `@hono/zod-openapi` + Zod graph. That is a third of the
+                // worker's startup cost, paid by every request that is not a
+                // signing workflow, for code only this step uses.
+                //
+                // The class itself still extends WorkflowEntrypoint and is
+                // still exported eagerly: only the heavy subtree moved behind
+                // this await, so the runtime's contract is untouched.
+                const { buildTenantEmailService } = await import('../lib/email/build-email-service');
                 const email = await buildTenantEmailService(env, req.tenantId, quotaGuard, tenantTier);
                 await email.sendEvidencePack({
                     to: req.clientEmail,
