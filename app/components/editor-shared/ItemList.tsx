@@ -5,6 +5,7 @@ import type { EditorMode } from "./editor-mode";
 import { useSortableReorder } from "./useSortableReorder";
 import { InlineRename } from "./InlineRename";
 import { findingKey } from "~/hooks/findings/shared";
+import { hasFlaggedComment } from "./item-tab-projections";
 import { m } from "~/paraglide/messages";
 
 // Handle + ⋯ occupy reserved flex slots so they never cover the item number,
@@ -207,6 +208,19 @@ export function ItemList({
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                         <circle cx="12" cy="13" r="3.2" />
+                      </svg>
+                    </span>
+                  )}
+                  {/* The inspector's own "come back to this". It lived only on
+                      the comment that set it until now. */}
+                  {mode === "fill" && hasFlaggedComment(result) && (
+                    <span
+                      title={m.editor_shared_item_flagged()}
+                      aria-label={m.editor_shared_item_flagged()}
+                      className="shrink-0 text-ih-bad-fg"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M5 3a1 1 0 011 1v.5l2.7-.7a5 5 0 013.1.2l1 .4a5 5 0 003.1.2l1.9-.5A1 1 0 0119 5v8a1 1 0 01-.8 1l-2.2.5a5 5 0 01-3.1-.2l-1-.4a5 5 0 00-3.1-.2L6 14.4V21a1 1 0 11-2 0V4a1 1 0 011-1z" />
                       </svg>
                     </span>
                   )}

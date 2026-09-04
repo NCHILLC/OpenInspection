@@ -103,5 +103,7 @@
   "editor_unsavedchanges_leave": "Leave",
   "editor_unsavedchanges_body": "You have unsaved changes. Are you sure you want to leave?",
   "editor_shared_section_has_defect": "Has a defect",
-  "editor_shared_item_no_photo": "Rated, no photo yet"
+  "editor_shared_item_no_photo": "Rated, no photo yet",
+  "editor_shared_section_has_flagged": "Has a flagged comment",
+  "editor_shared_item_flagged": "Flagged for follow-up"
 }

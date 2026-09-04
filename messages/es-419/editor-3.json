@@ -103,5 +103,7 @@
   "editor_unsavedchanges_leave": "Salir",
   "editor_unsavedchanges_body": "Tiene cambios sin guardar. ¿Seguro que quiere salir?",
   "editor_shared_section_has_defect": "Tiene un defecto",
-  "editor_shared_item_no_photo": "Calificado, aún sin foto"
+  "editor_shared_item_no_photo": "Calificado, aún sin foto",
+  "editor_shared_section_has_flagged": "Tiene un comentario marcado",
+  "editor_shared_item_flagged": "Marcado para seguimiento"
 }

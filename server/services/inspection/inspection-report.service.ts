@@ -28,6 +28,7 @@ import { reportContentHash, resolveRenderedReportId, resolveResultsRow, type Tra
 import { resolveReportPdfFooterContext, type ReportPdfFooterContext } from './report-pdf-footer';
 import { InspectionSubService } from './base';
 import { DefectCategoryService } from './defect-category.service';
+import { categoryKeyMaps } from './defect-category-keys';
 import { buildCostTables } from '../../lib/pca-costs';
 import { CostItemService } from '../cost-item.service';
 import { resolveReportTier } from '../../lib/report-tier';
@@ -295,15 +296,10 @@ export class InspectionReportService extends InspectionSubService {
         // Authoring unification Plan-4 module K — resolve the tenant's defect
         // categories ONCE (seeding the 3 canonical rows on first use), so the
         // per-defect Summary gate (defectDrivesSummary) and chip color can be
-        // looked up per-defect below with no N+1 query. Keyed by BOTH name
-        // and id: seed template JSON stores category NAMES ("safety"), while
-        // a template authored after Plan-4 may store a defect_categories.id.
+        // looked up per-defect below with no N+1 query; see categoryKeyMaps
+        // for why both an id and a name have to resolve.
         const defectCategories = await new DefectCategoryService(this.db).ensureSeed(tenantId);
-        const categoryColorByKey = new Map<string, string>();
-        for (const cat of defectCategories) {
-            categoryColorByKey.set(cat.name, cat.color);
-            categoryColorByKey.set(cat.id, cat.color);
-        }
+        const { color: categoryColorByKey, name: categoryNameByKey } = categoryKeyMaps(defectCategories);
 
         const sections = schemaData.sections.map((sec: SchemaSection) => ({
             id: sec.id,
@@ -339,7 +335,11 @@ export class InspectionReportService extends InspectionSubService {
                     const st = defectStateMap.get(d.id);
                     const included = st ? !!st.included : !!d.default;
                     const override = st && typeof st.comment === 'string' && st.comment.length > 0 ? st.comment : null;
-                    const effectiveCategory = st?.category ?? d.category;
+                    // Resolved to the DISPLAY name; the raw key survives only for
+                    // a category the tenant has since deleted.
+                    const storedCategory = st?.category ?? d.category;
+                    const effectiveCategory = storedCategory
+                        ? (categoryNameByKey.get(storedCategory) ?? storedCategory) : storedCategory;
                     // IA-57 — resolve the Mustache vars once and reuse them: the
                     // comment interpolation and the independent trade/timeframe
                     // render points must share the same label resolution.

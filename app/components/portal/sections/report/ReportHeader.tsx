@@ -64,10 +64,15 @@ export function ReportHeader({
 }: ReportHeaderProps) {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-6">
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex items-center gap-3">
+      {/* `flex-wrap` and `min-w-0`, because neither was here: a single
+          non-wrapping row put the certification line and up to three action
+          buttons on one line, and flex items shrink below their content by
+          default. On a phone the company name rendered straight THROUGH the
+          Print and Repair Request buttons. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 mb-6">
+        <div className="flex items-center gap-3 min-w-0">
           {brand.logoUrl ? (
-            <img src={brand.logoUrl} alt={brand.companyName ?? m.report_view_logo_alt()} className="h-10 w-auto" />
+            <img src={brand.logoUrl} alt={brand.companyName ?? m.report_view_logo_alt()} className="h-10 w-auto shrink-0" />
           ) : (
             <div className="w-10 h-10 rounded-full bg-ih-ok/10 flex items-center justify-center">
               <svg className="w-5 h-5 text-ih-ok" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,11 +80,11 @@ export function ReportHeader({
               </svg>
             </div>
           )}
-          <span className="text-xs font-semibold tracking-widest uppercase text-ih-fg-3">
+          <span className="min-w-0 text-xs font-semibold tracking-widest uppercase text-ih-fg-3">
             {brand.companyName ? m.report_view_cert_with_company({ company: brand.companyName }) : m.report_view_cert()}
           </span>
         </div>
-        <div className="flex items-center gap-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
           {/* IA-68 — the "View Repair List" button pointed at
               /inspections/:id/repair-list, a page route that does not exist
               (only the API route does), so it 404'd. The "Build repair
@@ -88,7 +93,7 @@ export function ReportHeader({
           {!hideClientActions && enableCustomerRepairExport && (
             <a
               href={`/repair-builder/${tenant}/${reportId}${token ? `?token=${encodeURIComponent(token)}` : ""}`}
-              className="px-4 py-2 text-sm font-medium rounded-lg border border-ih-border text-ih-fg-3 flex items-center gap-2 hover:bg-ih-bg-muted transition-colors"
+              className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg border border-ih-border text-ih-fg-3 flex items-center gap-2 hover:bg-ih-bg-muted transition-colors"
             >
               {m.report_view_build_repair()}
             </a>
@@ -96,7 +101,7 @@ export function ReportHeader({
           <button
             type="button"
             onClick={() => window.print()}
-            className="px-4 py-2 text-sm font-medium rounded-lg border border-ih-border text-ih-fg-3 flex items-center gap-2 hover:bg-ih-bg-muted transition-colors"
+            className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg border border-ih-border text-ih-fg-3 flex items-center gap-2 hover:bg-ih-bg-muted transition-colors"
           >
             {m.report_view_print()}
           </button>
@@ -104,7 +109,7 @@ export function ReportHeader({
             <button
               type="button"
               onClick={onToggleRepairPanel}
-              className="px-4 py-2 text-sm font-semibold rounded-lg bg-ih-primary text-ih-primary-fg flex items-center gap-2"
+              className="shrink-0 px-4 py-2 text-sm font-semibold rounded-lg bg-ih-primary text-ih-primary-fg flex items-center gap-2"
             >
               {m.portal_hub_nav_repair()}
             </button>

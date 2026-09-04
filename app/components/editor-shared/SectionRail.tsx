@@ -25,7 +25,7 @@ interface SharedSectionRailProps {
   * (default) resolves the `_default` common scope, byte-identical to before.
   */
  activeUnitId?: string | null;
- sectionProgress?: (sectionId: string) => { total: number; rated: number; percent: number; hasDefect: boolean };
+ sectionProgress?: (sectionId: string) => { total: number; rated: number; percent: number; hasDefect: boolean; hasFlagged?: boolean };
  sectionDefectCount?: (sectionId: string) => number;
  /** Whether the report-scoped "Inspection Details" overview entry is active. */
  overviewActive?: boolean;
@@ -162,6 +162,7 @@ export function SectionRail({
 
  const defects = sectionDefectCount?.(section.id) ?? 0;
  const hasDefect = progress?.hasDefect ?? (defects > 0);
+  const hasFlagged = progress?.hasFlagged ?? false;
  const unrated = total - rated;
  const tipParts = [m.editor_shared_section_rated({ rated, total })];
  if (unrated > 0) tipParts.push(m.editor_shared_section_unrated({ unrated }));
@@ -235,6 +236,20 @@ export function SectionRail({
         title={m.editor_shared_section_has_defect()}
         className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded bg-ih-bad-bg text-ih-bad-fg text-[11px] font-bold"
        >!</span>
+      )}
+      {/* The flag the inspector set on a comment, carried up to a screen they
+          pass on the way out. Without this it existed only on the comment that
+          set it, which is no use as a reminder. */}
+      {hasFlagged && (
+       <span
+        aria-label={m.editor_shared_section_has_flagged()}
+        title={m.editor_shared_section_has_flagged()}
+        className="ml-1 shrink-0 text-ih-bad-fg"
+       >
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+         <path d="M5 3a1 1 0 011 1v.5l2.7-.7a5 5 0 013.1.2l1 .4a5 5 0 003.1.2l1.9-.5A1 1 0 0119 5v8a1 1 0 01-.8 1l-2.2.5a5 5 0 01-3.1-.2l-1-.4a5 5 0 00-3.1-.2L6 14.4V21a1 1 0 11-2 0V4a1 1 0 011-1z" />
+        </svg>
+       </span>
       )}
      </>
      : <span className="text-[13px] text-ih-fg-3 font-mono">{section.items.length}</span>}

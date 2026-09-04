@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import type { InspectionContext } from "./helpers";
 import { isItemComplete } from "~/lib/item-completeness";
+import { hasFlaggedComment } from "~/components/editor-shared/item-tab-projections";
 
 /**
  * Progress slice: overall + per-section completion, defect counts, and live
@@ -30,12 +31,13 @@ export function useInspectionProgress(ctx: InspectionContext) {
   const sectionProgress = useCallback(
     (sectionId: string) => {
       const sec = sections.find((s) => s.id === sectionId);
-      if (!sec) return { rated: 0, total: 0, percent: 0, hasDefect: false };
+      if (!sec) return { rated: 0, total: 0, percent: 0, hasDefect: false, hasFlagged: false };
       const total = sec.items.length;
       if (total === 0)
-        return { rated: 0, total: 0, percent: 0, hasDefect: false };
+        return { rated: 0, total: 0, percent: 0, hasDefect: false, hasFlagged: false };
       let rated = 0;
       let hasDefect = false;
+      let hasFlagged = false;
       for (const item of sec.items) {
         const r = getResult(item.id, sec.id);
         // Same completeness rule as the overall ring — this counted only
@@ -49,12 +51,17 @@ export function useInspectionProgress(ctx: InspectionContext) {
           const level = ratingLevels.find((l) => l.id === r.rating);
           if (level?.isDefect) hasDefect = true;
         }
+        // Independent of rating and of defect: a flag is the inspector's own
+        // "come back to this", and it has to survive to a screen they will
+        // actually pass on the way out.
+        if (hasFlaggedComment(r)) hasFlagged = true;
       }
       return {
         rated,
         total,
         percent: Math.round((rated / total) * 100),
         hasDefect,
+        hasFlagged,
       };
     },
     [sections, getResult, ratingLevels],

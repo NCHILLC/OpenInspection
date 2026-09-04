@@ -89,6 +89,21 @@ export function getFlaggedMap(result: ResultLike, tabName: CannedTabId): Map<str
 }
 
 /**
+ * Has the inspector flagged ANY comment on this item, on any tab?
+ *
+ * `getFlaggedMap` answers per-tab, which is what the comment list needs. A row
+ * needs the whole item in one boolean: the flag is a note-to-self that this
+ * comment must be revisited, and until now the ONLY place it appeared was the
+ * toggle that set it plus a filter inside the search drawer. Flagging something
+ * and then having to remember where you flagged it is the opposite of what the
+ * flag is for.
+ */
+export function hasFlaggedComment(result: ResultLike): boolean {
+    const tabs = (result.tabs as Record<string, Array<{ flagged?: boolean }>> | undefined) ?? {};
+    return Object.values(tabs).some((entries) => entries?.some((s) => s.flagged));
+}
+
+/**
  * Does this item carry a finding? — the `F` of IN / NI / NP / F.
  *
  * ⚠️ DERIVED, NEVER STORED, AND DELIBERATELY NOT A RATING LEVEL. Spectora lights

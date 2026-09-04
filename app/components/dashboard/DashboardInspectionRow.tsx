@@ -50,9 +50,15 @@ export function DashboardInspectionRow({
         onChange={() => toggleSelect(insp.id)}
         className="accent-ih-primary shrink-0"
       />
+      {/* Stacked below sm. The status pill, defect chips and price sit in a
+          `shrink-0` group, so on a phone they took the width they needed and
+          left the address and client/date column with what remained — which was
+          a few characters, wrapping "9:00 AM EDT" over four lines. Side by side
+          is a desktop-width layout; it has to become two rows before it runs
+          out of room. */}
       <Link
         to={`/inspections/${insp.id}`}
-        className="flex items-center justify-between flex-1 min-w-0"
+        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-0 flex-1 min-w-0"
       >
         <div className="min-w-0">
           {isColumnVisible("propertyAddress") && (
@@ -78,7 +84,7 @@ export function DashboardInspectionRow({
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 ml-4">
+        <div className="flex flex-wrap items-center gap-2 shrink-0 sm:ml-4">
           {isColumnVisible("statusIcons") && (
             <Pill tone={statusTone(insp.status)}>
               {insp.status.replace(/_/g, " ")}
