@@ -76,6 +76,34 @@ const CHOICE_ANSWER_TYPE = 'checkbox';
 const AFFIRMATIVE_DEFAULT = 'true';
 
 /**
+ * ⚠️ LITERAL-USE CLASSIFICATION: FORMAT DISCRIMINATOR. A prefix; the real
+ * heading continues into a parenthesised note naming this column's own values.
+ */
+const SEVERITY_HEADER = 'category';
+
+/**
+ * The file's three-point severity, onto our three seed defect categories.
+ *
+ * ⚠️ LITERAL-USE CLASSIFICATION: REQUIRED ENUM on the left — three functional
+ * tokens the parser must match. INDEPENDENTLY AUTHORED on the right:
+ * `maintenance`, `recommendation` and `safety` are OUR seed category names
+ * (see DefectCategoryService), not taken from any product.
+ *
+ * The two are not the same axis and the alignment is deliberate, not a
+ * discovered identity: the file grades how BAD a finding is, our categories say
+ * what KIND it is. Three points onto three seeds is the only mapping that uses
+ * the column at all, and it puts the top grade on the one seed that drives the
+ * report Summary — which is where an inspector expects their worst findings to
+ * appear. A tenant who has since renamed or added categories keeps theirs; this
+ * only decides what a freshly imported defect starts as.
+ */
+const CATEGORY_FOR_SEVERITY: Record<string, string> = {
+    '-1': 'maintenance',
+    '0': 'recommendation',
+    '1': 'safety',
+};
+
+/**
  * The comment-type column's values.
  *
  * ⚠️ LITERAL-USE CLASSIFICATION: REQUIRED ENUM. Three short functional tokens
@@ -113,6 +141,8 @@ export interface SheetColumns {
     answerType: number;
     /** -1 on an export without the column; every comment then imports off. */
     defaultValue: number;
+    /** -1 on an export without the column; every defect then takes the default. */
+    severity: number;
 }
 
 /**
@@ -160,6 +190,7 @@ export async function readSpectoraWorkbook(input: unknown): Promise<SpectoraShee
             choices: headerIndex(header, CHOICES_HEADER),
             answerType: headerIndex(header, ANSWER_TYPE_HEADER),
             defaultValue: headerIndex(header, DEFAULT_VALUE_HEADER),
+            severity: headerIndex(header, SEVERITY_HEADER),
         },
     };
 }
@@ -197,6 +228,17 @@ export function choicesFrom(row: string[], columns: SheetColumns): string[] | un
  * direction: a comment wrongly ON puts words in the report the inspector did
  * not write, and a comment wrongly OFF is one tap away.
  */
+/**
+ * The category a defect starts in, or undefined when the file does not grade it.
+ *
+ * Undefined rather than a guess: a row the file leaves ungraded, or grades with
+ * something this reader does not know, keeps the caller's default instead of
+ * being silently filed as the mildest or the worst.
+ */
+export function categoryFrom(row: string[], columns: SheetColumns): string | undefined {
+    return CATEGORY_FOR_SEVERITY[at(row, columns.severity)];
+}
+
 export function defaultFrom(row: string[], columns: SheetColumns): boolean {
     return at(row, columns.defaultValue).toLowerCase() === AFFIRMATIVE_DEFAULT;
 }

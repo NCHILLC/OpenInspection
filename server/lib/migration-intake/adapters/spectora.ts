@@ -42,6 +42,7 @@ import {
     COMMENT_TYPES,
     TAB_FOR_COMMENT_TYPE,
     at,
+    categoryFrom,
     choicesFrom,
     defaultFrom,
     readSpectoraWorkbook,
@@ -145,7 +146,8 @@ function buildTemplate(sheet: Extract<SpectoraSheet, { ok: true }>): BuiltTempla
         if (tab === 'defects') {
             stats.defects++;
             const defect: CannedDefect = {
-                id, title: name || 'Defect', category: DEFAULT_IMPORTED_DEFECT_CATEGORY,
+                id, title: name || 'Defect',
+                category: categoryFrom(row, sheet.columns) ?? DEFAULT_IMPORTED_DEFECT_CATEGORY,
                 location: '', comment: text, photos: [], default: defaultFrom(row, sheet.columns),
                 ...(choices ? { choices } : {}),
             };

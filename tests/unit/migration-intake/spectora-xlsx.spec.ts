@@ -28,6 +28,7 @@ const HEADER = [
     'Multiple Choice Options (comma-separated)',
     'Answer Type (boolean, checkbox, date, number, range, text)',
     'Default Value',
+    'Category (-1: Low, 0: Med, 1: High)',
 ];
 
 function sheetXml(rows: string[][]): string {
@@ -237,14 +238,23 @@ describe('spectoraAdapter.convert — the real export', () => {
 describe('spectoraAdapter.convert — what the file says about a comment', () => {
     const row = (
         name: string, type: string, choices: string, answerType: string, def: string,
-    ) => ['Roof', 'General', name, 'Body.', type, choices, answerType, def];
+        severity = '',
+    ) => ['Roof', 'General', name, 'Body.', type, choices, answerType, def, severity];
 
-    const built = async (rows: string[][]) => {
+    const itemFrom = async (rows: string[][]) => {
         const result = await spectoraAdapter.convert(await workbook([HEADER, ...rows]), { name: 'T' });
         if (!result.ok) throw new Error('conversion refused');
-        const item = result.bundle.templates[0]!.schema.sections[0]!.items[0]!;
+        return result.bundle.templates[0]!.schema.sections[0]!.items[0]!;
+    };
+
+    /** Every comment, whichever tab it landed on. */
+    const built = async (rows: string[][]) => {
+        const item = await itemFrom(rows);
         return [...item.tabs!.information, ...item.tabs!.limitations, ...item.tabs!.defects];
     };
+
+    /** The defects only — a category is a defect's field, not a comment's. */
+    const builtDefects = async (rows: string[][]) => (await itemFrom(rows)).tabs!.defects;
 
     it('gives a list-bearing comment the answers the file lists', async () => {
         const [comment] = await built([
@@ -254,7 +264,7 @@ describe('spectoraAdapter.convert — what the file says about a comment', () =>
     });
 
     it('gives a defect its answers too — a list is not information-only', async () => {
-        const [defect] = await built([
+        const [defect] = await builtDefects([
             row('Material', 'defect', 'Asphalt, Slate', 'checkbox', ''),
         ]);
         expect(defect!.choices).toEqual(['Asphalt', 'Slate']);
@@ -290,6 +300,33 @@ describe('spectoraAdapter.convert — what the file says about a comment', () =>
         // report that the inspector did not write.
         expect(off!.default).toBe(false);
         expect(blank!.default).toBe(false);
+    });
+
+    /**
+     * The file grades how BAD a finding is; our categories say what KIND it is.
+     * Three points onto three seeds is the only mapping that uses the column,
+     * and the top grade lands on the one seed that drives the report Summary.
+     */
+    it('files a defect by the severity the file grades it', async () => {
+        const [low, med, high] = await builtDefects([
+            row('Worn trim', 'defect', '', 'boolean', '', '-1'),
+            row('Cracked pane', 'defect', '', 'boolean', '', '0'),
+            row('Dead tree on the service drop', 'defect', '', 'boolean', '', '1'),
+        ]);
+        expect(low!.category).toBe('maintenance');
+        expect(med!.category).toBe('recommendation');
+        expect(high!.category).toBe('safety');
+    });
+
+    it('leaves an ungraded or oddly-graded defect on the default', async () => {
+        // Not a guess in either direction: filing it as the mildest hides it,
+        // filing it as the worst floods the Summary.
+        const [blank, odd] = await builtDefects([
+            row('No grade', 'defect', '', 'boolean', '', ''),
+            row('Odd grade', 'defect', '', 'boolean', '', '7'),
+        ]);
+        expect(blank!.category).toBe('recommendation');
+        expect(odd!.category).toBe('recommendation');
     });
 
     it('still imports when the export omits the three columns entirely', async () => {
