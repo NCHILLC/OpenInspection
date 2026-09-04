@@ -35,6 +35,14 @@ export interface CannedInfoComment {
     default: boolean;
     /** Optional shortcode typed in the editor to fill this comment (≤ 12 chars). */
     abbrev?: string;
+    /**
+     * Checklist-style answers this comment offers, ticked per inspection.
+     *
+     * Optional and long-standing — the zod schema, the editor's comment tabs
+     * and the report have carried it throughout; this type is a hand-kept
+     * second copy of that shape and had simply drifted from it.
+     */
+    choices?: string[];
 }
 
 /** Defect canned entry — adds category + per-defect location and photos. */
@@ -51,6 +59,14 @@ export interface CannedDefect {
     default: boolean;
     /** Optional shortcode typed in the editor to fill this comment (≤ 12 chars). */
     abbrev?: string;
+    /**
+     * Checklist-style answers this comment offers, ticked per inspection.
+     *
+     * Optional and long-standing — the zod schema, the editor's comment tabs
+     * and the report have carried it throughout; this type is a hand-kept
+     * second copy of that shape and had simply drifted from it.
+     */
+    choices?: string[];
 }
 
 /** Three-tab canned comment buckets attached to each item. */

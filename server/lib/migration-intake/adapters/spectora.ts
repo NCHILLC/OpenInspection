@@ -38,115 +38,22 @@ import {
     DEFAULT_IMPORTED_RATING_OPTIONS,
     type ConvertStats,
 } from '../bundle';
-import { readXlsxSheet } from '../formats/xlsx-sheet';
+import {
+    COMMENT_TYPES,
+    TAB_FOR_COMMENT_TYPE,
+    at,
+    choicesFrom,
+    defaultFrom,
+    readSpectoraWorkbook,
+    type CommentType,
+    type SpectoraSheet,
+} from './spectora-sheet';
 import type { AdapterInspection, BundleResult, MigrationAdapter } from './types';
 import { emptyEntityCounts } from './types';
 
 /** ⚠️ LITERAL-USE CLASSIFICATION: INDEPENDENTLY AUTHORED. Our own adapter's version. */
 const SPECTORA_ADAPTER_VERSION = '2';
 
-/**
- * The column headings that identify this file as this product's export.
- *
- * ⚠️ LITERAL-USE CLASSIFICATION: FORMAT DISCRIMINATOR. These are the strings a
- * reader must match to recognise the format at all. Minimum necessary literal
- * use — the list stops at what identifies the format and does not continue into
- * the product's own section, item or comment vocabulary, which is theirs.
- * Matched case-insensitively on the PREFIX, because several headings continue
- * into a parenthesised note.
- */
-const REQUIRED_HEADERS = ['section name', 'item name', 'comment name', 'comment text'];
-
-/**
- * ⚠️ LITERAL-USE CLASSIFICATION: FORMAT DISCRIMINATOR. The heading of the
- * column holding the value below; a prefix, because the real heading continues
- * into a parenthesised list of its own values.
- */
-const COMMENT_TYPE_HEADER = 'comment type';
-
-/**
- * The comment-type column's values.
- *
- * ⚠️ LITERAL-USE CLASSIFICATION: REQUIRED ENUM. Three short functional tokens
- * the parser must match to do anything at all. They happen to be our own three
- * tabs, so the mapping below is the identity — a coincidence of the format,
- * not a taxonomy taken from it.
- */
-const COMMENT_TYPES = ['info', 'limit', 'defect'] as const;
-type CommentType = typeof COMMENT_TYPES[number];
-
-/**
- * Which of our tabs each of those values names. The identity, spelled out.
- *
- * ⚠️ LITERAL-USE CLASSIFICATION: INDEPENDENTLY AUTHORED on the right-hand side
- * — `information`, `limitations` and `defects` are OUR tab names. That they
- * line up one-to-one with the column's values is a coincidence of the format.
- */
-const TAB_FOR_COMMENT_TYPE: Record<CommentType, 'information' | 'limitations' | 'defects'> = {
-    info: 'information',
-    limit: 'limitations',
-    defect: 'defects',
-};
-
-/** Where each thing this reader needs sits in the header row. */
-interface SheetColumns {
-    section: number;
-    item: number;
-    commentName: number;
-    commentText: number;
-    /** -1 when the export omits the column entirely — every row then reads untyped. */
-    commentType: number;
-}
-
-/**
- * The workbook as this reader understands it, or why it does not.
- *
- * ⚠️ LITERAL-USE CLASSIFICATION: INDEPENDENTLY AUTHORED — our own refusal
- * codes, which the operator never sees; the sentences they map to are below.
- */
-type SpectoraSheet =
-    | { ok: true; rows: string[][]; columns: SheetColumns }
-    | { ok: false; code: 'NOT_AN_EXPORT' | 'NO_SECTIONS' };
-
-/** The index of the first heading starting with `prefix`, or -1. */
-function headerIndex(header: string[], prefix: string): number {
-    return header.findIndex((cell) => cell.startsWith(prefix));
-}
-
-/**
- * The bytes as this export, or why they are not it.
- *
- * ONE shape test, shared by `inspect` and `convert`. `inspect` throws the
- * reason away and answers null; `convert` turns it into the sentence the
- * operator reads. A second copy of this test is how the two come to disagree
- * about what this product's file is — silently, because each has its own tests.
- */
-async function readSpectoraWorkbook(input: unknown): Promise<SpectoraSheet> {
-    if (!(input instanceof Uint8Array)) return { ok: false, code: 'NOT_AN_EXPORT' };
-    const rows = await readXlsxSheet(input);
-    if (rows === null || rows.length === 0) return { ok: false, code: 'NOT_AN_EXPORT' };
-    const header = rows[0]!.map((cell) => cell.trim().toLowerCase());
-    if (!REQUIRED_HEADERS.every((h) => header.some((cell) => cell.startsWith(h)))) {
-        return { ok: false, code: 'NOT_AN_EXPORT' };
-    }
-    const body = rows.slice(1).filter((row) => row.some((cell) => cell.trim() !== ''));
-    if (body.length === 0) return { ok: false, code: 'NO_SECTIONS' };
-    return {
-        ok: true,
-        rows: body,
-        columns: {
-            section: headerIndex(header, REQUIRED_HEADERS[0]!),
-            item: headerIndex(header, REQUIRED_HEADERS[1]!),
-            commentName: headerIndex(header, REQUIRED_HEADERS[2]!),
-            commentText: headerIndex(header, REQUIRED_HEADERS[3]!),
-            commentType: headerIndex(header, COMMENT_TYPE_HEADER),
-        },
-    };
-}
-
-function at(row: string[], column: number): string {
-    return column < 0 ? '' : (row[column] ?? '').trim();
-}
 
 /** A comment whose type column said nothing this reader knows. */
 interface UntypedComment {
@@ -231,6 +138,7 @@ function buildTemplate(sheet: Extract<SpectoraSheet, { ok: true }>): BuiltTempla
         // An untyped comment is KEPT, under information, because a dropped row
         // cannot be repaired and nothing left would say which one went. It is
         // named in the manifest's warnings instead.
+        const choices = choicesFrom(row, sheet.columns);
         const tab = TAB_FOR_COMMENT_TYPE[type ?? 'info'];
         const tabs = item.tabs!;
         const id = `${tab === 'defects' ? 'rd' : 'ri'}_${index + 1}`;
@@ -238,12 +146,14 @@ function buildTemplate(sheet: Extract<SpectoraSheet, { ok: true }>): BuiltTempla
             stats.defects++;
             const defect: CannedDefect = {
                 id, title: name || 'Defect', category: DEFAULT_IMPORTED_DEFECT_CATEGORY,
-                location: '', comment: text, photos: [], default: false,
+                location: '', comment: text, photos: [], default: defaultFrom(row, sheet.columns),
+                ...(choices ? { choices } : {}),
             };
             tabs.defects.push(defect);
         } else {
             const entry: CannedInfoComment = {
-                id, title: name || 'Comment', comment: text, default: false,
+                id, title: name || 'Comment', comment: text, default: defaultFrom(row, sheet.columns),
+                ...(choices ? { choices } : {}),
             };
             if (tab === 'limitations') {
                 stats.limitations++;

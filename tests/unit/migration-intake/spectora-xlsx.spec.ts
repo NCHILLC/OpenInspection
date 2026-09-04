@@ -15,12 +15,19 @@ import { zipOf } from '../helpers/zip-fixture';
 /**
  * The columns this reader needs, in the order the export carries them.
  *
- * The real export is 42 columns wide; the rest are photo slots, ordering,
- * answer types and timestamps that a template import does not consume.
+ * The real export is 42 columns wide. The three after the comment type are not
+ * adjacent to it there — the reader finds every column by its heading, so the
+ * gap between them does not matter and this fixture leaves it out.
+ *
+ * The rest are photo slots, ordering, severity, units, estimates and
+ * timestamps, which a template import does not consume.
  */
 const HEADER = [
     'Section Name', 'Item Name', 'Comment Name', 'Comment Text',
     'Comment Type (info, limit, defect)',
+    'Multiple Choice Options (comma-separated)',
+    'Answer Type (boolean, checkbox, date, number, range, text)',
+    'Default Value',
 ];
 
 function sheetXml(rows: string[][]): string {
@@ -214,5 +221,88 @@ describe('spectoraAdapter.convert — the real export', () => {
         const roof = schema.sections.find((s) => s.title === 'Roof');
         expect(roof?.items.find((i) => i.label === 'Covering')?.tabs?.defects.map((d) => d.title))
             .toEqual(['Worn']);
+    });
+});
+
+/**
+ * What the file says about a comment, beyond its text.
+ *
+ * These three columns were read by nothing, and the loss was invisible at the
+ * import and obvious in the field: a comment offering a list of answers arrived
+ * as a bare checkbox with no answers to check, and the comments the file marks
+ * as on-by-default arrived off, so an inspector opened every report to the same
+ * three boxes unticked. Both destinations already existed — `choices` and
+ * `default` are template-schema fields the editor has always rendered.
+ */
+describe('spectoraAdapter.convert — what the file says about a comment', () => {
+    const row = (
+        name: string, type: string, choices: string, answerType: string, def: string,
+    ) => ['Roof', 'General', name, 'Body.', type, choices, answerType, def];
+
+    const built = async (rows: string[][]) => {
+        const result = await spectoraAdapter.convert(await workbook([HEADER, ...rows]), { name: 'T' });
+        if (!result.ok) throw new Error('conversion refused');
+        const item = result.bundle.templates[0]!.schema.sections[0]!.items[0]!;
+        return [...item.tabs!.information, ...item.tabs!.limitations, ...item.tabs!.defects];
+    };
+
+    it('gives a list-bearing comment the answers the file lists', async () => {
+        const [comment] = await built([
+            row('Utilities', 'info', 'All On, Water Off, Electric Off', 'checkbox', ''),
+        ]);
+        expect(comment!.choices).toEqual(['All On', 'Water Off', 'Electric Off']);
+    });
+
+    it('gives a defect its answers too — a list is not information-only', async () => {
+        const [defect] = await built([
+            row('Material', 'defect', 'Asphalt, Slate', 'checkbox', ''),
+        ]);
+        expect(defect!.choices).toEqual(['Asphalt', 'Slate']);
+    });
+
+    it('drops blank and duplicate options rather than rendering empty boxes', async () => {
+        const [comment] = await built([
+            row('Occupancy', 'info', 'Vacant, , Occupied,Vacant ,  ', 'checkbox', ''),
+        ]);
+        expect(comment!.choices).toEqual(['Vacant', 'Occupied']);
+    });
+
+    /**
+     * A row can carry leftover text in the options column while being a plain
+     * yes/no comment. Reading it anyway would put answers on a comment the
+     * inspector never chose them for, so the ANSWER TYPE decides, not the text.
+     */
+    it('ignores options on a comment the file does not type as list-bearing', async () => {
+        const [comment] = await built([
+            row('Notes', 'info', 'left, over, text', 'boolean', ''),
+        ]);
+        expect(comment!.choices).toBeUndefined();
+    });
+
+    it('imports a comment the file marks on-by-default as included', async () => {
+        const [on, off, blank] = await built([
+            row('Scope', 'info', '', 'boolean', 'true'),
+            row('Re-Inspection', 'info', '', 'boolean', 'false'),
+            row('Addendum', 'info', '', 'boolean', ''),
+        ]);
+        expect(on!.default).toBe(true);
+        // Off is the safe direction: a comment wrongly ON puts words in the
+        // report that the inspector did not write.
+        expect(off!.default).toBe(false);
+        expect(blank!.default).toBe(false);
+    });
+
+    it('still imports when the export omits the three columns entirely', async () => {
+        // An older export, or a hand-built sheet. Every comment reads plain and
+        // off, which is what it did before these columns were read at all.
+        const short = ['Section Name', 'Item Name', 'Comment Name', 'Comment Text',
+            'Comment Type (info, limit, defect)'];
+        const result = await spectoraAdapter.convert(
+            await workbook([short, ['Roof', 'General', 'Worn', 'Body.', 'defect']]), { name: 'T' },
+        );
+        if (!result.ok) throw new Error('conversion refused');
+        const defect = result.bundle.templates[0]!.schema.sections[0]!.items[0]!.tabs!.defects[0]!;
+        expect(defect.choices).toBeUndefined();
+        expect(defect.default).toBe(false);
     });
 });
