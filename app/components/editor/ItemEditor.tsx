@@ -451,66 +451,62 @@ export function ItemEditor({
  </div>
  )}
 
- {/* Notes field. The "Recommended comments" trigger lives in the header
-     ABOVE the textarea, never floated inside it — see NotesFieldHeader. */}
+ {/* Photo strip with count badge */}
  <div>
- <NotesFieldHeader
-  fieldId="notes-textarea"
-  charCount={((result.notes as string) || "").length}
-  canInsertCanned={taEntries.length > 0}
-  suggestionsOpen={taOpen}
-  onOpenSuggestions={() => { setTaQuery(""); setTaOpen(true); notesRef.current?.focus(); }}
- />
- <div className="relative">
- <textarea
-  id="notes-textarea"
-  ref={notesRef}
-  value={(result.notes as string) || ""}
-  onChange={(e) => {
-   onNotes(e.target.value);
-   const frag = fragmentBeforeCaret(e.target.value, e.target.selectionStart ?? 0);
-   setTaQuery(frag);
-   setTaOpen(frag.trim().length >= 2);
-  }}
-  onBlur={(e) => { onNotesBlur(e.target.value); setTaOpen(false); }}
-  onKeyDown={(e) => {
-   if (taOpen && ta.matches.length > 0) {
-    if (e.key === "ArrowDown") { e.preventDefault(); ta.move(1); return; }
-    if (e.key === "ArrowUp") { e.preventDefault(); ta.move(-1); return; }
-    if (e.key === "Enter" || e.key === "Tab") {
-     const pick = ta.current(); if (pick) { e.preventDefault(); insertPick(pick.comment); return; }
-    }
-    if (e.key === "Escape") { e.preventDefault(); setTaOpen(false); return; }
-   }
-   if (
-    e.key === '/' &&
-    !e.nativeEvent.isComposing &&
-    shouldTriggerSlash(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)
-   ) {
-    e.preventDefault();
-    onOpenSnippets?.();
-   }
-  }}
-  placeholder={m.editor_item_notes_placeholder()}
-  className="w-full h-28 px-3 py-2 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
- />
- <CommentTypeahead
-  entries={taEntries}
-  matches={ta.matches}
-  query={taQuery}
-  open={taOpen}
-  selectedIndex={ta.selectedIndex}
-  onHoverIndex={ta.setSelectedIndex}
-  onPick={insertPick}
-  onClose={() => setTaOpen(false)}
- />
+ <div className="flex items-center justify-between mb-1">
+ <label className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3">
+ {m.editor_item_photos_label()}
+ </label>
+ {photoCount > 0 && (
+ <span className="inline-flex items-center gap-1 text-[13px] font-bold text-ih-primary-text bg-ih-primary-tint px-1.5 py-0.5 rounded">
+ <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+ </svg>
+ {photoCount}
+ </span>
+ )}
  </div>
- {/* The AI "Improve wording" panel was REMOVED from the notes field at the
-     operator's request — model-assisted prose is not wanted in this
-     deployment's report flow. `AiAssistPanel` and its review-evidence
-     invariants are left intact and still specced; only the mount is gone,
-     so restoring it here is the whole job if that decision changes. */}
- {tagChipRow}
+ {/* Task 8 — visible thumbnail strip (edited derivative as the face) +
+ cover ring + add tile + tap-to-viewer + long-press reorder; Task 9 adds
+ Drive-style multi-select bulk detach. Replaces the old bare Add button. */}
+ <ItemPhotoStrip
+ inspectionId={inspectionId ?? ""}
+ itemId={item.id}
+ photos={((result.photos as StripPhoto[]) ?? [])}
+ coverKey={coverKey ?? null}
+ photoUrl={(k) => `/api/inspections/${inspectionId}/photo?key=${encodeURIComponent(k)}`}
+ onAddPhoto={() => onAddPhoto?.()}
+ onOpen={(i) => onOpenPhoto?.(item.id, i)}
+ onReorder={onReorderPhotos ? (order) => onReorderPhotos(item.id, order) : undefined}
+ selectable={!!onBulkDetachPhotos || !!onBulkMovePhotos}
+ onBulkDetach={onBulkDetachPhotos ? (indices) => onBulkDetachPhotos(item.id, indices) : undefined}
+ moveTargets={moveTargets ? moveTargets.filter((mt) => mt.itemId !== item.id) : undefined}
+ onBulkMove={onBulkMovePhotos ? (indices, to) => onBulkMovePhotos(item.id, indices, to) : undefined}
+ videoPosterUrl={videoPosterUrl}
+ pendingPhotoUrl={pendingPhotoUrl}
+ />
+ {/* Task 4 — queued offline photo previews rendered below the strip */}
+ {queuedCount > 0 && (
+ <div className="flex flex-wrap items-center gap-2 mt-2">
+ {(queuedPreviews ?? []).map((preview) => (
+ <div key={preview.objectUrl} className="relative w-16 h-16 rounded-lg overflow-hidden border border-ih-border flex-shrink-0">
+  <img
+  src={preview.objectUrl}
+  alt={preview.name}
+  className="w-full h-full object-cover opacity-70"
+  />
+  <span className="absolute bottom-0 left-0 right-0 flex justify-center pb-0.5">
+  <span className="text-[12px] font-bold uppercase bg-ih-watch-bg text-ih-watch-fg rounded px-1">
+   {m.editor_item_photo_queued_badge()}
+  </span>
+  </span>
+ </div>
+ ))}
+ </div>
+ )}
+ <span className="block mt-1 text-[15px] text-ih-fg-3">
+ {photoStatus}
+ </span>
  </div>
 
  {/* Canned comments tabs */}
@@ -579,63 +575,66 @@ export function ItemEditor({
  />
  )}
 
- {/* Photo strip with count badge */}
+ {/* Notes field. The "Recommended comments" trigger lives in the header
+     ABOVE the textarea, never floated inside it — see NotesFieldHeader. */}
  <div>
- <div className="flex items-center justify-between mb-1">
- <label className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3">
- {m.editor_item_photos_label()}
- </label>
- {photoCount > 0 && (
- <span className="inline-flex items-center gap-1 text-[13px] font-bold text-ih-primary-text bg-ih-primary-tint px-1.5 py-0.5 rounded">
- <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
- <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
- </svg>
- {photoCount}
- </span>
- )}
- </div>
- {/* Task 8 — visible thumbnail strip (edited derivative as the face) +
- cover ring + add tile + tap-to-viewer + long-press reorder; Task 9 adds
- Drive-style multi-select bulk detach. Replaces the old bare Add button. */}
- <ItemPhotoStrip
- inspectionId={inspectionId ?? ""}
- itemId={item.id}
- photos={((result.photos as StripPhoto[]) ?? [])}
- coverKey={coverKey ?? null}
- photoUrl={(k) => `/api/inspections/${inspectionId}/photo?key=${encodeURIComponent(k)}`}
- onAddPhoto={() => onAddPhoto?.()}
- onOpen={(i) => onOpenPhoto?.(item.id, i)}
- onReorder={onReorderPhotos ? (order) => onReorderPhotos(item.id, order) : undefined}
- selectable={!!onBulkDetachPhotos || !!onBulkMovePhotos}
- onBulkDetach={onBulkDetachPhotos ? (indices) => onBulkDetachPhotos(item.id, indices) : undefined}
- moveTargets={moveTargets ? moveTargets.filter((mt) => mt.itemId !== item.id) : undefined}
- onBulkMove={onBulkMovePhotos ? (indices, to) => onBulkMovePhotos(item.id, indices, to) : undefined}
- photoUploading={photoUploading}
- videoPosterUrl={videoPosterUrl}
- pendingPhotoUrl={pendingPhotoUrl}
+ <NotesFieldHeader
+  fieldId="notes-textarea"
+  charCount={((result.notes as string) || "").length}
+  canInsertCanned={taEntries.length > 0}
+  suggestionsOpen={taOpen}
+  onOpenSuggestions={() => { setTaQuery(""); setTaOpen(true); notesRef.current?.focus(); }}
  />
- {/* Task 4 — queued offline photo previews rendered below the strip */}
- {queuedCount > 0 && (
- <div className="flex flex-wrap items-center gap-2 mt-2">
- {(queuedPreviews ?? []).map((preview) => (
- <div key={preview.objectUrl} className="relative w-16 h-16 rounded-lg overflow-hidden border border-ih-border flex-shrink-0">
-  <img
-  src={preview.objectUrl}
-  alt={preview.name}
-  className="w-full h-full object-cover opacity-70"
-  />
-  <span className="absolute bottom-0 left-0 right-0 flex justify-center pb-0.5">
-  <span className="text-[12px] font-bold uppercase bg-ih-watch-bg text-ih-watch-fg rounded px-1">
-   {m.editor_item_photo_queued_badge()}
-  </span>
-  </span>
+ <div className="relative">
+ <textarea
+  id="notes-textarea"
+  ref={notesRef}
+  value={(result.notes as string) || ""}
+  onChange={(e) => {
+   onNotes(e.target.value);
+   const frag = fragmentBeforeCaret(e.target.value, e.target.selectionStart ?? 0);
+   setTaQuery(frag);
+   setTaOpen(frag.trim().length >= 2);
+  }}
+  onBlur={(e) => { onNotesBlur(e.target.value); setTaOpen(false); }}
+  onKeyDown={(e) => {
+   if (taOpen && ta.matches.length > 0) {
+    if (e.key === "ArrowDown") { e.preventDefault(); ta.move(1); return; }
+    if (e.key === "ArrowUp") { e.preventDefault(); ta.move(-1); return; }
+    if (e.key === "Enter" || e.key === "Tab") {
+     const pick = ta.current(); if (pick) { e.preventDefault(); insertPick(pick.comment); return; }
+    }
+    if (e.key === "Escape") { e.preventDefault(); setTaOpen(false); return; }
+   }
+   if (
+    e.key === '/' &&
+    !e.nativeEvent.isComposing &&
+    shouldTriggerSlash(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)
+   ) {
+    e.preventDefault();
+    onOpenSnippets?.();
+   }
+  }}
+  placeholder={m.editor_item_notes_placeholder()}
+  className="w-full h-28 px-3 py-2 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
+ />
+ <CommentTypeahead
+  entries={taEntries}
+  matches={ta.matches}
+  query={taQuery}
+  open={taOpen}
+  selectedIndex={ta.selectedIndex}
+  onHoverIndex={ta.setSelectedIndex}
+  onPick={insertPick}
+  onClose={() => setTaOpen(false)}
+ />
  </div>
- ))}
- </div>
- )}
- <span className="block mt-1 text-[15px] text-ih-fg-3">
- {photoStatus}
- </span>
+ {/* The AI "Improve wording" panel was REMOVED from the notes field at the
+     operator's request — model-assisted prose is not wanted in this
+     deployment's report flow. `AiAssistPanel` and its review-evidence
+     invariants are left intact and still specced; only the mount is gone,
+     so restoring it here is the whole job if that decision changes. */}
+ {tagChipRow}
  </div>
  </div>
  );

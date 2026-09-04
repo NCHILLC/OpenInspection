@@ -101,5 +101,7 @@
   "editor_unsavedchanges_title": "Unsaved changes",
   "editor_unsavedchanges_stay": "Stay",
   "editor_unsavedchanges_leave": "Leave",
-  "editor_unsavedchanges_body": "You have unsaved changes. Are you sure you want to leave?"
+  "editor_unsavedchanges_body": "You have unsaved changes. Are you sure you want to leave?",
+  "editor_shared_section_has_defect": "Has a defect",
+  "editor_shared_item_no_photo": "Rated, no photo yet"
 }

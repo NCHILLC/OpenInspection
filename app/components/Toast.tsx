@@ -4,7 +4,11 @@ export function ToastPortal() {
     const queue = useToastQueue();
     if (queue.length === 0) return null;
     return (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2">
+        // bottom-36 below md, which clears BOTH the mobile editor's fixed h-14
+        // nav and the capture FAB sitting 72px above it. At bottom-4 every
+        // confirmation toast rendered behind the nav — including the undo on a
+        // photo delete, which is useless if it cannot be seen. Desktop is unchanged.
+        <div className="fixed bottom-36 md:bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2">
             {queue.map(t => (
                 <div key={t.id} role={t.variant === 'error' ? 'alert' : 'status'} aria-atomic="true" className={`bg-ih-bg-card text-ih-fg-1 border border-ih-border rounded-lg shadow-ih-popover px-4 py-2 text-[13px] flex items-center gap-3 min-w-[260px]${
                     t.variant === 'error' ? ' border-l-4 border-l-ih-bad'

@@ -68,8 +68,10 @@ const EXTS = ['.ts', '.tsx', '.js', '.mjs', '.css', '.html', '.md'];
  * looked like two, and the notes are a private scratchpad this rule was never
  * about. A gate that reports files nobody can fix is a gate people learn to skim.
  */
+// '.worktrees' was the original spelling of the same intent; git worktrees now
+// live under `.claude/worktrees`, which is gitignored, so skip `.claude` whole.
 const SKIP_DIRS = new Set([
-    'node_modules', '.git', 'build', 'dist', '.wrangler', '.worktrees', '.types',
+    'node_modules', '.git', '.claude', 'build', 'dist', '.wrangler', '.worktrees', '.types',
     '.superpowers', '.react-router', 'paraglide', 'messages', 'public',
     'local-fixtures', 'coverage',
 ]);

@@ -17,16 +17,31 @@ export function MediaViewerToolbar({
   edited: boolean;
   on: (a: MediaAction) => void;
 }) {
+  // 44dp minimum, because this bar is used with gloves on a 375px screen.
   const btn = (a: MediaAction, label: string) => (
     <button
       key={a}
       type="button"
       onClick={() => on(a)}
       className="yarl__button"
-      style={{ fontSize: 13, fontWeight: 700, padding: "0 12px", color: "#fff" }}
+      style={{ fontSize: 13, fontWeight: 700, padding: "0 12px", minHeight: 44, minWidth: 44, color: "#fff" }}
     >
       {label}
     </button>
+  );
+  /**
+   * Delete, held away from the row.
+   *
+   * The seven actions used to render as one undifferentiated run of text
+   * buttons, so Caption and Delete were adjacent targets ~13px apart — and
+   * Delete had no confirmation and no undo. Undo now exists (see
+   * `deletePhotoWithUndo`); this is the other half: a gap wide enough that a
+   * gloved thumb aiming at Caption cannot land on Delete.
+   */
+  const destructive = (
+    <span key="del" style={{ marginLeft: 24, paddingLeft: 12, borderLeft: "1px solid rgba(255,255,255,0.28)" }}>
+      {btn("delete", m.common_delete())}
+    </span>
   );
   // Plan 7 — video gets a LOCKED minimal toolbar: poster · cover · caption ·
   // delete. NO crop / annotate / rotate / revert (out of v1). Photo unchanged.
@@ -36,7 +51,7 @@ export function MediaViewerToolbar({
         {btn("poster", m.media_viewer_poster())}
         {btn("cover", m.media_viewer_cover())}
         {btn("caption", m.media_viewer_caption())}
-        {btn("delete", m.common_delete())}
+        {destructive}
       </>
     );
   }
@@ -48,7 +63,7 @@ export function MediaViewerToolbar({
     btn("caption", m.media_viewer_caption()),
   ];
   if (edited) items.push(btn("revert", m.media_viewer_revert()));
-  items.push(btn("delete", m.common_delete()));
+  items.push(destructive);
   return <>{items}</>;
 }
 

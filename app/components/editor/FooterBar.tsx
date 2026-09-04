@@ -19,7 +19,12 @@ export function FooterBar({ connected = false, status, roster = [] }: FooterBarP
     { keys: ["J", "/", "K"], desc: m.editor_footer_shortcut_nav() },
     { keys: ["/"], desc: m.editor_footer_shortcut_library() },
     { keys: ["P"], desc: m.editor_footer_shortcut_photo() },
-    { keys: ["V"], desc: m.editor_footer_shortcut_voice() },
+    // "V — voice note" was listed here with NO implementation anywhere in the
+    // repo: no SpeechRecognition, no dictation trigger, no `v` case in
+    // useEditorKeyboard. Removed rather than built, because the phone keyboard's
+    // own mic button already dictates into the notes field — and this sheet is
+    // `hidden md:flex`, so the only people who ever saw the promise were the
+    // ones on a device with a real keyboard, who need it least.
     { keys: ["R"], desc: m.editor_footer_shortcut_repeat() },
     { keys: ["Z"], desc: m.editor_footer_shortcut_speed() },
     { keys: ["G", "D"], desc: m.editor_footer_shortcut_next_defect() },

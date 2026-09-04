@@ -7,6 +7,7 @@
   "editor_route_photos_partial_upload": "Se subieron {success} de {total} fotos — {failed} fallaron.",
   "editor_route_photos_added": "+{count} foto{s}{toDefect}",
   "editor_route_photo_upload_failed": "Error al subir la foto — su foto NO llegó al servidor.",
+  "editor_route_photo_upload_busy": "Todavía se está enviando la foto anterior — inténtelo de nuevo en un momento.",
   "editor_route_defect_library_copy_failed": "Se guardó el defecto, pero la copia en la biblioteca falló — inténtelo de nuevo desde Notas › Guardar como fragmento.",
   "editor_route_select_item_hint": "Seleccione un elemento de la lista para empezar a editar",
   "editor_route_navigate_hint_press": "Presione",

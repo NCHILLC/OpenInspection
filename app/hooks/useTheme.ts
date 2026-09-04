@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouteLoaderData } from "react-router";
 import { writeColorSchemeCookie, type ColorScheme, type UiPrefs } from "~/lib/ui-prefs";
 
-function resolveScheme(scheme: ColorScheme): "light" | "dark" | "field" {
+function resolveScheme(scheme: ColorScheme): "light" | "dark" | "field" | "sun" {
   if (scheme !== "auto") return scheme;
   if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -13,6 +13,8 @@ function applyScheme(scheme: ColorScheme) {
   const root = document.documentElement;
   root.setAttribute("data-color-scheme", resolved);
   // 'field' is dark-based — keep the .dark class so Tailwind dark: variants apply.
+  // 'sun' must NOT get it: it is a light theme, and every `dark:` utility in the
+  // product would paint dark-mode colours onto a white ground.
   if (resolved === "dark" || resolved === "field") {
     root.classList.add("dark");
   } else {

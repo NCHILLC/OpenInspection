@@ -37,7 +37,6 @@
   "editor_footer_shortcut_nav": "Siguiente / anterior",
   "editor_footer_shortcut_library": "Abrir la biblioteca",
   "editor_footer_shortcut_photo": "Capturar foto",
-  "editor_footer_shortcut_voice": "Nota de voz",
   "editor_footer_shortcut_repeat": "Repetir la calificación",
   "editor_footer_shortcut_speed": "Modo rápido",
   "editor_footer_shortcut_next_defect": "Siguiente defecto",
@@ -85,7 +84,7 @@
   "editor_dock_open": "Abrir las herramientas del inspector",
   "editor_dock_close": "Cerrar las herramientas del inspector",
   "editor_dock_speed_mode": "Modo rápido",
-  "editor_dock_burst_camera": "Cámara en ráfaga",
+  "editor_dock_camera": "Cámara",
   "editor_dock_photo_studio": "Estudio de fotos",
   "editor_item_tab_information": "Información",
   "editor_item_tab_limitations": "Limitaciones",
@@ -235,5 +234,8 @@
   "editor_limitation_reason_not_in_service": "Fuera de servicio",
   "editor_limitation_reason_weather": "Condiciones climáticas",
   "editor_limitation_reason_belongings": "Pertenencias almacenadas obstruyen el paso",
-  "editor_limitation_reason_unsafe": "Acceso inseguro"
+  "editor_limitation_reason_unsafe": "Acceso inseguro",
+  "editor_mobile_sync_ok": "Sincronizado",
+  "editor_mobile_sync_uploading": "Subiendo {count}",
+  "editor_mobile_sync_offline": "Sin conexión · {count} en cola"
 }

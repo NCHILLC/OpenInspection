@@ -36,11 +36,15 @@ export interface EditorPhotoUploadDeps {
      *  file dialog already offers both, so it goes straight to the input. */
     isMobile: boolean;
     setAddMediaChooser: (value: { itemId: string } | null) => void;
+    /** #181 PR-G — kick the media queue. Every item photo now rides the queue,
+     *  so this fires on the online path too, not just on reconnect. */
+    drain: () => void;
 }
 
 export interface EditorPhotoUpload {
     handlePhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    handleBurstCommit: (blobs: Blob[]) => void;
+    /** One frame from the in-app camera, queued without closing the camera. */
+    handleCameraFrame: (blob: Blob) => void;
     /**
      * Open the picker for THIS ITEM's photos.
      *
@@ -69,15 +73,12 @@ export interface EditorPhotoUpload {
 const MAX_BATCH_PHOTOS = 20;
 
 /**
- * The editor's three photo entry points: the file pickers, the burst camera,
- * and the effect that attaches returned keys once the action responds.
+ * The editor's photo entry points: the file pickers, the in-app camera, and the
+ * effect that attaches returned keys once the action responds. All of them go
+ * through one `submitPhotos`, which is what makes a capture non-blocking.
  *
- * Lifted verbatim out of `inspection-edit.tsx` under the large-file ratchet
- * (`scripts/check-file-size.mjs`). The handler bodies, the `useCallback`
- * dependency lists and the effect's dependency list are unchanged from that
- * file — including `handleBurstCommit` depending on `state.inspection.id`,
- * which it does not read. Removing it would be a behaviour change (fewer
- * identity changes for a memoised child), so it stays.
+ * Lifted out of `inspection-edit.tsx` under the large-file ratchet
+ * (`scripts/check-file-size.mjs`).
  *
  * FE-2 — uploads go through the route action ("upload-photo" intent) on a
  * dedicated fetcher: the old direct fetch('/api/…/upload') bypassed the BFF
@@ -95,70 +96,96 @@ export function useEditorPhotoUpload({
     libraryInputRef,
     isMobile,
     setAddMediaChooser,
+    drain,
 }: EditorPhotoUploadDeps): EditorPhotoUpload {
     const pendingPhotoTargetRef = useRef<PendingPhotoTarget>(null);
+
+    /**
+     * The one funnel every photo goes through — file picker, library pick, and
+     * every frame the in-app camera shoots.
+     *
+     * Item-scoped photos ALWAYS take the offline queue, online included. They did
+     * not used to: the queue was reached only when `navigator.onLine === false`,
+     * so the online path was a single in-flight fetcher, which is why the picker
+     * had to early-return while it was busy and why the add tile disabled itself
+     * between frames. A queued capture is never blocked by the one before it, so
+     * neither control has to refuse a tap.
+     *
+     * Two cases still take the fetcher, both because there is nothing to enqueue
+     * INTO: a defect-targeted add (the pending-doc model represents item photos
+     * only — there is no shape for "photo 3 of canned defect X"), and the window
+     * before the collab doc is live.
+     */
+    const submitPhotos = useCallback(
+        async (files: File[], itemId: string, target: PendingPhotoTarget): Promise<void> => {
+            // N2+N4 — bake before submit (auto-orient + downscale + EXIF/GPS strip),
+            // unless the user opted into original quality.
+            const orig = originalQualityEnabled();
+            const bakedFiles: File[] = [];
+            for (const f of files) {
+                bakedFiles.push(orig ? f : await preprocessImage(f));
+            }
+
+            // #181 PR-G — persist each baked photo locally + append a PENDING doc
+            // entry (empty key + pendingUpload) per file. The strip renders them
+            // from the local blob; the drain uploads each to R2 and swaps in the
+            // real key.
+            const doc = collabDoc ?? null;
+            const sid = state.sectionIdForItem(itemId) ?? state.currentSection?.id;
+            if (doc && sid && !target) {
+                // Phase U (Batch C2a) — key the offline pending-photo doc entry to the active
+                // unit. At activeUnitId == null this === the legacy `_default:{sid}:{itemId}`.
+                const fk = findingKey(activeUnitId, sid, itemId);
+                for (const baked of bakedFiles) {
+                    const pendingId = crypto.randomUUID();
+                    await enqueueMedia({
+                        pendingId,
+                        inspectionId: String(state.inspection.id),
+                        findingKey: fk,
+                        kind: "photo",
+                        blob: baked,
+                        enqueuedAt: Date.now(),
+                    });
+                    appendPendingPhoto(doc, fk, pendingId);
+                }
+                // Online this uploads immediately; offline the drain finds an empty
+                // network and leaves the records queued for the `online` / collab-
+                // resync triggers, exactly as before.
+                drain();
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("intent", "upload-photo");
+            formData.append("itemId", itemId);
+            for (const baked of bakedFiles) formData.append("file", baked);
+            if (target) {
+                formData.append("targetType", "defect");
+                formData.append("customId", target.id);
+                formData.append("defectKind", target.kind);
+            }
+            uploadFetcher.submit(formData, { method: "post", encType: "multipart/form-data" });
+        },
+        [state.inspection.id, uploadFetcher, collabDoc, state.sectionIdForItem, state.currentSection, activeUnitId, drain],
+    );
 
     const handlePhotoUpload = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
             const all = Array.from(e.target.files ?? []);
             if (all.length === 0 || !state.activeItemId) return;
             const itemId = state.activeItemId;
+            // The cap is a Worker subrequest guard on the FETCHER path, where one
+            // submission fans out one upstream call per file. Kept for the library
+            // picker, which is the only way to hand over 20+ files at once.
             const overflow = all.length > MAX_BATCH_PHOTOS;
             const files = overflow ? all.slice(0, MAX_BATCH_PHOTOS) : all;
 
-            // N2+N4 — bake before submit (auto-orient + downscale + EXIF/GPS strip),
-            // unless the user opted into original quality. Capture the
-            // defect target ref into a local BEFORE the await so a second picker open
-            // cannot clobber it. The offline branch below keeps the RAW File (Task 5
-            // bakes at replay). Single-file selections take this exact same path with
-            // a one-element array, so behavior is byte-identical to the old code.
-            const orig = originalQualityEnabled();
+            // Capture the defect target ref into a local BEFORE the await so a
+            // second picker open cannot clobber it.
             const target = pendingPhotoTargetRef.current;
             pendingPhotoTargetRef.current = null;
             void (async () => {
-                const bakedFiles: File[] = [];
-                for (const f of files) {
-                    bakedFiles.push(orig ? f : await preprocessImage(f));
-                }
-
-                // #181 PR-G — offline: persist each baked photo locally + append a
-                // PENDING doc entry (empty key + pendingUpload) per file. The strip
-                // renders them from the local blob; the drain (on reconnect / online)
-                // uploads each to R2 and swaps in the real key. Defect-targeted offline
-                // adds fall back to the online fetcher (the pending-doc model covers
-                // item photos; defect pending is out of scope) — they simply re-fire
-                // when back online.
-                const doc = collabDoc ?? null;
-                const sid = state.sectionIdForItem(itemId) ?? state.currentSection?.id;
-                if (typeof navigator !== "undefined" && navigator.onLine === false && doc && sid && !target) {
-                    // Phase U (Batch C2a) — key the offline pending-photo doc entry to the active
-                    // unit. At activeUnitId == null this === the legacy `_default:{sid}:{itemId}`.
-                    const fk = findingKey(activeUnitId, sid, itemId);
-                    for (const baked of bakedFiles) {
-                        const pendingId = crypto.randomUUID();
-                        await enqueueMedia({
-                            pendingId,
-                            inspectionId: String(state.inspection.id),
-                            findingKey: fk,
-                            kind: "photo",
-                            blob: baked,
-                            enqueuedAt: Date.now(),
-                        });
-                        appendPendingPhoto(doc, fk, pendingId);
-                    }
-                } else {
-                    const formData = new FormData();
-                    formData.append("intent", "upload-photo");
-                    formData.append("itemId", itemId);
-                    for (const baked of bakedFiles) formData.append("file", baked);
-                    if (target) {
-                        formData.append("targetType", "defect");
-                        formData.append("customId", target.id);
-                        formData.append("defectKind", target.kind);
-                    }
-                    uploadFetcher.submit(formData, { method: "post", encType: "multipart/form-data" });
-                }
-
+                await submitPhotos(files, itemId, target);
                 if (overflow) {
                     pushToast({
                         message: m.editor_route_photos_batch_capped(),
@@ -171,35 +198,26 @@ export function useEditorPhotoUpload({
             if (cameraInputRef.current) cameraInputRef.current.value = "";
             if (libraryInputRef.current) libraryInputRef.current.value = "";
         },
-        [state.activeItemId, state.inspection.id, uploadFetcher, collabDoc, state.sectionIdForItem, state.currentSection, activeUnitId],
+        [state.activeItemId, submitPhotos, cameraInputRef, libraryInputRef],
     );
 
-    const handleBurstCommit = useCallback(
-        (blobs: Blob[]) => {
-            if (!state.burstCameraItemId || blobs.length === 0) return;
-            const itemId = state.burstCameraItemId;
-            // Burst frames always land on the ITEM, so a defect target armed by
-            // a chip the inspector then walked away from must not survive to
-            // catch the next single photo. Cleared here rather than at the call
-            // site because this path never honours it anyway.
+    /**
+     * One frame from the in-app camera. Enqueued the moment the shutter fires,
+     * so the camera stays open and responsive while it uploads — the reason the
+     * capture screen does not have to close between photos.
+     *
+     * A defect target armed by a chip the inspector then walked away from must
+     * not survive to catch this frame: camera frames always land on the ITEM.
+     */
+    const handleCameraFrame = useCallback(
+        (blob: Blob) => {
+            const itemId = state.cameraItemId;
+            if (!itemId) return;
             pendingPhotoTargetRef.current = null;
-
-            // N4 — bake each frame before upload. Burst frames are already
-            // canvas-captured JPEGs (no EXIF), so this is purely the downscale; it
-            // no-ops on frames already below the cap. Honors the original-quality opt-out.
-            const orig = originalQualityEnabled();
-            void (async () => {
-                const formData = new FormData();
-                formData.append("intent", "upload-photo");
-                formData.append("itemId", itemId);
-                for (let i = 0; i < blobs.length; i++) {
-                    const f = new File([blobs[i]], `burst-${i + 1}.jpg`, { type: "image/jpeg" });
-                    formData.append("file", orig ? f : await preprocessImage(f));
-                }
-                uploadFetcher.submit(formData, { method: "post", encType: "multipart/form-data" });
-            })();
+            const file = new File([blob], `capture-${Date.now()}.jpg`, { type: "image/jpeg" });
+            void submitPhotos([file], itemId, null);
         },
-        [state.burstCameraItemId, state.inspection.id, uploadFetcher],
+        [state.cameraItemId, submitPhotos],
     );
 
     // Attach uploaded photo keys once the action responds — to the item, or
@@ -272,7 +290,18 @@ export function useEditorPhotoUpload({
     /** Arms the target, then opens whichever picker this device wants. */
     const openPicker = useCallback(
         (target: PendingPhotoTarget) => {
-            if (uploadFetcher.state !== "idle") return;
+            // Only a DEFECT add shares the single upload fetcher, where a second
+            // submit aborts the one in flight. An item add rides the queue and is
+            // never busy — refusing it (silently, which is how this read on rural
+            // LTE: tap, nothing, tap again, nothing) was the bug, not the guard.
+            if (target && uploadFetcher.state !== "idle") {
+                pushToast({
+                    message: m.editor_route_photo_upload_busy(),
+                    variant: "warning",
+                    durationMs: 3000,
+                });
+                return;
+            }
             const itemId = state.activeItemId;
             pendingPhotoTargetRef.current = target;
             // Task 16 — desktop file pickers already offer camera-vs-library
@@ -293,5 +322,5 @@ export function useEditorPhotoUpload({
         pendingPhotoTargetRef.current = null;
     }, []);
 
-    return { handlePhotoUpload, handleBurstCommit, openPickerForItem, openPickerForDefect, clearPhotoTarget };
+    return { handlePhotoUpload, handleCameraFrame, openPickerForItem, openPickerForDefect, clearPhotoTarget };
 }

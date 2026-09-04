@@ -22,6 +22,13 @@ export const THEMES = [
   { name: "light", marker: ":root" },
   { name: "dark", marker: 'data-color-scheme="dark"' },
   { name: "field", marker: 'data-color-scheme="field"' },
+  // 'sun' restates every token the dark/field blocks set, so the positional
+  // fall-through below never reaches them for it — which is the only reason it
+  // can sit at the end of a list whose cascade is dark-based. Its marker is
+  // deliberately not a substring of any earlier one (see the note in
+  // tailwind.css): `blocksFor` matches on substring, so a "field-sun" marker
+  // would have been read as part of the field theme too.
+  { name: "sun", marker: 'data-color-scheme="sun"' },
 ];
 
 /** #rgb / #rrggbb -> [r,g,b] 0-255. Returns null for anything else. */

@@ -16,8 +16,13 @@ import { UI_LOCALE_COOKIE } from "../../server/lib/i18n/ui-locale";
 
 /** Track H (migration step 5) — 'field' is a high-contrast, large-type variant of dark
  *  for outdoor/sunlight use (18px base font + stronger contrast). A first-class
- *  scheme the user picks explicitly: "auto" never resolves to it. */
-export type ColorScheme = "light" | "dark" | "auto" | "field";
+ *  scheme the user picks explicitly: "auto" never resolves to it.
+ *
+ *  'sun' is its opposite number and the other half of the same problem: field is
+ *  dark, which is right in an attic and wrong on a roof at noon, where the panel
+ *  has to out-emit the sky. Same 18px type, white ground, near-black text. Also
+ *  explicit — nothing resolves to it automatically. */
+export type ColorScheme = "light" | "dark" | "auto" | "field" | "sun";
 
 export interface UiPrefs {
   colorScheme: ColorScheme;
@@ -44,7 +49,7 @@ export function parseUiPrefs(cookieHeader: string | null): UiPrefs {
   const header = cookieHeader ?? "";
   const rawScheme = readCookie(header, COLOR_SCHEME_COOKIE);
   const colorScheme: ColorScheme =
-    rawScheme === "light" || rawScheme === "dark" || rawScheme === "auto" || rawScheme === "field"
+    rawScheme === "light" || rawScheme === "dark" || rawScheme === "auto" || rawScheme === "field" || rawScheme === "sun"
       ? rawScheme
       : "auto";
   return {
@@ -59,8 +64,8 @@ export function parseUiPrefs(cookieHeader: string | null): UiPrefs {
  * "light"; the inline boot script corrects it before first paint (the attribute
  * change is covered by `suppressHydrationWarning` on <html>).
  */
-export function resolveSchemeForSSR(scheme: ColorScheme): "light" | "dark" | "field" {
-  return scheme === "dark" || scheme === "field" ? scheme : "light";
+export function resolveSchemeForSSR(scheme: ColorScheme): "light" | "dark" | "field" | "sun" {
+  return scheme === "dark" || scheme === "field" || scheme === "sun" ? scheme : "light";
 }
 
 /** Persist the color scheme client-side so the next SSR render is correct. */

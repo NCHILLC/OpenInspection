@@ -9,6 +9,13 @@ vi.mock("~/components/media-studio/preprocessImage", () => ({
 }));
 vi.mock("~/hooks/useToast", () => ({ pushToast: vi.fn() }));
 
+const enqueueMedia = vi.fn((_rec: unknown) => Promise.resolve("id"));
+const appendPendingPhoto = vi.fn((..._args: unknown[]) => {});
+vi.mock("~/lib/collab/media-upload-queue", () => ({ enqueueMedia: (r: unknown) => enqueueMedia(r) }));
+vi.mock("~/lib/collab/results-binding", () => ({
+    appendPendingPhoto: (...a: unknown[]) => appendPendingPhoto(...a),
+}));
+
 /**
  * Where a picked photo LANDS.
  *
@@ -23,30 +30,34 @@ vi.mock("~/hooks/useToast", () => ({ pushToast: vi.fn() }));
  */
 
 const submit = vi.fn();
+const drain = vi.fn();
 const uploadFetcher = { state: "idle", data: undefined, submit };
 
 function makeState() {
     return {
         activeItemId: "item-1",
         inspection: { id: "insp-1" },
-        burstCameraItemId: "item-1",
+        cameraItemId: "item-1",
         currentSection: { id: "sec-1" },
         sectionIdForItem: () => "sec-1",
     } as never;
 }
 
-function setup() {
+/** `collabDoc: null` keeps a case on the FETCHER path, which is where the
+ *  defect-target assertions live. Pass a doc to exercise the queue path. */
+function setup(collabDoc: unknown = null) {
     return renderHook(() =>
         useEditorPhotoUpload({
             state: makeState(),
             findings: { addPhotoToItem: vi.fn(), addPhotoToDefect: vi.fn() } as never,
             uploadFetcher: uploadFetcher as never,
-            collabDoc: null,
+            collabDoc: collabDoc as never,
             activeUnitId: null,
             cameraInputRef: createRef<HTMLInputElement>(),
             libraryInputRef: createRef<HTMLInputElement>(),
             isMobile: false,
             setAddMediaChooser: vi.fn(),
+            drain,
         }),
     );
 }
@@ -56,6 +67,16 @@ async function pickAPhoto(handler: (e: never) => void) {
     const file = new File(["x"], "shingle.jpg", { type: "image/jpeg" });
     await act(async () => {
         handler({ target: { files: [file], value: "" } } as never);
+        await Promise.resolve();
+        await Promise.resolve();
+    });
+}
+
+/** Drive one camera frame through the funnel and let its async body settle. */
+async function shootAFrame(handler: (b: Blob) => void) {
+    await act(async () => {
+        handler(new Blob(["y"], { type: "image/jpeg" }));
+        await Promise.resolve();
         await Promise.resolve();
         await Promise.resolve();
     });
@@ -72,6 +93,9 @@ function lastTarget() {
 
 beforeEach(() => {
     submit.mockClear();
+    drain.mockClear();
+    enqueueMedia.mockClear();
+    appendPendingPhoto.mockClear();
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
 });
 
@@ -120,19 +144,76 @@ describe("useEditorPhotoUpload — the photo lands where the inspector aimed it"
         expect(lastTarget()).toEqual({ targetType: null, customId: null });
     });
 
-    // Burst frames always belong to the item, so an armed chip must not survive
+    // Camera frames always belong to the item, so an armed chip must not survive
     // one and catch the single photo that comes after.
-    it("clears an armed defect when a burst is committed", async () => {
+    it("clears an armed defect when the camera takes a frame", async () => {
         const { result } = setup();
         act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
-        await act(async () => {
-            result.current.handleBurstCommit([new Blob(["y"], { type: "image/jpeg" })]);
-            await Promise.resolve();
-            await Promise.resolve();
-        });
+        await shootAFrame(result.current.handleCameraFrame);
         expect(lastTarget()).toEqual({ targetType: null, customId: null });
 
         await pickAPhoto(result.current.handlePhotoUpload);
         expect(lastTarget()).toEqual({ targetType: null, customId: null });
+    });
+});
+
+/**
+ * The capture funnel: with a live doc, an ITEM photo goes to the offline queue
+ * whether or not there is a network, and the drain does the upload.
+ *
+ * This is what lets the add control and the camera shutter stay live. On the old
+ * fetcher path a second capture aborted the first, so both had to refuse taps
+ * while one was in flight — the "tap +, nothing happens" report.
+ */
+describe("useEditorPhotoUpload — every item photo rides the queue", () => {
+    const doc = {} as never;
+
+    it("queues an item photo instead of posting it, even online", async () => {
+        const { result } = setup(doc);
+        act(() => result.current.openPickerForItem());
+        await pickAPhoto(result.current.handlePhotoUpload);
+        expect(enqueueMedia).toHaveBeenCalledTimes(1);
+        expect(appendPendingPhoto).toHaveBeenCalledTimes(1);
+        expect(drain).toHaveBeenCalledTimes(1);
+        expect(submit).not.toHaveBeenCalled();
+    });
+
+    it("queues every frame of a capture session, back to back", async () => {
+        const { result } = setup(doc);
+        await shootAFrame(result.current.handleCameraFrame);
+        await shootAFrame(result.current.handleCameraFrame);
+        await shootAFrame(result.current.handleCameraFrame);
+        expect(enqueueMedia).toHaveBeenCalledTimes(3);
+        expect(appendPendingPhoto).toHaveBeenCalledTimes(3);
+        expect(submit).not.toHaveBeenCalled();
+    });
+
+    it("keeps queuing while the upload fetcher is busy", async () => {
+        const busy = { ...uploadFetcher, state: "submitting" };
+        const { result } = renderHook(() =>
+            useEditorPhotoUpload({
+                state: makeState(),
+                findings: { addPhotoToItem: vi.fn(), addPhotoToDefect: vi.fn() } as never,
+                uploadFetcher: busy as never,
+                collabDoc: doc,
+                activeUnitId: null,
+                cameraInputRef: createRef<HTMLInputElement>(),
+                libraryInputRef: createRef<HTMLInputElement>(),
+                isMobile: false,
+                setAddMediaChooser: vi.fn(),
+                drain,
+            }),
+        );
+        await shootAFrame(result.current.handleCameraFrame);
+        expect(enqueueMedia).toHaveBeenCalledTimes(1);
+    });
+
+    // A defect photo has no pending-doc shape, so it stays on the fetcher.
+    it("still posts a defect-targeted photo", async () => {
+        const { result } = setup(doc);
+        act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
+        await pickAPhoto(result.current.handlePhotoUpload);
+        expect(enqueueMedia).not.toHaveBeenCalled();
+        expect(lastTarget()).toEqual({ targetType: "defect", customId: "d1" });
     });
 });

@@ -3,7 +3,7 @@ import { useTheme } from "~/hooks/useTheme";
 import type { ColorScheme } from "~/lib/ui-prefs";
 import { m } from "~/paraglide/messages";
 
-// ─── 4-segment theme control, used in the User Menu and the mobile drawer ─────
+// ─── 5-segment theme control, used in the User Menu and the mobile drawer ─────
 export function ThemeSegmentControl({ className }: { className?: string }) {
   const { scheme, setColorScheme } = useTheme();
   // Built at render time (not a module const) so the labels resolve inside the
@@ -14,6 +14,7 @@ export function ThemeSegmentControl({ className }: { className?: string }) {
     { value: "light", label: m.nav_theme_light() },
     { value: "dark", label: m.nav_theme_dark() },
     { value: "field", label: m.nav_theme_field(), title: m.nav_theme_field_title() },
+    { value: "sun", label: m.nav_theme_sun(), title: m.nav_theme_sun_title() },
   ];
   return (
     <SegmentedControl

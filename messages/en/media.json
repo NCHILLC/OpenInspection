@@ -92,5 +92,6 @@
   "media_cropper_rotate_right": "Rotate right",
   "media_badge_crop_aria": "Crop badge",
   "media_badge_save": "Save badge",
-  "media_cropper_bake_failed": "That image could not be processed. Try another file."
+  "media_cropper_bake_failed": "That image could not be processed. Try another file.",
+  "media_photo_deleted": "Photo deleted."
 }

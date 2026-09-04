@@ -120,7 +120,10 @@ export function SectionRail({
  });
 
  return (
- <aside data-shortcut-scope className="w-[200px] flex-shrink-0 border-r border-ih-border overflow-y-auto bg-ih-bg-app/50">
+ // Full-bleed below md. At 200px fixed inside a 375px viewport this left
+ // 143px of dead space and a stray vertical rule down the middle of the
+ // phone screen; the rail is a whole SCREEN there, not a column.
+ <aside data-shortcut-scope className="w-full md:w-[200px] md:flex-shrink-0 md:border-r border-ih-border overflow-y-auto bg-ih-bg-app/50">
  <nav className="p-2 space-y-0.5">
   {/* Report-scoped overview entry — sits above section list, no progress donut */}
   {mode === 'fill' && (
@@ -199,7 +202,7 @@ export function SectionRail({
   )}
 
   {editing && onRenameSection ? (
-   <div className={`min-w-0 flex-1 flex items-center gap-1 py-2 ${onReorderSection ? 'pr-1' : 'px-3'}`}>
+   <div className={`min-w-0 flex-1 flex items-center gap-1 min-h-14 md:min-h-0 py-2 ${onReorderSection ? 'pr-1' : 'px-3'}`}>
     <span className="shrink-0 text-ih-fg-3">{sectionIconFor(section.title ?? section.id)}</span>
     <InlineRename
      value={section.title}
@@ -214,14 +217,26 @@ export function SectionRail({
     onClick={() => onSelect(section.id)}
     onDoubleClick={onRenameSection ? () => setEditingId(section.id) : undefined}
     title={`${section.title}: ${tipParts.join(', ')}`}
-    className={`min-w-0 flex-1 text-left py-2 flex items-center gap-1 ${onReorderSection ? 'pr-1' : 'px-3'}`}
+    className={`min-w-0 flex-1 text-left py-2 min-h-14 md:min-h-0 flex items-center gap-1 ${onReorderSection ? 'pr-1' : 'px-3'}`}
    >
     {/* Icon + donut are ALWAYS visible — the handle/⋮ have their own slots. */}
     <span className="shrink-0 text-ih-fg-3">{sectionIconFor(section.title ?? section.id)}</span>
     <span className="truncate flex-1">{section.title}</span>
     <span className="ml-1 shrink-0 flex items-center">
     {mode === 'fill'
-     ? <SectionDonut rated={rated} total={total} hasDefect={hasDefect} />
+     ? <>
+      {/* A number first, then the ring. Status has to read at arm's length in
+          glare, and a 2.5px stroke does not. */}
+      <span className="text-[13px] font-mono tabular-nums text-ih-fg-2 mr-1">{rated}/{total}</span>
+      <SectionDonut rated={rated} total={total} />
+      {hasDefect && (
+       <span
+        aria-label={m.editor_shared_section_has_defect()}
+        title={m.editor_shared_section_has_defect()}
+        className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded bg-ih-bad-bg text-ih-bad-fg text-[11px] font-bold"
+       >!</span>
+      )}
+     </>
      : <span className="text-[13px] text-ih-fg-3 font-mono">{section.items.length}</span>}
     </span>
    </button>

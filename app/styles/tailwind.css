@@ -247,6 +247,97 @@ html[data-color-scheme="field"] {
   --ih-border-strong-color: #64748b;
 }
 
+/* ── Sun mode — the other half of "field" ──
+   `field` is dark-based, which is right for an attic or a crawlspace and wrong
+   on a roof at noon: a near-black panel reflects ambient light and washes out,
+   while a phone in direct sun needs maximum emitted luminance — white ground,
+   near-black type, heavy borders. One mode was being asked to solve two
+   opposite environments and only solved the dark one.
+
+   Deliberately NOT `data-color-scheme="field-sun"`: `scripts/lib/contrast-css.mjs`
+   matches theme blocks by SUBSTRING, so a `field-sun` marker would also be read
+   as part of the `field` theme and silently mix the two palettes in the gate.
+
+   Every token the dark block sets is restated here rather than inherited. In
+   the browser that is already true (this selector never matches the dark group)
+   — it also keeps the contrast gate honest, whose theme cascade falls through
+   the earlier blocks in declaration order. */
+html[data-color-scheme="sun"] {
+  color-scheme: light;
+  font-size: 18px;
+
+  /* indigo-700: 8.6:1 on white, and white-on-it is the same 8.6:1 — so the same
+     token carries a link and a filled button's label at this ground. */
+  --ih-primary: #4338ca;
+  --ih-primary-600: #3730a3;
+  --ih-primary-700: #312e81;
+  --ih-primary-tint: rgba(67, 56, 202, 0.10);
+  --ih-primary-glow: rgba(67, 56, 202, 0.25);
+  --ih-primary-text: #3730a3;
+
+  /* Pure black on pure white. Not a design flourish — in direct sun the screen
+     is competing with the sky, and every step away from 21:1 is legibility
+     spent for nothing. */
+  --ih-fg-1: #000000;
+  --ih-fg-2: #1a1f26;
+  --ih-fg-3: #333b45;
+  --ih-fg-4: #4a545f;
+  --ih-fg-5: #8a949e;
+  --ih-fg-inverse: #ffffff;
+
+  --ih-bg-app: #ffffff;
+  --ih-bg-card: #ffffff;
+  --ih-bg-muted: #e6eaee;
+  --ih-bg-inverse: #000000;
+
+  /* Card and app are the SAME white, so separation is carried by borders —
+     which is also the only separation that survives glare. */
+  --ih-border-color: #6b7480;
+  --ih-border-strong-color: #3d444c;
+
+  /* Semantic fills darkened until each carries white text (they are used as
+     button and chip grounds), with their own darker fg for text-on-tint. */
+  --ih-status-ok: #15803d;
+  --ih-status-ok-bg: #dcfce7;
+  --ih-status-ok-fg: #14532d;
+  --ih-status-watch: #a04606;
+  --ih-status-watch-bg: #fef3c7;
+  --ih-status-watch-fg: #7c2d12;
+  --ih-status-bad: #b91c1c;
+  --ih-status-bad-bg: #fee2e2;
+  --ih-status-bad-fg: #991b1b;
+  --ih-status-info: #0369a1;
+  --ih-status-info-bg: #e0f2fe;
+  --ih-status-info-fg: #075985;
+
+  --ih-backdrop: rgba(15, 23, 42, 0.55);
+}
+
+/* ── Field/sun type scale ──
+   Both field modes set an 18px root so rem-based sizes scale up. The editor
+   does not use rem-based sizes: there are ~2,440 hardcoded `text-[Npx]`
+   utilities across the app, so the mode that exists FOR legibility changed
+   almost no text in the screens it was built for — 13px item numbers, 12px
+   hints and 8px badges stayed exactly as small as in normal mode.
+
+   These retarget the arbitrary-value utilities themselves, at roughly the same
+   x1.28 the 18px root applies to rem sizes, so the two scales agree instead of
+   fighting. Nine rules instead of ~2,440 edited class names. They sit OUTSIDE
+   `@layer utilities` (everything Tailwind emits is inside it), and an unlayered
+   rule beats a layered one regardless of specificity — which is what makes a
+   plain class selector enough to win here. */
+html:is([data-color-scheme="field"], [data-color-scheme="sun"]) {
+  & .text-\[8px\]  { font-size: 11px; }
+  & .text-\[9px\]  { font-size: 12px; }
+  & .text-\[10px\] { font-size: 13px; }
+  & .text-\[11px\] { font-size: 14px; }
+  & .text-\[12px\] { font-size: 15px; }
+  & .text-\[13px\] { font-size: 17px; }
+  & .text-\[14px\] { font-size: 18px; }
+  & .text-\[15px\] { font-size: 19px; }
+  & .text-\[16px\] { font-size: 20px; }
+}
+
 /* `color-scheme: dark` above tells Chromium to paint a <select>'s expanded
    <option> LIST with a dark UI — but doesn't reliably reach the individual
    <option> rows in every Chromium build/version (this varied enough across
@@ -401,6 +492,23 @@ html[data-sidebar-collapsed="1"] .ih-sidebar { width: var(--width-sidebar-collap
   --animate-ih-dash-march: ih-dash-march 0.6s linear infinite;
   --animate-ih-ok-flash: ih-ok-flash 1s ease-out;
   --animate-ih-slide-in-right: ih-slide-in-right 0.2s ease-out;
+}
+
+/* ── Media viewer toolbar on a phone ──
+   `.yarl__toolbar` is absolutely positioned top/right with `flex-wrap: nowrap`.
+   Seven per-photo actions measure 588px; a phone is 375px, so Crop and Annotate
+   rendered 212px off the LEFT edge and could not be tapped at all — which meant
+   the annotator was still unreachable on a phone even once the overlay itself
+   was mounted there. Wrapping is the whole fix; the row is right-aligned, so the
+   overflow lands on a second line instead of off-screen. */
+@media (max-width: 767px) {
+  .yarl__toolbar {
+    max-width: 100vw;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 4px;
+    padding-left: 8px;
+  }
 }
 
 /* ── Print layout (report PDF / browser print) ──

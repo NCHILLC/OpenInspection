@@ -233,8 +233,8 @@ export function useInspectionState(opts: UseInspectionOptions) {
   const [showCheatsheet, setShowCheatsheet] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [dockOpen, setDockOpen] = useState(false);
-  const [burstCameraOpen, setBurstCameraOpen] = useState(false);
-  const [burstCameraItemId, setBurstCameraItemId] = useState<string | null>(
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraItemId, setCameraItemId] = useState<string | null>(
     null,
   );
 
@@ -555,10 +555,10 @@ export function useInspectionState(opts: UseInspectionOptions) {
     setSettingsOpen,
     dockOpen,
     setDockOpen,
-    burstCameraOpen,
-    setBurstCameraOpen,
-    burstCameraItemId,
-    setBurstCameraItemId,
+    cameraOpen,
+    setCameraOpen,
+    cameraItemId,
+    setCameraItemId,
 
     // Tags
     tagsByItem,

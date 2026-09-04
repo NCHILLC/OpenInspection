@@ -92,5 +92,6 @@
   "media_cropper_rotate_right": "Girar a la derecha",
   "media_badge_crop_aria": "Recortar la insignia",
   "media_badge_save": "Guardar la insignia",
-  "media_cropper_bake_failed": "No se pudo procesar esa imagen. Pruebe con otro archivo."
+  "media_cropper_bake_failed": "No se pudo procesar esa imagen. Pruebe con otro archivo.",
+  "media_photo_deleted": "Foto eliminada."
 }

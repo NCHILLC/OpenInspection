@@ -42,16 +42,20 @@ interface AnnotationToolbarProps {
 export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange }: AnnotationToolbarProps) {
   return (
     /* ds-allow: fixed-dark photo-studio chrome (white/* neutrals stay dark in both themes) */
+    // Wraps to two rows below sm, and is not height-locked: six tools plus a
+    // caption field in one 56px bar is a desktop palette. On a narrow viewport
+    // the labels collapsed and left six 36px icon squares — under the touch
+    // floor, on the surface used with a glove.
     <div
-      className="flex items-center gap-3 px-4 h-14 flex-shrink-0"
+      className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-4 py-2 min-h-14 flex-shrink-0"
       style={{ background: "rgba(15,23,42,0.85)", borderTop: "1px solid rgba(255,255,255,0.08)" }}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-wrap">
         {TOOLS.map((t) => (
           <button
             key={t.id}
             onClick={() => onSelectTool(t.id)}
-            className={`h-9 px-3 rounded-md text-[11px] font-bold flex items-center gap-1.5 transition-colors ${
+            className={`h-11 min-w-11 px-3 rounded-md text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${
               tool === t.id ? "bg-ih-primary text-ih-fg-inverse" : "text-ih-fg-inverse/60 hover:bg-white/10 hover:text-ih-fg-inverse/80"
             }`}
             title={toolLabel(t.id)}
@@ -64,15 +68,15 @@ export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange
         ))}
       </div>
 
-      <div className="w-px h-6 bg-white/10" />
+      <div className="hidden sm:block w-px h-6 bg-white/10" />
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 basis-full sm:basis-auto">
         <input
           type="text"
           value={caption}
           onChange={(e) => onCaptionChange(e.target.value)}
           placeholder={m.media_annotate_caption_placeholder()}
-          className="w-full h-8 px-3 rounded-md bg-white/5 border border-white/10 text-white text-[12px] placeholder-white/30 outline-none focus:border-ih-primary transition-colors"
+          className="w-full h-11 px-3 rounded-md bg-white/5 border border-white/10 text-white text-[12px] placeholder-white/30 outline-none focus:border-ih-primary transition-colors"
         />
       </div>
     </div>

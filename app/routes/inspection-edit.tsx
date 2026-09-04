@@ -20,6 +20,7 @@ import { usePresence } from "~/hooks/usePresence";
 import { ThemeSegmentControl } from "~/components/sidebar/ThemeSegmentControl";
 import { useResultsDoc } from "~/lib/collab/use-results-doc";
 import { useMediaDrain } from "~/hooks/useMediaDrain";
+import { haptic, HAPTIC_TAP } from "~/lib/haptics";
 import { bindResultMap } from "~/lib/collab/results-binding";
 import { VersionHistoryPanel } from "~/components/collab/VersionHistoryPanel";
 import type { ResultsProjection } from "../../server/lib/collab/results-doc.types";
@@ -37,7 +38,7 @@ import { capturePriorRatings } from "~/lib/editor/batch-undo";
 import { reorderItemBySwap } from "~/lib/editor/reorder-by-swap";
 import { KeyboardHud } from "~/components/editor/KeyboardHud";
 import { InspectorToolsDock } from "~/components/editor/InspectorToolsDock";
-import { BurstCamera } from "~/components/editor/BurstCamera";
+import { FieldCamera } from "~/components/editor/FieldCamera";
 import { PhotoAnnotator } from "~/components/media-studio/PhotoAnnotator";
 import { PropertyInfoForm } from "~/components/editor/PropertyInfoForm";
 import { resolveActivePropertyPreset } from "~/lib/property-preset";
@@ -904,6 +905,7 @@ export default function InspectionEditPage() {
  const handleRating = useCallback(
  (rating: string, source: 'pointer' | 'keyboard' = 'pointer') => {
  if (!state.activeItemId || !state.currentSection) return;
+ haptic(HAPTIC_TAP);
  findings.setRating(state.currentSection.id, state.activeItemId, rating);
  const level = findRatingLevel(state.ratingLevels ?? [], rating);
  const decision = ratingAdvanceDecision({
@@ -1041,7 +1043,7 @@ export default function InspectionEditPage() {
  /* Photo upload */
  /* ---------------------------------------------------------------- */
 
- const { handlePhotoUpload, handleBurstCommit, openPickerForItem, openPickerForDefect, clearPhotoTarget } = useEditorPhotoUpload({
+ const { handlePhotoUpload, handleCameraFrame, openPickerForItem, openPickerForDefect, clearPhotoTarget } = useEditorPhotoUpload({
  state,
  findings,
  uploadFetcher,
@@ -1051,6 +1053,7 @@ export default function InspectionEditPage() {
  libraryInputRef,
  isMobile,
  setAddMediaChooser,
+ drain: mediaDrain,
  });
 
  /* ---------------------------------------------------------------- */
@@ -1243,6 +1246,7 @@ export default function InspectionEditPage() {
  }}
  onToggleCanned={(tabName, cannedId, included) => {
  if (state.activeItemId && state.currentSection) {
+ haptic(HAPTIC_TAP);
  findings.toggleCannedComment(
  state.currentSection.id,
  state.activeItemId,
@@ -1451,8 +1455,13 @@ export default function InspectionEditPage() {
  // rather than leaving it to catch the next photo they add.
  onClose={() => { setAddMediaChooser(null); clearPhotoTarget(); }}
  onTakePhoto={() => {
+ const t = addMediaChooser;
  setAddMediaChooser(null);
- cameraInputRef.current?.click();
+ // Task 16 used `<input capture>` here: four taps and two OS context
+ // switches per photo. The in-app screen stays open instead, and falls
+ // back to that same input when getUserMedia is refused.
+ state.setCameraItemId(t?.itemId ?? state.activeItemId ?? null);
+ state.setCameraOpen(true);
  }}
  onAddFromLibrary={() => {
  setAddMediaChooser(null);
@@ -1577,11 +1586,144 @@ export default function InspectionEditPage() {
  />
  </>
  );
+ /* Every media overlay the editor owns, rendered by BOTH returns. They used to
+  * live only in the desktop branch, below the `if (isMobile)` early return — so
+  * on a phone the lightbox every thumbnail tap targets, the annotator and both
+  * croppers were mounted nowhere, and the tap was dead. Same move as `finishActionsEl`. */
+ const mediaOverlaysEl = (
+ <>
+ {addMediaOverlaysEl}
+ {/* In-app capture screen — stays open across shots; every frame is queued
+  * as it is taken. Falls back to the OS camera input if the browser refuses
+  * getUserMedia, so a refusal never leaves the inspector without a camera. */}
+ <FieldCamera
+ open={state.cameraOpen}
+ onClose={() => {
+ state.setCameraOpen(false);
+ state.setCameraItemId(null);
+ }}
+ onCapture={handleCameraFrame}
+ onUnavailable={() => cameraInputRef.current?.click()}
+ />
+ {/* Photo studio overlay */}
+ <PhotoAnnotator
+ open={photoStudioOpen}
+ photoUrl={photoStudioUrl}
+ photoIndex={photoStudioIndex}
+ totalPhotos={photoStudioTotal}
+ sectionName={state.currentSection?.title || state.currentSection?.name || ""}
+ initialAnnotationsJson={null}
+ isCover={!!photoStudioKey && (state.inspection.coverPhotoId as string | null) === photoStudioKey}
+ onSetCover={photoStudioKey ? () => {
+  const isCover = (state.inspection.coverPhotoId as string | null) === photoStudioKey;
+  coverFetcher.submit(
+   { intent: "set-cover", coverPhotoId: isCover ? "" : photoStudioKey },
+   { method: "post" },
+  );
+ } : undefined}
+ onSave={({ blob, nodesJson }) => {
+  const itemId = state.activeItemId;
+  if (itemId && photoStudioIndex != null) {
+   const sectionId = state.currentSection?.id;
+   // #181 — the Y.Doc owns results.data: bake the annotation PNG to R2 + mirror
+   // the returned annotatedKey into the doc (offline refuses with a toast).
+   // performPhotoAnnotationSave returns false only in the brief pre-connect
+   // window before the doc is live; fall back to the online annotate relay then.
+   if (!performPhotoAnnotationSave({ itemId, photoIndex: photoStudioIndex, sectionId }, blob, nodesJson)) {
+    const fd = new FormData();
+    fd.append("intent", "annotate");
+    fd.append("itemId", itemId);
+    fd.append("photoIndex", String(photoStudioIndex));
+    fd.append("nodes", nodesJson);
+    if (sectionId) fd.append("sectionId", sectionId);
+    fd.append("image", new File([blob], "annotated.png", { type: "image/png" }));
+    coverFetcher.submit(fd, { method: "post", encType: "multipart/form-data" });
+   }
+  }
+  setPhotoStudioOpen(false);
+ }}
+ onClose={() => setPhotoStudioOpen(false)}
+ />
+ {/* Task 8 — unified MediaViewer for an item's photo strip (tap a thumbnail
+  * to open; the bottom toolbar routes cover/annotate/revert/delete to the
+  * per-photo endpoints; crop opens the PhotoCropper, rotate/caption are no-ops). */}
+ <MediaViewer
+ photos={viewer.index !== null ? itemGalleryPhotos(viewer.itemId) : []}
+ index={viewer.index}
+ onClose={() => setViewer((v) => ({ ...v, index: null }))}
+ onAction={onViewerAction}
+ streamCustomerSubdomain={streamCustomerSubdomain}
+ inspectionId={String(state.inspection.id)}
+ />
+ {/* Plan 7 — poster-frame picker for a video entry (opened by the "Poster
+  * frame" toolbar action). Fails closed when the Stream subdomain is absent. */}
+ {posterTarget && (
+ <PosterPicker
+  inspectionId={String(state.inspection.id)}
+  streamUid={posterTarget.streamUid}
+  durationSec={posterTarget.durationSec}
+  posterPct={posterTarget.posterPct}
+  streamCustomerSubdomain={streamCustomerSubdomain}
+  onClose={() => setPosterTarget(null)}
+ />
+ )}
+ {/* Plan 4 (Task 8) — per-photo crop overlay. Cropping ALWAYS re-derives from
+  * the ORIGINAL key. A re-crop that would discard an existing annotation warns
+  * first (no native window.confirm). */}
+ {photoCropTarget && (
+ <PhotoCropper
+  sourceUrl={fullResUrl(photoCropTarget.sourceUrl)}
+  allowFree
+  title={m.editor_route_crop_photo()}
+  saveLabel={m.editor_route_save_crop()}
+  onCancel={() => setPhotoCropTarget(null)}
+  onSave={(blob, crop) => {
+   const target = photoCropTarget;
+   setPhotoCropTarget(null);
+   const run = () => performPhotoCropSave(target, blob, crop);
+   if (target.hasAnnotation) setRecropWarn({ run });
+   else run();
+  }}
+ />
+ )}
+ {/* Plan 4 — re-crop warning modal (annotation will be discarded). */}
+ <RecropWarningModal
+ open={Boolean(recropWarn)}
+ onCancel={() => setRecropWarn(null)}
+ onConfirm={() => { const r = recropWarn?.run; setRecropWarn(null); r?.(); }}
+ />
+ {/* Media Studio — gallery "Set as cover" crop overlay */}
+ {galleryCropSource && (
+ <CoverCropper
+  sourceUrl={fullResUrl(galleryCropSource.url)}
+  sourceKey={galleryCropSource.key}
+  initialCrop={
+   sessionCoverCrop?.key === galleryCropSource.key
+    ? sessionCoverCrop.crop
+    : coverCropFor(state.inspection as Record<string, unknown>, galleryCropSource.key)
+  }
+  onCancel={() => setGalleryCropSource(null)}
+  onSave={(blob, c) => {
+   const crop = { aspect: c.aspect, orientation: c.orientation, ...c.pixels };
+   setSessionCoverCrop({ key: galleryCropSource.key, crop });
+   const fd = new FormData();
+   fd.append("intent", "crop-cover");
+   fd.append("sourceKey", galleryCropSource.key);
+   fd.append("crop", JSON.stringify(crop));
+   fd.append("image", new File([blob], "cover.jpg", { type: "image/jpeg" }));
+   coverFetcher.submit(fd, { method: "post", encType: "multipart/form-data" });
+   setGalleryCropSource(null);
+  }}
+ />
+ )}
+ </>
+ );
 
  if (isMobile) {
  return (
  <MobileDrillShell
  level={urlNav.level}
+ inspectionId={String(state.inspection.id)}
  inspectionTitle={(state.inspection.propertyAddress as string) || m.editor_mobile_eyebrow_inspection()}
  sectionTitle={state.currentSection?.title ?? ""}
  itemLabel={((state.activeItem?.label || state.activeItem?.name) as string | undefined) ?? m.editor_route_select_an_item()}
@@ -1591,9 +1733,10 @@ export default function InspectionEditPage() {
  onOpenPreview={() => setMobileDrawer("preview")}
  onNext={urlNav.goNext}
  percentComplete={state.progress.pct}
+ onCapture={() => { state.setCameraItemId(state.activeItemId); state.setCameraOpen(true); }}
  overlays={<>
   {photoInputsEl}
-  {addMediaOverlaysEl}
+  {mediaOverlaysEl}
   <MobileBottomDrawer open={mobileDrawer === "search"} onClose={() => setMobileDrawer(null)} title={m.editor_mobile_search()}>
   <MobileReportSearch
    sections={state.sections}
@@ -1673,109 +1816,7 @@ export default function InspectionEditPage() {
  {/* Keyboard cheatsheet overlay */}
  {state.showCheatsheet && <KeyboardHud onClose={() => state.setShowCheatsheet(false)} />}
 
- {/* Burst camera overlay */}
- <BurstCamera
- open={state.burstCameraOpen}
- onClose={() => {
- state.setBurstCameraOpen(false);
- state.setBurstCameraItemId(null);
- }}
- onCommit={handleBurstCommit}
- />
-
- {/* Photo studio overlay */}
- <PhotoAnnotator
- open={photoStudioOpen}
- photoUrl={photoStudioUrl}
- photoIndex={photoStudioIndex}
- totalPhotos={photoStudioTotal}
- sectionName={state.currentSection?.title || state.currentSection?.name || ""}
- initialAnnotationsJson={null}
- isCover={!!photoStudioKey && (state.inspection.coverPhotoId as string | null) === photoStudioKey}
- onSetCover={photoStudioKey ? () => {
-  const isCover = (state.inspection.coverPhotoId as string | null) === photoStudioKey;
-  coverFetcher.submit(
-   { intent: "set-cover", coverPhotoId: isCover ? "" : photoStudioKey },
-   { method: "post" },
-  );
- } : undefined}
- onSave={({ blob, nodesJson }) => {
-  const itemId = state.activeItemId;
-  if (itemId && photoStudioIndex != null) {
-   const sectionId = state.currentSection?.id;
-   // #181 — the Y.Doc owns results.data: bake the annotation PNG to R2 + mirror
-   // the returned annotatedKey into the doc (offline refuses with a toast).
-   // performPhotoAnnotationSave returns false only in the brief pre-connect
-   // window before the doc is live; fall back to the online annotate relay then.
-   if (!performPhotoAnnotationSave({ itemId, photoIndex: photoStudioIndex, sectionId }, blob, nodesJson)) {
-    const fd = new FormData();
-    fd.append("intent", "annotate");
-    fd.append("itemId", itemId);
-    fd.append("photoIndex", String(photoStudioIndex));
-    fd.append("nodes", nodesJson);
-    if (sectionId) fd.append("sectionId", sectionId);
-    fd.append("image", new File([blob], "annotated.png", { type: "image/png" }));
-    coverFetcher.submit(fd, { method: "post", encType: "multipart/form-data" });
-   }
-  }
-  setPhotoStudioOpen(false);
- }}
- onClose={() => setPhotoStudioOpen(false)}
- />
-
- {/* Task 8 — unified MediaViewer for an item's photo strip (tap a thumbnail
-  * to open; the bottom toolbar routes cover/annotate/revert/delete to the
-  * per-photo endpoints; crop opens the PhotoCropper, rotate/caption are no-ops). */}
- <MediaViewer
- photos={viewer.index !== null ? itemGalleryPhotos(viewer.itemId) : []}
- index={viewer.index}
- onClose={() => setViewer((v) => ({ ...v, index: null }))}
- onAction={onViewerAction}
- streamCustomerSubdomain={streamCustomerSubdomain}
- inspectionId={String(state.inspection.id)}
- />
-
- {/* Plan 7 — poster-frame picker for a video entry (opened by the "Poster
-  * frame" toolbar action). Fails closed when the Stream subdomain is absent. */}
- {posterTarget && (
- <PosterPicker
-  inspectionId={String(state.inspection.id)}
-  streamUid={posterTarget.streamUid}
-  durationSec={posterTarget.durationSec}
-  posterPct={posterTarget.posterPct}
-  streamCustomerSubdomain={streamCustomerSubdomain}
-  onClose={() => setPosterTarget(null)}
- />
- )}
-
- {addMediaOverlaysEl}
-
- {/* Plan 4 (Task 8) — per-photo crop overlay. Cropping ALWAYS re-derives from
-  * the ORIGINAL key. A re-crop that would discard an existing annotation warns
-  * first (no native window.confirm). */}
- {photoCropTarget && (
- <PhotoCropper
-  sourceUrl={fullResUrl(photoCropTarget.sourceUrl)}
-  allowFree
-  title={m.editor_route_crop_photo()}
-  saveLabel={m.editor_route_save_crop()}
-  onCancel={() => setPhotoCropTarget(null)}
-  onSave={(blob, crop) => {
-   const target = photoCropTarget;
-   setPhotoCropTarget(null);
-   const run = () => performPhotoCropSave(target, blob, crop);
-   if (target.hasAnnotation) setRecropWarn({ run });
-   else run();
-  }}
- />
- )}
-
- {/* Plan 4 — re-crop warning modal (annotation will be discarded). */}
- <RecropWarningModal
- open={Boolean(recropWarn)}
- onCancel={() => setRecropWarn(null)}
- onConfirm={() => { const r = recropWarn?.run; setRecropWarn(null); r?.(); }}
- />
+ {mediaOverlaysEl}
 
  {/* D8 — structural delete confirmation modal (section OR item; NEVER window.confirm). */}
  <StructureDeleteModal
@@ -1813,30 +1854,6 @@ export default function InspectionEditPage() {
  />
 
 
- {/* Media Studio — gallery "Set as cover" crop overlay */}
- {galleryCropSource && (
- <CoverCropper
-  sourceUrl={fullResUrl(galleryCropSource.url)}
-  sourceKey={galleryCropSource.key}
-  initialCrop={
-   sessionCoverCrop?.key === galleryCropSource.key
-    ? sessionCoverCrop.crop
-    : coverCropFor(state.inspection as Record<string, unknown>, galleryCropSource.key)
-  }
-  onCancel={() => setGalleryCropSource(null)}
-  onSave={(blob, c) => {
-   const crop = { aspect: c.aspect, orientation: c.orientation, ...c.pixels };
-   setSessionCoverCrop({ key: galleryCropSource.key, crop });
-   const fd = new FormData();
-   fd.append("intent", "crop-cover");
-   fd.append("sourceKey", galleryCropSource.key);
-   fd.append("crop", JSON.stringify(crop));
-   fd.append("image", new File([blob], "cover.jpg", { type: "image/jpeg" }));
-   coverFetcher.submit(fd, { method: "post", encType: "multipart/form-data" });
-   setGalleryCropSource(null);
-  }}
- />
- )}
 
  {/* Unsaved changes blocker dialog */}
  <UnsavedChangesBlocker
@@ -2207,9 +2224,9 @@ export default function InspectionEditPage() {
  {/* ------------------------------------------------------------ */}
  <InspectorToolsDock
  onToggleSpeedMode={toggleSpeedMode}
- onBurstCamera={(itemId) => {
- state.setBurstCameraItemId(itemId || state.activeItemId || null);
- state.setBurstCameraOpen(true);
+ onCamera={(itemId) => {
+ state.setCameraItemId(itemId || state.activeItemId || null);
+ state.setCameraOpen(true);
  }}
  onPhotoStudio={() => {
  if (!state.activeItemId) return;

@@ -37,7 +37,6 @@
   "editor_footer_shortcut_nav": "Next / Prev",
   "editor_footer_shortcut_library": "Open library",
   "editor_footer_shortcut_photo": "Capture photo",
-  "editor_footer_shortcut_voice": "Voice note",
   "editor_footer_shortcut_repeat": "Repeat rating",
   "editor_footer_shortcut_speed": "Speed mode",
   "editor_footer_shortcut_next_defect": "Next defect",
@@ -85,7 +84,7 @@
   "editor_dock_open": "Open inspector tools",
   "editor_dock_close": "Close inspector tools",
   "editor_dock_speed_mode": "Speed mode",
-  "editor_dock_burst_camera": "Burst camera",
+  "editor_dock_camera": "Camera",
   "editor_dock_photo_studio": "Photo studio",
   "editor_item_tab_information": "Information",
   "editor_item_tab_limitations": "Limitations",
@@ -235,5 +234,8 @@
   "editor_limitation_reason_not_in_service": "Not in service",
   "editor_limitation_reason_weather": "Weather conditions",
   "editor_limitation_reason_belongings": "Stored belongings in the way",
-  "editor_limitation_reason_unsafe": "Unsafe to access"
+  "editor_limitation_reason_unsafe": "Unsafe to access",
+  "editor_mobile_sync_ok": "Synced",
+  "editor_mobile_sync_uploading": "Uploading {count}",
+  "editor_mobile_sync_offline": "Offline · {count} queued"
 }

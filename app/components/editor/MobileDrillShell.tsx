@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { m } from "~/paraglide/messages";
 import { MobileAppBar } from "./MobileAppBar";
+import { MobileSyncPill } from "./MobileSyncPill";
 import type { EditorNavLevel } from "~/routes/inspection-edit/useEditorUrlNav";
 
 /**
@@ -12,6 +13,8 @@ export type MobileDrawerId = "preview" | "theme" | "actions" | "search";
 
 export interface MobileDrillShellProps {
     level: EditorNavLevel;
+    /** Drives the app bar's sync readout (queued-photo count for this job). */
+    inspectionId: string;
     /** Property address — the inspection's own name on the root screen. */
     inspectionTitle: string;
     sectionTitle: string;
@@ -27,6 +30,12 @@ export interface MobileDrillShellProps {
     onNext: (() => void) | null;
     /** Whole-inspection completion, 0–100. Rendered as the root screen's ring. */
     percentComplete: number;
+    /**
+     * Open the capture screen for the item being edited. Drives the camera FAB,
+     * which only exists on the item level — there is nothing to attach a photo
+     * to on the section or item-list screens.
+     */
+    onCapture?: () => void;
     /** The screen for the current level. */
     children: ReactNode;
     /** Modals, file inputs and drawers that must stay mounted across levels. */
@@ -55,6 +64,7 @@ export interface MobileDrillShellProps {
  */
 export function MobileDrillShell({
     level,
+    inspectionId,
     inspectionTitle,
     sectionTitle,
     itemLabel,
@@ -64,6 +74,7 @@ export function MobileDrillShell({
     onOpenPreview,
     onNext,
     percentComplete,
+    onCapture,
     children,
     overlays,
 }: MobileDrillShellProps) {
@@ -89,8 +100,28 @@ export function MobileDrillShell({
                 onMore={onMore}
                 onSearch={onOpenSearch}
                 backLabel={backLabel}
+                syncPill={<MobileSyncPill inspectionId={inspectionId} />}
             />
-            <main className="p-4">{children}</main>
+            <main className="p-4 pb-24">{children}</main>
+
+            {/* The most-used control on the screen, in the one place a thumb
+                reaches without a regrip — and at a FIXED position, unlike the
+                add tile in the photo strip, which sits behind a scroll and used
+                to move every fourth photo. */}
+            {level === "item" && onCapture && (
+                <button
+                    type="button"
+                    onClick={onCapture}
+                    data-testid="mobile-capture-fab"
+                    aria-label={m.media_strip_add_photo_aria()}
+                    className="fixed right-4 bottom-[72px] z-40 w-14 h-14 rounded-full bg-ih-primary text-ih-primary-fg shadow-ih-popover flex items-center justify-center active:scale-95 transition-transform"
+                >
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <circle cx="12" cy="13" r="3.2" />
+                    </svg>
+                </button>
+            )}
 
             <nav className="fixed left-0 right-0 bottom-0 z-30 h-14 bg-ih-bg-card border-t border-ih-border flex items-center">
                 {/* Completion reads as a number, not only a ring: a ring alone

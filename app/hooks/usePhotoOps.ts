@@ -20,6 +20,7 @@ import {
 } from "~/lib/collab/results-binding";
 import { enqueueMedia } from "~/lib/collab/media-upload-queue";
 import { getPendingMedia } from "~/lib/collab/media-pending-store";
+import { deletePhotoWithUndo } from "./photo-delete-undo";
 import type { PhotoEntry } from "../../server/lib/collab/results-doc.types";
 
 /** #181 PR-G — offline detection. The legacy app/lib/offline helper was removed
@@ -478,18 +479,17 @@ export function usePhotoOps(ctx: {
         return;
       }
       if (action === "delete") {
-        patchItemPhotos(itemId, (photos) => photos.filter((_, i) => i !== idx));
-        if (collabDoc) {
-          const fk = docFindingKey(itemId, sectionId);
-          const docKey = photo.originalKey || photo.key;
-          if (fk && docKey) bindingRemovePhoto(collabDoc, fk, docKey);
-        }
+        // Leaves an undo toast: Caption is the adjacent target, and this used
+        // to be the one unrecoverable action in the editor.
+        deletePhotoWithUndo({
+          collabDoc, findingKey: docFindingKey(itemId, sectionId), sectionId, itemId,
+          activeUnitId, index: idx, photos: getItemPhotos(itemId), patchItemPhotos,
+        });
         return;
       }
-      // rotate / caption — routed here but not yet implemented (not Plan 4).
-      // TODO rotate/caption on item photos.
+      // TODO rotate / caption on item photos (routed here, not yet implemented).
     },
-    [patchItemPhotos, state.inspection.id, state.currentSection, collabDoc, docFindingKey],
+    [patchItemPhotos, state.inspection.id, state.currentSection, collabDoc, docFindingKey, getItemPhotos, activeUnitId],
   );
 
   /* Plan 4 (Task 8/9) — persist a baked crop for the targeted photo. When online,

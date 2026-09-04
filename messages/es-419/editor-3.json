@@ -101,5 +101,7 @@
   "editor_unsavedchanges_title": "Cambios sin guardar",
   "editor_unsavedchanges_stay": "Quedarse",
   "editor_unsavedchanges_leave": "Salir",
-  "editor_unsavedchanges_body": "Tiene cambios sin guardar. ¿Seguro que quiere salir?"
+  "editor_unsavedchanges_body": "Tiene cambios sin guardar. ¿Seguro que quiere salir?",
+  "editor_shared_section_has_defect": "Tiene un defecto",
+  "editor_shared_item_no_photo": "Calificado, aún sin foto"
 }

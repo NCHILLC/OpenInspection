@@ -46,7 +46,6 @@ export interface ItemPhotoStripProps {
    * `photos[].key`. We render the <img> from displayKey but reorder by key.
    */
   onReorder?: (order: string[]) => void;
-  photoUploading?: boolean;
   /** Task 9 — show the "Select" toggle + enable long-press multi-select. */
   selectable?: boolean;
   /**
@@ -93,7 +92,6 @@ export function ItemPhotoStrip({
   onAddPhoto,
   onOpen,
   onReorder,
-  photoUploading,
   selectable,
   onBulkDetach,
   moveTargets,
@@ -151,11 +149,17 @@ export function ItemPhotoStrip({
       draggable: ".strip-thumb",
       filter: ".strip-add", // the + tile is never draggable
       onEnd: (evt) => {
-        if (evt.oldIndex == null || evt.newIndex == null || evt.oldIndex === evt.newIndex) return;
+        // *DraggableIndex*, not *Index*: the plain indices count every element
+        // in the row, and the row's first child is the non-draggable add tile,
+        // so they run one ahead of the photo array. The draggable pair counts
+        // only `.strip-thumb`, which is exactly the photo order.
+        const from = evt.oldDraggableIndex;
+        const to = evt.newDraggableIndex;
+        if (from == null || to == null || from === to) return;
         // Build the ORIGINAL-key order (server matches photos[].key, NOT displayKey).
         const keys = photosRef.current.map((p) => p.key);
-        const [moved] = keys.splice(evt.oldIndex, 1);
-        keys.splice(evt.newIndex, 0, moved);
+        const [moved] = keys.splice(from, 1);
+        keys.splice(to, 0, moved);
         onReorderRef.current?.(keys);
       },
     });
@@ -225,11 +229,29 @@ export function ItemPhotoStrip({
           )}
         </div>
       )}
+      {/* `flex-wrap` used to be on this row, which meant it never overflowed:
+          the `overflow-x-auto` and the `pan-x` touch hint were both dead, and
+          the strip grew DOWNWARD every fourth photo — pushing everything below
+          it, including the add tile, further off a phone screen. */}
       <div
         ref={rowRef}
-        className="flex flex-wrap items-center gap-2 overflow-x-auto"
+        className="flex items-center gap-2 overflow-x-auto"
         style={{ touchAction: "pan-x" }}
       >
+        {/* Leading, not trailing. Behind the photos it moved every fourth shot;
+            a primary target that relocates is the classic ergonomic failure.
+            Never disabled: captures ride the upload queue, so there is no state
+            in which adding another photo is unavailable. */}
+        <button
+          type="button"
+          onClick={onAddPhoto}
+          aria-label={m.media_strip_add_photo_aria()}
+          className="strip-add w-16 h-16 shrink-0 rounded-lg border-2 border-dashed border-ih-border flex items-center justify-center text-ih-fg-4 hover:border-ih-primary hover:text-ih-primary-text transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
         {photos.map((p, i) => {
           const dk = displayKey(p);
           const isCover = coverKey != null && coverKey === dk;
@@ -345,24 +367,6 @@ export function ItemPhotoStrip({
             </button>
           );
         })}
-        <button
-          type="button"
-          onClick={onAddPhoto}
-          disabled={photoUploading}
-          aria-label={m.media_strip_add_photo_aria()}
-          className="strip-add w-16 h-16 shrink-0 rounded-lg border-2 border-dashed border-ih-border flex items-center justify-center text-ih-fg-4 hover:border-ih-primary hover:text-ih-primary-text transition-colors disabled:opacity-50"
-        >
-          {photoUploading ? (
-            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-            </svg>
-          ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          )}
-        </button>
       </div>
     </div>
   );

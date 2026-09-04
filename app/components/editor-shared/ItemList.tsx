@@ -102,7 +102,9 @@ export function ItemList({
   });
 
   return (
-    <div data-shortcut-scope className="w-[280px] flex-shrink-0 border-r border-ih-border overflow-y-auto flex flex-col">
+    // Full-bleed below md — see the note on SectionRail. At 280px fixed this
+    // left 63px of dead space on a 375px screen.
+    <div data-shortcut-scope className="w-full md:w-[280px] md:flex-shrink-0 md:border-r border-ih-border overflow-y-auto flex flex-col">
       {/* Filter chips live in the inspection-edit header row (with per-filter
           counts + a working Flagged filter); this shared list only renders the
           items it is handed, already filtered by the parent. */}
@@ -145,7 +147,7 @@ export function ItemList({
               )}
 
               {editing && onRenameItem ? (
-                <div className="min-w-0 flex-1 flex items-center gap-2 px-2 py-2">
+                <div className="min-w-0 flex-1 flex items-center gap-2 px-2 py-2 min-h-14 md:min-h-0">
                   <span className="text-[13px] text-ih-fg-3 font-mono w-5 shrink-0">{String(idx + 1).padStart(2, "0")}</span>
                   <InlineRename
                     value={item.label}
@@ -170,7 +172,7 @@ export function ItemList({
                     }
                   }}
                   onDoubleClick={onRenameItem && !batchMode ? () => setEditingId(item.id) : undefined}
-                  className={`flex-1 min-w-0 text-left py-2 flex items-center gap-2 ${onReorderItem && !batchMode ? "pr-1" : "px-3"}`}
+                  className={`flex-1 min-w-0 text-left py-2 min-h-14 md:min-h-0 flex items-center gap-2 ${onReorderItem && !batchMode ? "pr-1" : "px-3"}`}
                 >
                   {batchMode && (
                     <span
@@ -192,9 +194,27 @@ export function ItemList({
                     {String(idx + 1).padStart(2, "0")}
                   </span>
                   <span className="flex-1 truncate">{item.label}</span>
+                  {/* Rated with no photograph — the gap that otherwise surfaces
+                      at the publish gate, in the truck, instead of in the room
+                      where it can still be fixed. */}
+                  {mode === "fill" && Boolean(result.rating) &&
+                    ((result.photos as unknown[] | undefined) ?? []).length === 0 && (
+                    <span
+                      title={m.editor_shared_item_no_photo()}
+                      aria-label={m.editor_shared_item_no_photo()}
+                      className="shrink-0 text-ih-fg-4"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <circle cx="12" cy="13" r="3.2" />
+                      </svg>
+                    </span>
+                  )}
+                  {/* w-3 on touch: an 8px dot is not a status readout at arm's
+                      length in glare. Desktop keeps the denser 8px. */}
                   {mode === "fill" && Boolean(result.rating) && (
                     <span
-                      className={`w-2 h-2 rounded-full flex-shrink-0 ${ratingDotClass(result.rating as string)}`}
+                      className={`w-3 h-3 md:w-2 md:h-2 rounded-full flex-shrink-0 ${ratingDotClass(result.rating as string)}`}
                     />
                   )}
                   {mode === "author" && (

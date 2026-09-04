@@ -42,8 +42,15 @@ import { join, relative, sep } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const EXTS = ['.ts', '.tsx', '.js', '.mjs', '.cjs', '.css', '.html', '.md', '.json', '.yml', '.yaml'];
+// `.claude` holds agent scratch and git worktrees, and is gitignored. Walking
+// it made this gate report on COPIES of its own source — every hit under
+// `.claude/worktrees/*/scripts/check-no-private-review-refs.mjs` is this file's
+// own rule table, quoted back. A gate that fails on its own examples in a
+// directory git does not track is unfixable by the person it blocks.
+// `check-english-only.mjs` had already reached for this with '.worktrees'; the
+// worktrees moved under `.claude/` and that entry stopped matching.
 const SKIP_DIRS = new Set([
-    'node_modules', '.git', 'build', 'dist', '.wrangler', '.types',
+    'node_modules', '.git', '.claude', 'build', 'dist', '.wrangler', '.types',
     'coverage', '.docs-shots', 'test-results', 'playwright-report',
     'local-fixtures', '.react-router', '.superpowers',
 ]);

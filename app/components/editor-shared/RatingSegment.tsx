@@ -183,7 +183,10 @@ export function RatingSegment({
           >
             <span className="truncate px-0.5">{text}</span>
             {r.hint != null && (
-              <span className="block text-[12px] font-mono opacity-60 mt-0.5">{r.hint}</span>
+              // Hidden below sm: the hint is a KEYBOARD-shortcut digit, and a
+              // phone has no keyboard — inside a fixed 44px tile it is pure
+              // vertical noise crowding the label it sits under.
+              <span className="hidden sm:block text-[12px] font-mono opacity-60 mt-0.5">{r.hint}</span>
             )}
           </button>
         );
