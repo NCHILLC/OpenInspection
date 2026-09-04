@@ -17,6 +17,7 @@ import {
 import { assertConversionByPersonAvailable } from '../lib/migration-intake/unreadable-file';
 import { assertStaffAccessDecisionIsOwners } from '../services/migration-intake/staff-access';
 import { announceWaitingRun } from '../services/migration-intake/waiting-run-notice';
+import { DefectCategoryService } from '../services/inspection/defect-category.service';
 import { MigrationStageService } from '../services/migration-intake/stage.service';
 import { MigrationReportService } from '../services/migration-intake/report.service';
 import { MigrationApplyService } from '../services/migration-intake/apply.service';
@@ -173,7 +174,7 @@ const migrationIntakeRoutes = createApiRouter()
         const match = await matchAdapter(intent, declaredVendor, source);
         if (!match) return openWaitingRun();
 
-        const built = await buildBundle(match.vendor, source, defaultMappingFor(intent, match.inspection, source));
+        const built = await buildBundle(match.vendor, source, defaultMappingFor(intent, match.inspection, source), await new DefectCategoryService(c.env.DB).orderedNames(tenantId));
         if (!built.ok) throw Errors.UnprocessableEntity(built.error.message);
 
         const staged = await withStoredFile((sourceKey) => stage.stage({

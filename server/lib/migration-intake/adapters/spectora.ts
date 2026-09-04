@@ -78,7 +78,10 @@ interface BuiltTemplate {
  * row, so first appearance is the only ordering the file expresses — and an
  * inspector recognises his own template by its running order.
  */
-function buildTemplate(sheet: Extract<SpectoraSheet, { ok: true }>): BuiltTemplate {
+function buildTemplate(
+    sheet: Extract<SpectoraSheet, { ok: true }>,
+    severityCategories: readonly string[],
+): BuiltTemplate {
     const stats: ConvertStats = {
         sections: 0, items: 0,
         information: 0, limitations: 0, defects: 0,
@@ -147,7 +150,8 @@ function buildTemplate(sheet: Extract<SpectoraSheet, { ok: true }>): BuiltTempla
             stats.defects++;
             const defect: CannedDefect = {
                 id, title: name || 'Defect',
-                category: categoryFrom(row, sheet.columns) ?? DEFAULT_IMPORTED_DEFECT_CATEGORY,
+                category: categoryFrom(row, sheet.columns, severityCategories)
+                    ?? DEFAULT_IMPORTED_DEFECT_CATEGORY,
                 location: '', comment: text, photos: [], default: defaultFrom(row, sheet.columns),
                 ...(choices ? { choices } : {}),
             };
@@ -174,6 +178,16 @@ function buildTemplate(sheet: Extract<SpectoraSheet, { ok: true }>): BuiltTempla
 export interface SpectoraAdapterOptions {
     /** The name the imported template gets. The file carries none of its own. */
     name: string;
+    /**
+     * The tenant's defect categories, in ascending grade order, which the
+     * file's three-point severity column is filed into by position.
+     *
+     * From the caller because these are per-tenant and renameable, and an
+     * adapter may not read storage. Absent — or shorter than a grade needs —
+     * and every defect takes `DEFAULT_IMPORTED_DEFECT_CATEGORY`, which is the
+     * behaviour before the column was read at all.
+     */
+    severityCategories?: readonly string[] | undefined;
 }
 
 /**
@@ -247,7 +261,7 @@ export const spectoraAdapter: MigrationAdapter<SpectoraAdapterOptions> = {
         if (!read.ok) {
             return { ok: false, error: { code: read.code, message: REFUSALS[read.code] } };
         }
-        const { template, stats, untyped } = buildTemplate(read);
+        const { template, stats, untyped } = buildTemplate(read, options.severityCategories ?? []);
         return {
             ok: true,
             bundle: {

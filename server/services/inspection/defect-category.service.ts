@@ -79,6 +79,22 @@ export class DefectCategoryService {
         return rows.length > 0;
     }
 
+    /**
+     * The tenant's category NAMES in ascending grade order.
+     *
+     * For readers that carry a graded severity and need somewhere to file it.
+     * They must go by POSITION rather than by name: these rows are renameable,
+     * and a real deployment had renamed all three seeds to its own severity
+     * words, so a caller writing the seed names would have produced a category
+     * resolving to nothing — and an unresolved category counts toward the
+     * report Summary, which would have put every graded defect in it.
+     */
+    async orderedNames(tenantId: string): Promise<string[]> {
+        return (await this.ensureSeed(tenantId))
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((c) => c.name);
+    }
+
     async ensureSeed(tenantId: string): Promise<DefectCategory[]> {
         const existing = await this.list(tenantId);
         if (existing.length > 0) return existing;

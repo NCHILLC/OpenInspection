@@ -82,25 +82,30 @@ const AFFIRMATIVE_DEFAULT = 'true';
 const SEVERITY_HEADER = 'category';
 
 /**
- * The file's three-point severity, onto our three seed defect categories.
+ * The file's three-point severity, as a POSITION in the tenant's own ordered
+ * defect categories.
  *
- * ⚠️ LITERAL-USE CLASSIFICATION: REQUIRED ENUM on the left — three functional
- * tokens the parser must match. INDEPENDENTLY AUTHORED on the right:
- * `maintenance`, `recommendation` and `safety` are OUR seed category names
- * (see DefectCategoryService), not taken from any product.
+ * ⚠️ LITERAL-USE CLASSIFICATION: REQUIRED ENUM. Three functional tokens the
+ * parser must match; the right-hand side is an index, not a name.
  *
- * The two are not the same axis and the alignment is deliberate, not a
- * discovered identity: the file grades how BAD a finding is, our categories say
- * what KIND it is. Three points onto three seeds is the only mapping that uses
- * the column at all, and it puts the top grade on the one seed that drives the
- * report Summary — which is where an inspector expects their worst findings to
- * appear. A tenant who has since renamed or added categories keeps theirs; this
- * only decides what a freshly imported defect starts as.
+ * A position and not a name because these categories are per-tenant and
+ * renameable. The code seeds them `maintenance` / `recommendation` / `safety`,
+ * and a real deployment had renamed all three to its own severity words — so an
+ * adapter writing the seed names would have produced a category resolving to
+ * NOTHING in that tenant. An unresolved category counts toward the report
+ * Summary (a defect must never be silently dropped from it), so every imported
+ * defect would have driven the Summary: the exact flood this column exists to
+ * prevent.
+ *
+ * The two scales are also not the same axis, and aligning them is deliberate
+ * rather than a discovered identity: the file grades how BAD a finding is, and
+ * these categories say what KIND it is. Three ascending points onto three
+ * ascending categories is the only mapping that uses the column at all.
  */
-const CATEGORY_FOR_SEVERITY: Record<string, string> = {
-    '-1': 'maintenance',
-    '0': 'recommendation',
-    '1': 'safety',
+const SEVERITY_POSITION: Record<string, number> = {
+    '-1': 0,
+    '0': 1,
+    '1': 2,
 };
 
 /**
@@ -231,12 +236,17 @@ export function choicesFrom(row: string[], columns: SheetColumns): string[] | un
 /**
  * The category a defect starts in, or undefined when the file does not grade it.
  *
- * Undefined rather than a guess: a row the file leaves ungraded, or grades with
- * something this reader does not know, keeps the caller's default instead of
- * being silently filed as the mildest or the worst.
+ * `categories` is the tenant's own, in ascending grade order. Undefined comes
+ * back for a row the file leaves ungraded, one graded with something this
+ * reader does not know, or a tenant with fewer categories than the grade needs
+ * — in every case the caller's default stands rather than a guess being filed
+ * as the mildest or the worst.
  */
-export function categoryFrom(row: string[], columns: SheetColumns): string | undefined {
-    return CATEGORY_FOR_SEVERITY[at(row, columns.severity)];
+export function categoryFrom(
+    row: string[], columns: SheetColumns, categories: readonly string[],
+): string | undefined {
+    const position = SEVERITY_POSITION[at(row, columns.severity)];
+    return position === undefined ? undefined : categories[position];
 }
 
 export function defaultFrom(row: string[], columns: SheetColumns): boolean {

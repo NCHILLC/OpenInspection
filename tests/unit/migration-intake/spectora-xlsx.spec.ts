@@ -241,8 +241,13 @@ describe('spectoraAdapter.convert — what the file says about a comment', () =>
         severity = '',
     ) => ['Roof', 'General', name, 'Body.', type, choices, answerType, def, severity];
 
-    const itemFrom = async (rows: string[][]) => {
-        const result = await spectoraAdapter.convert(await workbook([HEADER, ...rows]), { name: 'T' });
+    /** A tenant that has renamed its three seeds, which is the real-world case. */
+    const CATEGORIES = ['Minor', 'Moderate', 'Safety/Major'];
+
+    const itemFrom = async (rows: string[][], severityCategories = CATEGORIES) => {
+        const result = await spectoraAdapter.convert(
+            await workbook([HEADER, ...rows]), { name: 'T', severityCategories },
+        );
         if (!result.ok) throw new Error('conversion refused');
         return result.bundle.templates[0]!.schema.sections[0]!.items[0]!;
     };
@@ -254,7 +259,8 @@ describe('spectoraAdapter.convert — what the file says about a comment', () =>
     };
 
     /** The defects only — a category is a defect's field, not a comment's. */
-    const builtDefects = async (rows: string[][]) => (await itemFrom(rows)).tabs!.defects;
+    const builtDefects = async (rows: string[][], categories?: string[]) =>
+        (await itemFrom(rows, categories)).tabs!.defects;
 
     it('gives a list-bearing comment the answers the file lists', async () => {
         const [comment] = await built([
@@ -303,9 +309,9 @@ describe('spectoraAdapter.convert — what the file says about a comment', () =>
     });
 
     /**
-     * The file grades how BAD a finding is; our categories say what KIND it is.
-     * Three points onto three seeds is the only mapping that uses the column,
-     * and the top grade lands on the one seed that drives the report Summary.
+     * The file grades how BAD a finding is; the categories say what KIND it is.
+     * Three ascending points onto three ascending categories is the only
+     * mapping that uses the column at all.
      */
     it('files a defect by the severity the file grades it', async () => {
         const [low, med, high] = await builtDefects([
@@ -313,8 +319,25 @@ describe('spectoraAdapter.convert — what the file says about a comment', () =>
             row('Cracked pane', 'defect', '', 'boolean', '', '0'),
             row('Dead tree on the service drop', 'defect', '', 'boolean', '', '1'),
         ]);
+        expect(low!.category).toBe('Minor');
+        expect(med!.category).toBe('Moderate');
+        expect(high!.category).toBe('Safety/Major');
+    });
+
+    /**
+     * THE REGRESSION. These categories are per-tenant and renameable, and the
+     * first version of this mapping wrote the code's seed NAMES. A deployment
+     * that had renamed all three got a category resolving to nothing — and an
+     * unresolved category counts toward the report Summary, so every imported
+     * defect drove it. Position, not name.
+     */
+    it('follows whatever the tenant has named its own categories', async () => {
+        const [low, , high] = await builtDefects([
+            row('Worn trim', 'defect', '', 'boolean', '', '-1'),
+            row('Cracked pane', 'defect', '', 'boolean', '', '0'),
+            row('Dead tree', 'defect', '', 'boolean', '', '1'),
+        ], ['maintenance', 'recommendation', 'safety']);
         expect(low!.category).toBe('maintenance');
-        expect(med!.category).toBe('recommendation');
         expect(high!.category).toBe('safety');
     });
 
@@ -327,6 +350,17 @@ describe('spectoraAdapter.convert — what the file says about a comment', () =>
         ]);
         expect(blank!.category).toBe('recommendation');
         expect(odd!.category).toBe('recommendation');
+    });
+
+    it('leaves every defect on the default when the caller names no categories', async () => {
+        // A caller with no tenant to ask — the behaviour before the column was
+        // read at all, rather than a category invented here.
+        const [low, high] = await builtDefects([
+            row('Worn trim', 'defect', '', 'boolean', '', '-1'),
+            row('Dead tree', 'defect', '', 'boolean', '', '1'),
+        ], []);
+        expect(low!.category).toBe('recommendation');
+        expect(high!.category).toBe('recommendation');
     });
 
     it('still imports when the export omits the three columns entirely', async () => {

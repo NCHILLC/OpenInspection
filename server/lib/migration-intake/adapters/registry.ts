@@ -342,6 +342,10 @@ export async function buildBundle(
     vendor: VendorId,
     source: IntakeSource,
     mapping: IntakeMapping,
+    /** The tenant's defect categories, ascending — a graded defect is filed by
+     *  POSITION in this list. From the caller because an adapter may not read
+     *  storage; absent, readers fall back to the flat import default. */
+    severityCategories?: readonly string[] | undefined,
 ): Promise<BundleResult> {
     if (CONTAINER_VENDORS.includes(vendor)) {
         if (mapping.kind !== 'template') {
@@ -365,9 +369,8 @@ export async function buildBundle(
         }
         // The Spectora adapter takes no rating answer, and that is a statement
         // rather than an omission: its vocabulary files comments into the three
-        // tabs, so there is no question to pass on. Its options type says so,
-        // which is what stops an answer being handed over and quietly dropped.
-        return spectoraAdapter.convert(source.bytes, { name: mapping.name });
+        // tabs, so there is no question to pass on — its options type says so.
+        return spectoraAdapter.convert(source.bytes, { name: mapping.name, severityCategories });
     }
 
     if (vendor === TABULAR_VENDOR) {
