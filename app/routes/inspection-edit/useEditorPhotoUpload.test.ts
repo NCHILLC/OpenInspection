@@ -44,13 +44,18 @@ function makeState() {
 }
 
 /** `collabDoc: null` keeps a case on the FETCHER path, which is where the
- *  defect-target assertions live. Pass a doc to exercise the queue path. */
+ *  defect-target assertions live. Pass a doc to exercise the queue path.
+ *
+ *  Fetcher submissions serialise (see "serialises a burst" below), so a test
+ *  that submits twice has to let the first one finish in between — which is
+ *  what `settle()` models: submitting, then back to idle. */
 function setup(collabDoc: unknown = null) {
-    return renderHook(() =>
+    const fetcher = { state: "idle", data: undefined, submit };
+    const view = renderHook(() =>
         useEditorPhotoUpload({
             state: makeState(),
             findings: { addPhotoToItem: vi.fn(), addPhotoToDefect: vi.fn() } as never,
-            uploadFetcher: uploadFetcher as never,
+            uploadFetcher: fetcher as never,
             collabDoc: collabDoc as never,
             activeUnitId: null,
             cameraInputRef: createRef<HTMLInputElement>(),
@@ -60,6 +65,13 @@ function setup(collabDoc: unknown = null) {
             drain,
         }),
     );
+    const settle = async () => {
+        fetcher.state = "submitting";
+        await act(async () => view.rerender());
+        fetcher.state = "idle";
+        await act(async () => view.rerender());
+    };
+    return { ...view, fetcher, settle };
 }
 
 /** Drive handlePhotoUpload with one file and let its async body settle. */
@@ -136,23 +148,73 @@ describe("useEditorPhotoUpload — the photo lands where the inspector aimed it"
 
     // One tap, one photo: the target is consumed, not left armed for the next.
     it("does not reuse a defect target for a second photo", async () => {
-        const { result } = setup();
+        const { result, settle } = setup();
         act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
         await pickAPhoto(result.current.handlePhotoUpload);
         expect(lastTarget().targetType).toBe("defect");
+        await settle();
         await pickAPhoto(result.current.handlePhotoUpload);
+        await settle();
         expect(lastTarget()).toEqual({ targetType: null, customId: null });
     });
 
-    // Camera frames always belong to the item, so an armed chip must not survive
-    // one and catch the single photo that comes after.
-    it("clears an armed defect when the camera takes a frame", async () => {
+    /**
+     * A capture session opened from a defect's chip belongs to that defect for
+     * its WHOLE length — not just the first frame.
+     *
+     * This regressed when the in-app camera replaced `<input capture>`: the old
+     * path ran through handlePhotoUpload, which read the armed target; the new
+     * one cleared it and put every frame on the item. Reported from the field as
+     * "photos for specific defects need to stay attached to them".
+     */
+    it("keeps every frame of a session on the defect it was opened from", async () => {
         const { result } = setup();
         act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
         await shootAFrame(result.current.handleCameraFrame);
-        expect(lastTarget()).toEqual({ targetType: null, customId: null });
+        expect(lastTarget()).toEqual({ targetType: "defect", customId: "d1" });
+        // The target survives the frame that consumed it: the session is one act.
+        await shootAFrame(result.current.handleCameraFrame);
+        expect(lastTarget()).toEqual({ targetType: "defect", customId: "d1" });
+    });
 
+    /**
+     * ...and none of them is lost on the way. A fetcher aborts its in-flight
+     * request when the same fetcher submits again, so three frames fired a few
+     * hundred ms apart would land only the last one. They queue instead, one
+     * released each time the fetcher returns to idle.
+     */
+    it("serialises a burst of defect frames instead of aborting them", async () => {
+        const { result, fetcher, rerender } = setup();
+        act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
+
+        // Three shutter taps with nothing acknowledged in between.
+        await shootAFrame(result.current.handleCameraFrame);
+        fetcher.state = "submitting";
+        await act(async () => rerender());
+        await shootAFrame(result.current.handleCameraFrame);
+        await shootAFrame(result.current.handleCameraFrame);
+        expect(submit).toHaveBeenCalledTimes(1);
+
+        // Each return to idle releases exactly one more.
+        for (const expected of [2, 3]) {
+            fetcher.state = "idle";
+            await act(async () => rerender());
+            expect(submit).toHaveBeenCalledTimes(expected);
+            expect(lastTarget()).toEqual({ targetType: "defect", customId: "d1" });
+            fetcher.state = "submitting";
+            await act(async () => rerender());
+        }
+    });
+
+    // ...and closing the camera disarms it, so the next item-level add is clean.
+    it("drops the target when the camera closes", async () => {
+        const { result, settle } = setup();
+        act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
+        await shootAFrame(result.current.handleCameraFrame);
+        await settle();
+        act(() => result.current.clearPhotoTarget());
         await pickAPhoto(result.current.handlePhotoUpload);
+        await settle();
         expect(lastTarget()).toEqual({ targetType: null, customId: null });
     });
 });

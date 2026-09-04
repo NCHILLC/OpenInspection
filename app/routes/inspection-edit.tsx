@@ -1598,10 +1598,7 @@ export default function InspectionEditPage() {
   * getUserMedia, so a refusal never leaves the inspector without a camera. */}
  <FieldCamera
  open={state.cameraOpen}
- onClose={() => {
- state.setCameraOpen(false);
- state.setCameraItemId(null);
- }}
+ onClose={() => { state.setCameraOpen(false); state.setCameraItemId(null); clearPhotoTarget(); }}
  onCapture={handleCameraFrame}
  onUnavailable={() => cameraInputRef.current?.click()}
  />
@@ -1733,7 +1730,7 @@ export default function InspectionEditPage() {
  onOpenPreview={() => setMobileDrawer("preview")}
  onNext={urlNav.goNext}
  percentComplete={state.progress.pct}
- onCapture={() => { state.setCameraItemId(state.activeItemId); state.setCameraOpen(true); }}
+ onCapture={() => { clearPhotoTarget(); state.setCameraItemId(state.activeItemId); state.setCameraOpen(true); }}
  overlays={<>
   {photoInputsEl}
   {mediaOverlaysEl}

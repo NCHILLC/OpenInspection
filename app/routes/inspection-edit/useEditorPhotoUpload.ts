@@ -100,6 +100,25 @@ export function useEditorPhotoUpload({
 }: EditorPhotoUploadDeps): EditorPhotoUpload {
     const pendingPhotoTargetRef = useRef<PendingPhotoTarget>(null);
 
+    /* Defect-targeted uploads, serialised. See the note at the push site. */
+    const fetcherQueueRef = useRef<FormData[]>([]);
+    const fetcherBusyRef = useRef(false);
+    const pumpFetcherQueue = useCallback(() => {
+        if (fetcherBusyRef.current) return;
+        const next = fetcherQueueRef.current.shift();
+        if (!next) return;
+        fetcherBusyRef.current = true;
+        uploadFetcher.submit(next, { method: "post", encType: "multipart/form-data" });
+    }, [uploadFetcher]);
+
+    // The fetcher going idle is the only signal that the previous upload is done
+    // (success or failure — a failed one must not wedge the queue either).
+    useEffect(() => {
+        if (uploadFetcher.state !== "idle") return;
+        fetcherBusyRef.current = false;
+        pumpFetcherQueue();
+    }, [uploadFetcher.state, pumpFetcherQueue]);
+
     /**
      * The one funnel every photo goes through — file picker, library pick, and
      * every frame the in-app camera shoots.
@@ -164,9 +183,15 @@ export function useEditorPhotoUpload({
                 formData.append("customId", target.id);
                 formData.append("defectKind", target.kind);
             }
-            uploadFetcher.submit(formData, { method: "post", encType: "multipart/form-data" });
+            // ONE AT A TIME. A fetcher aborts its in-flight request when the same
+            // fetcher submits again, so a camera session shooting three photos of
+            // one defect would land only the last. The queue below holds the rest
+            // until the effect watching `uploadFetcher.state` says the last one
+            // finished. Item photos never reach here — they ride the media queue.
+            fetcherQueueRef.current.push(formData);
+            pumpFetcherQueue();
         },
-        [state.inspection.id, uploadFetcher, collabDoc, state.sectionIdForItem, state.currentSection, activeUnitId, drain],
+        [state.inspection.id, collabDoc, state.sectionIdForItem, state.currentSection, activeUnitId, drain, pumpFetcherQueue],
     );
 
     const handlePhotoUpload = useCallback(
@@ -202,20 +227,23 @@ export function useEditorPhotoUpload({
     );
 
     /**
-     * One frame from the in-app camera. Enqueued the moment the shutter fires,
+     * One frame from the in-app camera. Submitted the moment the shutter fires,
      * so the camera stays open and responsive while it uploads — the reason the
      * capture screen does not have to close between photos.
      *
-     * A defect target armed by a chip the inspector then walked away from must
-     * not survive to catch this frame: camera frames always land on the ITEM.
+     * The armed target is READ and not cleared, because a capture session is one
+     * act: open the camera from a defect's chip and every frame in that session
+     * belongs to that defect, not just the first. It is cleared when the camera
+     * CLOSES, and by the item-level entry points (the strip's add tile, the
+     * capture FAB) before they open it — so a chip armed and then abandoned
+     * cannot catch a photo the inspector aimed at the item.
      */
     const handleCameraFrame = useCallback(
         (blob: Blob) => {
             const itemId = state.cameraItemId;
             if (!itemId) return;
-            pendingPhotoTargetRef.current = null;
             const file = new File([blob], `capture-${Date.now()}.jpg`, { type: "image/jpeg" });
-            void submitPhotos([file], itemId, null);
+            void submitPhotos([file], itemId, pendingPhotoTargetRef.current);
         },
         [state.cameraItemId, submitPhotos],
     );
