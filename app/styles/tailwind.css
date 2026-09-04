@@ -285,13 +285,22 @@ html[data-color-scheme="sun"] {
   --ih-fg-5: #8a949e;
   --ih-fg-inverse: #ffffff;
 
-  --ih-bg-app: #ffffff;
+  /* The CARD is the pure white — that is where the text sits, and where the
+     emitted luminance has to win against the sky. The app ground and the muted
+     tier step down from it in real, distinguishable amounts.
+
+     They were briefly all #ffffff, on the reasoning that borders could carry
+     the separation. `design-token-distinctness` refused it, and correctly: when
+     muted and card collapsed in dark mode, 150 `hover:bg-ih-bg-muted` states
+     silently did nothing. A hover that does not respond in glare, with a glove
+     on, is worse than one that does not respond at a desk. */
+  --ih-bg-app: #eef1f4;
   --ih-bg-card: #ffffff;
-  --ih-bg-muted: #e6eaee;
+  --ih-bg-muted: #dde3e9;
   --ih-bg-inverse: #000000;
 
-  /* Card and app are the SAME white, so separation is carried by borders —
-     which is also the only separation that survives glare. */
+  /* Heavy borders on top of that: in direct sun a 1px hairline disappears
+     long before a fill does. */
   --ih-border-color: #6b7480;
   --ih-border-strong-color: #3d444c;
 

@@ -33,6 +33,7 @@ const THEMES: Array<{ name: string; marker: string }> = [
     { name: 'light', marker: ':root' },
     { name: 'dark', marker: 'data-color-scheme="dark"' },
     { name: 'field', marker: 'data-color-scheme="field"' },
+    { name: 'sun', marker: 'data-color-scheme="sun"' },
 ];
 
 /**
