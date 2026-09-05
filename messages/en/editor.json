@@ -51,6 +51,7 @@
   "editor_canned_edit_comment_aria": "Edit comment text",
   "editor_canned_flag_aria": "Flag for follow-up",
   "editor_canned_unflag_aria": "Remove follow-up flag",
+  "editor_canned_flag_label": "Flag",
   "editor_canned_duplicate_aria": "Duplicate as custom defect",
   "editor_clone_scope_rating": "Rating only",
   "editor_clone_scope_rating_notes": "Rating + Notes",

@@ -51,6 +51,7 @@
   "editor_canned_edit_comment_aria": "Editar texto del comentario",
   "editor_canned_flag_aria": "Marcar para seguimiento",
   "editor_canned_unflag_aria": "Quitar marca de seguimiento",
+  "editor_canned_flag_label": "Marcar",
   "editor_canned_duplicate_aria": "Duplicar como defecto personalizado",
   "editor_clone_scope_rating": "Solo calificación",
   "editor_clone_scope_rating_notes": "Calificación + notas",

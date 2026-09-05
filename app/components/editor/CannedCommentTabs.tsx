@@ -4,6 +4,7 @@ import { CannedCommentRow } from "../editor-shared/CannedCommentRow";
 import { DefectFieldsRow, type DefectFieldsValue } from "./DefectFieldsRow";
 import { RepairItemsPanel } from "./RepairItemsPanel";
 import { CustomDefectForm } from "./CustomDefectForm";
+import { defectRowButtonClass } from "./DefectPhotoChip";
 import type { AttachedRepairItem } from "../../hooks/useFindings";
 import { renderTemplate } from "../../lib/mustache";
 import { htmlToPlainText } from "../../lib/html-text";
@@ -246,20 +247,14 @@ export function CannedCommentTabs({
                   <span className="inline-flex items-center gap-1.5 flex-wrap">
                     <span>{entry.title}</span>
                     {isIncluded && (
-                      <span className="inline-flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={stop(() => setEditingCommentId(isEditing ? null : entry.id))}
-                          aria-label={m.editor_canned_edit_comment_aria()}
-                          className="text-ih-fg-3 hover:text-ih-primary-text"
-                        ><Icon name="edit" size={13} /></button>
+                      <span className="inline-flex items-center gap-1.5 flex-wrap">
+                        <button type="button" onClick={stop(() => setEditingCommentId(isEditing ? null : entry.id))} aria-label={m.editor_canned_edit_comment_aria()} className={defectRowButtonClass}>
+                          <Icon name="edit" size={13} /><span className="text-[12px] font-medium">{m.common_edit()}</span>
+                        </button>
                         {isDefectIncluded && defectPhotoChip({ kind: "canned", id: entry.id }, cannedDefectPhotos(entry.id))}
-                        <button
-                          type="button"
-                          onClick={stop(() => onFlagChange?.(activeTab, entry.id, !isFlagged))}
-                          aria-label={isFlagged ? m.editor_canned_unflag_aria() : m.editor_canned_flag_aria()}
-                          className={isFlagged ? "text-ih-bad-fg" : "text-ih-fg-3 hover:text-ih-fg-2"}
-                        ><Icon name="flag" size={13} /></button>
+                        <button type="button" onClick={stop(() => onFlagChange?.(activeTab, entry.id, !isFlagged))} aria-label={isFlagged ? m.editor_canned_unflag_aria() : m.editor_canned_flag_aria()} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border ${isFlagged ? "border-ih-bad-fg text-ih-bad-fg" : "border-ih-border-strong text-ih-fg-3 hover:border-ih-primary hover:text-ih-primary-text"}`}>
+                          <Icon name="flag" size={13} /><span className="text-[12px] font-medium">{m.editor_canned_flag_label()}</span>
+                        </button>
                       </span>
                     )}
                   </span>
