@@ -129,9 +129,13 @@ export function hasIncludedFindings(tabs: ItemTabs, result: ResultLike): boolean
     return custom.some((d) => d.included !== false);
 }
 
-/** FE-3 — photo count on a canned defect's STATE row (tabs.defects[].photos). */
-export function cannedDefectPhotoCount(result: ResultLike, cannedId: string): number {
-    const rows = ((result.tabs as { defects?: Array<{ cannedId: string; photos?: unknown[] }> } | undefined)?.defects) ?? [];
+/** A canned defect's own photos[] (tabs.defects[].photos) — the STATE row's
+ *  photo attachments, for both the count chip and the thumbnail strip. */
+export function cannedDefectPhotos(
+    result: ResultLike,
+    cannedId: string,
+): Array<{ key: string; annotatedKey?: string; croppedKey?: string }> {
+    const rows = ((result.tabs as { defects?: Array<{ cannedId: string; photos?: Array<{ key: string; annotatedKey?: string; croppedKey?: string }> }> } | undefined)?.defects) ?? [];
     const row = Array.isArray(rows) ? rows.find((r) => r.cannedId === cannedId) : undefined;
-    return Array.isArray(row?.photos) ? row.photos.length : 0;
+    return Array.isArray(row?.photos) ? row.photos : [];
 }

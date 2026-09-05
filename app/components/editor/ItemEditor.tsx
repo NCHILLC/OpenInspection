@@ -23,7 +23,7 @@ import {
  getSelectedChoicesMap,
  getCommentOverrideMap,
  getFlaggedMap,
- cannedDefectPhotoCount,
+ cannedDefectPhotos,
  hasIncludedFindings,
 } from "../editor-shared/item-tab-projections";
 import { FindingsIndicator } from "../editor-shared/FindingsIndicator";
@@ -75,6 +75,8 @@ interface ItemEditorProps {
  onToggleCustomDefect?: (customId: string, included: boolean) => void;
  /** FE-3 — open the photo picker targeting a specific defect row. */
  onAddDefectPhoto?: (target: { kind: "canned" | "custom"; id: string }) => void;
+ /** Open the defect-scoped MediaViewer at one of a defect's own photos. */
+ onOpenDefectPhoto?: (itemId: string, target: { kind: "canned" | "custom"; id: string }, index: number) => void;
  defectStates?: Map<string, DefectFieldsValue>;
  locationSuggestions?: string[];
  onDefectFields?: (cannedId: string, patch: Partial<DefectFieldsValue>) => void;
@@ -161,6 +163,7 @@ export function ItemEditor({
  onToggleCanned,
  onAddPhoto,
  onAddDefectPhoto,
+ onOpenDefectPhoto,
  photoUploading,
  onAddCustomDefect,
  onAddCustomLimitation,
@@ -300,7 +303,12 @@ export function ItemEditor({
 
 
  // Shared per-defect photo chip (canned + custom rows).
- const defectPhotoChip = makeDefectPhotoChip(onAddDefectPhoto, photoUploading);
+ const defectPhotoChip = makeDefectPhotoChip(
+ onAddDefectPhoto,
+ photoUploading,
+ (k) => `/api/inspections/${inspectionId}/photo?key=${encodeURIComponent(k)}`,
+ onOpenDefectPhoto ? (target, i) => onOpenDefectPhoto(item.id, target, i) : undefined,
+ );
 
  const submitCustomDefect = () => {
  const title = customTitle.trim();
@@ -535,7 +543,7 @@ export function ItemEditor({
  missingFields={missingFields}
  requiredDefectFields={requiredDefectFields}
  defectPhotoChip={defectPhotoChip}
- cannedDefectPhotoCount={(id) => cannedDefectPhotoCount(result, id)}
+ cannedDefectPhotos={(id) => cannedDefectPhotos(result, id)}
  categoryColor={categoryColor}
  libraryMatches={libraryMatches}
  onSeedFromLibrary={(match) => {

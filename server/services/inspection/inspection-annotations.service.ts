@@ -3,7 +3,7 @@ import { inspections, inspectionResults, inspectionMediaPool } from '../../lib/d
 import { Errors } from '../../lib/errors';
 import { findingKey, DEFAULT_UNIT } from '../../lib/finding-key';
 import type { CoverCrop, PhotoCrop } from '../../lib/validations/inspection.schema';
-import type { PhotoEntry } from '../../lib/media/collect-attached';
+import type { ItemEntry, PhotoEntry } from '../../lib/collab/results-doc.types';
 import type { ScopedDB } from '../../lib/db/scoped';
 import type { ImagesBinding } from '../../lib/media/strip-exif';
 import { InspectionSubService } from './base';
@@ -22,6 +22,41 @@ function mediaIdFromKey(key: string): string | null {
     const m = /\/photos\/([^/.]+)\.[^/.]+$/.exec(key);
     if (m) return m[1];
     return null;
+}
+
+/** Sprint 1 A-7 vocabulary (see media.ts upload route) — reused here so
+ *  annotate/crop can bake INTO a defect's own photos[] instead of the item's. */
+export interface DefectPhotoTarget { defectKind: 'canned' | 'custom'; customId: string }
+
+/** Read the photos[] a save should index into: the item's own, or (when
+ *  `target` is set) the named canned/custom defect's sub-array. */
+function getTargetPhotos(entry: ItemEntry, target?: DefectPhotoTarget): PhotoEntry[] {
+    if (!target) return entry.photos ?? [];
+    if (target.defectKind === 'canned') {
+        return entry.tabs?.defects?.find((d) => d.cannedId === target.customId)?.photos ?? [];
+    }
+    return entry.customComments?.defects?.find((d) => d.id === target.customId)?.photos ?? [];
+}
+
+/** Write an updated photos[] back onto the entry at the same location
+ *  `getTargetPhotos` read it from. No-ops (returns entry unchanged) if the
+ *  targeted defect row has since been removed. */
+function withTargetPhotos(entry: ItemEntry, target: DefectPhotoTarget | undefined, photos: PhotoEntry[]): ItemEntry {
+    if (!target) return { ...entry, photos };
+    if (target.defectKind === 'canned') {
+        const defects = entry.tabs?.defects ?? [];
+        const i = defects.findIndex((d) => d.cannedId === target.customId);
+        if (i < 0) return entry;
+        const next = defects.slice();
+        next[i] = { ...next[i], photos };
+        return { ...entry, tabs: { ...entry.tabs, defects: next } };
+    }
+    const defects = entry.customComments?.defects ?? [];
+    const i = defects.findIndex((d) => d.id === target.customId);
+    if (i < 0) return entry;
+    const next = defects.slice();
+    next[i] = { ...next[i], photos };
+    return { ...entry, customComments: { ...entry.customComments, defects: next } };
 }
 
 /**
@@ -110,7 +145,7 @@ export class InspectionAnnotationsService extends InspectionSubService {
         compositeBytes: ArrayBuffer,
         nodesJson: string,
         sectionId?: string,
-        opts?: { skipResultsWrite?: boolean },
+        opts?: { skipResultsWrite?: boolean; target?: DefectPhotoTarget | undefined },
     ): Promise<{ annotatedKey: string }> {
         if (!this.r2) throw Errors.BadRequest('Storage not available');
         await this.facade.getInspection(inspectionId, tenantId);
@@ -120,17 +155,12 @@ export class InspectionAnnotationsService extends InspectionSubService {
             .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)))
             .limit(1);
 
-        interface ResultEntry {
-            rating?: string;
-            notes?: string;
-            photos?: Array<{ key: string; annotatedKey?: string; annotationsJson?: string }>;
-        }
-        const data: Record<string, ResultEntry> = (typeof row?.data === 'string'
+        const data: Record<string, ItemEntry> = (typeof row?.data === 'string'
             ? JSON.parse(row.data)
             : row?.data) ?? {};
         const key = sectionId ? findingKey(DEFAULT_UNIT, sectionId, itemId) : itemId;
         const entry = data[key] ?? data[itemId] ?? {};
-        const photos = entry.photos ?? [];
+        const photos = getTargetPhotos(entry, opts?.target);
         if (!photos[photoIndex]) throw Errors.NotFound('Photo not found at index');
 
         // Co-locate the annotated derivative with its source photo by reusing
@@ -148,7 +178,7 @@ export class InspectionAnnotationsService extends InspectionSubService {
         }
 
         photos[photoIndex] = { ...photos[photoIndex], annotatedKey, annotationsJson: nodesJson };
-        data[key] = { ...entry, photos };
+        data[key] = withTargetPhotos(entry, opts?.target, photos);
         if (key !== itemId) delete data[itemId]; // migrate on write
 
         if (row) {
@@ -215,7 +245,7 @@ export class InspectionAnnotationsService extends InspectionSubService {
         bakedBytes: ArrayBuffer,
         crop: PhotoCrop,
         sectionId?: string,
-        opts?: { skipResultsWrite?: boolean },
+        opts?: { skipResultsWrite?: boolean; target?: DefectPhotoTarget | undefined },
     ): Promise<{ croppedKey: string }> {
         if (!this.r2) throw Errors.BadRequest('Storage not available');
         await this.facade.getInspection(inspectionId, tenantId);
@@ -225,11 +255,10 @@ export class InspectionAnnotationsService extends InspectionSubService {
             .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)))
             .limit(1);
 
-        interface ResultEntry { rating?: string; notes?: string; photos?: PhotoEntry[] }
-        const data: Record<string, ResultEntry> = (typeof row?.data === 'string' ? JSON.parse(row.data) : row?.data) ?? {};
+        const data: Record<string, ItemEntry> = (typeof row?.data === 'string' ? JSON.parse(row.data) : row?.data) ?? {};
         const key = sectionId ? findingKey(DEFAULT_UNIT, sectionId, itemId) : itemId;
         const entry = data[key] ?? data[itemId] ?? {};
-        const photos = entry.photos ?? [];
+        const photos = getTargetPhotos(entry, opts?.target);
         if (!photos[photoIndex]) throw Errors.NotFound('Photo not found at index');
 
         // Co-locate the cropped derivative with its source photo by reusing
@@ -249,7 +278,7 @@ export class InspectionAnnotationsService extends InspectionSubService {
         const { annotatedKey: _a, annotationsJson: _j, ...keep } = photos[photoIndex];
         void _a; void _j;
         photos[photoIndex] = { ...keep, croppedKey, crop };
-        data[key] = { ...entry, photos };
+        data[key] = withTargetPhotos(entry, opts?.target, photos);
         if (key !== itemId) delete data[itemId];
 
         if (row) {

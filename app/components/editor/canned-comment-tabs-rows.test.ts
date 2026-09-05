@@ -26,7 +26,7 @@ function html(includedIds: string[], extra: Record<string, unknown> = {}) {
       locationSuggestions: [], onDefectFields: () => {},
       missingFields: new Map(), requiredDefectFields: { location: false, trade: false },
       defectPhotoChip: () => createElement("button", { "data-testid": "photo-chip" }, "Add photo"),
-      cannedDefectPhotoCount: () => 0,
+      cannedDefectPhotos: () => [],
       libraryMatches: [], onSeedFromLibrary: () => {},
       customDefects: [customDefect], onToggleCustomDefect: () => {},
       onAddCustomDefect: undefined, customFormOpen: false, onOpenCustomForm: () => {},

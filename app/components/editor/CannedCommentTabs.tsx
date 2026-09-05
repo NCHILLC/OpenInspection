@@ -78,10 +78,10 @@ export interface CannedCommentTabsProps {
   missingFields?: Map<string, { location: boolean; trade: boolean }>;
   requiredDefectFields?: { location: boolean; trade: boolean };
 
-  /** Renders the per-defect "add photo" chip (closes over onAddDefectPhoto/photoUploading). */
-  defectPhotoChip: (target: { kind: "canned" | "custom"; id: string }, count: number) => React.ReactNode;
-  /** Photo count on a canned defect's STATE row. */
-  cannedDefectPhotoCount: (cannedId: string) => number;
+  /** Renders the per-defect photo thumbnails + "add photo" chip (closes over onAddDefectPhoto/onOpenDefectPhoto/photoUploading). */
+  defectPhotoChip: (target: { kind: "canned" | "custom"; id: string }, photos: Array<{ key: string }>) => React.ReactNode;
+  /** A canned defect's own photos[], for the count chip + thumbnail strip. */
+  cannedDefectPhotos: (cannedId: string) => Array<{ key: string; annotatedKey?: string; croppedKey?: string }>;
 
   /** Authoring unification Plan-4 module K — one tenant-wide lookup (keyed by
    *  BOTH defect_categories.name and .id) resolving a defect's `category` to
@@ -151,7 +151,7 @@ export function CannedCommentTabs({
   missingFields,
   requiredDefectFields,
   defectPhotoChip,
-  cannedDefectPhotoCount,
+  cannedDefectPhotos,
   categoryColor,
   libraryMatches,
   onSeedFromLibrary,
@@ -253,7 +253,7 @@ export function CannedCommentTabs({
                           aria-label={m.editor_canned_edit_comment_aria()}
                           className="text-ih-fg-3 hover:text-ih-primary-text"
                         ><Icon name="edit" size={13} /></button>
-                        {isDefectIncluded && defectPhotoChip({ kind: "canned", id: entry.id }, cannedDefectPhotoCount(entry.id))}
+                        {isDefectIncluded && defectPhotoChip({ kind: "canned", id: entry.id }, cannedDefectPhotos(entry.id))}
                         <button
                           type="button"
                           onClick={stop(() => onFlagChange?.(activeTab, entry.id, !isFlagged))}
@@ -416,7 +416,7 @@ export function CannedCommentTabs({
               >
                 {/* FE-3 — photo pinned to this custom defect */}
                 {cd.included !== false &&
-                  defectPhotoChip({ kind: "custom", id: cd.id }, Array.isArray(cd.photos) ? cd.photos.length : 0)}
+                  defectPhotoChip({ kind: "custom", id: cd.id }, Array.isArray(cd.photos) ? cd.photos : [])}
               </CannedCommentRow>
             ))}
 

@@ -31,7 +31,7 @@ function html(includedIds: string[]) {
       missingFields: new Map(),
       requiredDefectFields: { location: false, trade: false },
       defectPhotoChip: () => createElement("button", { "data-testid": "photo-chip" }, "Add photo"),
-      cannedDefectPhotoCount: () => 0,
+      cannedDefectPhotos: () => [],
       libraryMatches: [],
       onSeedFromLibrary: () => {},
       customDefects: [customDefect],

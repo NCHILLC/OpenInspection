@@ -211,6 +211,9 @@ const saveAnnotationRoute = createRoute(withMcpMetadata({
                         image: z.unknown().openapi({ type: 'string', format: 'binary' }).describe('TODO describe image field for the OpenInspection MCP integration'),
                         nodes: z.string().describe('TODO describe nodes field for the OpenInspection MCP integration'),
                         sectionId: z.string().optional().describe('Section ID for composite finding key'),
+                        targetType: z.enum(['item', 'defect']).optional().describe('Bake into the item photos or a defect row\'s own photos'),
+                        customId: z.string().optional().describe('Defect id (cannedId or custom defect id) when targetType=defect'),
+                        defectKind: z.enum(['canned', 'custom']).optional().describe('Which defect list customId refers to'),
                     }).describe('TODO describe schema field for the OpenInspection MCP integration'),
                 },
             },
@@ -281,6 +284,9 @@ const cropItemPhotoRoute = createRoute(withMcpMetadata({
                         image: z.unknown().openapi({ type: 'string', format: 'binary' }).describe('Baked cropped JPEG (2048px long edge)'),
                         crop: z.string().describe('JSON-encoded PhotoCrop transform (source-pixel coords)'),
                         sectionId: z.string().optional().describe('Section id for composite finding key (defect photos)'),
+                        targetType: z.enum(['item', 'defect']).optional().describe('Bake into the item photos or a defect row\'s own photos'),
+                        customId: z.string().optional().describe('Defect id (cannedId or custom defect id) when targetType=defect'),
+                        defectKind: z.enum(['canned', 'custom']).optional().describe('Which defect list customId refers to'),
                     }).describe('Crop item-photo multipart body'),
                 },
             },
@@ -305,6 +311,14 @@ const cropItemPhotoRoute = createRoute(withMcpMetadata({
 function readSectionId(formData: Record<string, unknown>): string | undefined {
     const raw = formData['sectionId'];
     return typeof raw === 'string' && raw.length > 0 ? raw : undefined;
+}
+
+// Mirrors the upload route's targetType/customId/defectKind vocabulary (Sprint 1 A-7): bake into a DEFECT's photos[] instead of the item's.
+function readDefectTarget(formData: Record<string, unknown>): { defectKind: 'canned' | 'custom'; customId: string } | undefined {
+    if (formData['targetType'] !== 'defect') return undefined;
+    const customId = formData['customId'];
+    if (typeof customId !== 'string' || customId.length === 0) return undefined;
+    return { defectKind: formData['defectKind'] === 'custom' ? 'custom' : 'canned', customId };
 }
 
 // #181 — resolve the tenant's collaborative-editing flag (authoritative server
@@ -482,13 +496,14 @@ const mediaStudioRoutes = createApiRouter()
         const file = formData['image'] as File | undefined;
         const nodesJson = String(formData['nodes'] ?? '[]');
         const sectionId = readSectionId(formData);
+        const target = readDefectTarget(formData);
         if (!file) throw Errors.BadRequest('image file required');
         const bytes = await file.arrayBuffer();
         // #181 — under collab the doc owns results.data; bake to R2 + return the
         // key, but skip the metadata write (the client mirrors it into the doc).
         const skipResultsWrite = await isCollabEditingEnabled(c.env.DB, tenantId);
         const result = await c.var.services.inspection.saveAnnotation(
-            id, tenantId, itemId, photoIndex, bytes, nodesJson, sectionId, { skipResultsWrite },
+            id, tenantId, itemId, photoIndex, bytes, nodesJson, sectionId, { skipResultsWrite, target },
         );
         return c.json({ success: true, data: result }, 200);
     })
@@ -512,12 +527,13 @@ const mediaStudioRoutes = createApiRouter()
         if (!file) throw Errors.BadRequest('image file required');
         const crop = parseCrop(formData, PhotoCropSchema);
         const sectionId = readSectionId(formData);
+        const target = readDefectTarget(formData);
         const bytes = await file.arrayBuffer();
         // #181 — under collab the doc owns results.data; bake to R2 + return the
         // key, but skip the metadata write (the client mirrors it into the doc).
         const skipResultsWrite = await isCollabEditingEnabled(c.env.DB, tenantId);
         const result = await c.var.services.inspection.saveCroppedItemPhoto(
-            id, tenantId, itemId, photoIndex, bytes, crop, sectionId, { skipResultsWrite },
+            id, tenantId, itemId, photoIndex, bytes, crop, sectionId, { skipResultsWrite, target },
         );
         return c.json({ success: true, data: result }, 200);
     });

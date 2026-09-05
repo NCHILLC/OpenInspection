@@ -27,7 +27,7 @@ import {
 import { InspectionSharingService } from './inspection/inspection-sharing.service';
 import { InspectionAnalyticsService } from './inspection/inspection-analytics.service';
 import { InspectionStatusService } from './inspection/inspection-status.service';
-import { InspectionAnnotationsService } from './inspection/inspection-annotations.service';
+import { InspectionAnnotationsService, type DefectPhotoTarget } from './inspection/inspection-annotations.service';
 import { InspectionPhotoService } from './inspection/inspection-photo.service';
 import { InspectionResultsService } from './inspection/inspection-results.service';
 import { InspectionReportService } from './inspection/inspection-report.service';
@@ -392,7 +392,7 @@ export class InspectionService {
         compositeBytes: ArrayBuffer,
         nodesJson: string,
         sectionId?: string,
-        opts?: { skipResultsWrite?: boolean },
+        opts?: { skipResultsWrite?: boolean; target?: DefectPhotoTarget | undefined },
     ): Promise<{ annotatedKey: string }> {
         return this.annotations.saveAnnotation(inspectionId, tenantId, itemId, photoIndex, compositeBytes, nodesJson, sectionId, opts);
     }
@@ -415,7 +415,7 @@ export class InspectionService {
         bakedBytes: ArrayBuffer,
         crop: PhotoCrop,
         sectionId?: string,
-        opts?: { skipResultsWrite?: boolean },
+        opts?: { skipResultsWrite?: boolean; target?: DefectPhotoTarget | undefined },
     ): Promise<{ croppedKey: string }> {
         return this.annotations.saveCroppedItemPhoto(inspectionId, tenantId, itemId, photoIndex, bakedBytes, crop, sectionId, opts);
     }

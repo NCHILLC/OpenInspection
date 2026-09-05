@@ -9,6 +9,8 @@ import { useDisplayLocale } from "~/hooks/useSessionContext";
 import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
 import { useFindings, type AttachedRepairItem } from "~/hooks/useFindings";
 import { usePhotoOps } from "~/hooks/usePhotoOps";
+import { useDefectPhotoOps } from "~/hooks/useDefectPhotoOps";
+import { DefectPhotoOverlays } from "~/components/editor/DefectPhotoOverlays";
 import { useScopeLoader } from "~/hooks/useScopeLoader";
 import { useInspectionPrefs } from "~/hooks/useInspectionPrefs";
 import { pushToast } from "~/hooks/useToast";
@@ -762,6 +764,11 @@ export default function InspectionEditPage() {
   setPhotoStudioOpen,
  });
 
+ // Defect-photo view + annotate + crop (separate from usePhotoOps — see hook doc).
+ const defectPhotoOps = useDefectPhotoOps({
+  state, findings, collabDoc: collab?.doc ?? null, activeUnitId, setRecropWarn,
+ });
+
  /* Mobile shell state */
  const isMobile = useIsMobile();
  const [mobileDrawer, setMobileDrawer] = useState<MobileDrawerId | null>(null);
@@ -1186,6 +1193,7 @@ export default function InspectionEditPage() {
  onRating={handleRating}
  onAddPhoto={openPickerForItem}
  onAddDefectPhoto={openPickerForDefect}
+ onOpenDefectPhoto={defectPhotoOps.onOpenDefectPhoto}
  photoUploading={uploadFetcher.state !== "idle"}
  onAddCustomDefect={(input) => {
  if (state.activeItemId && state.currentSection) {
@@ -1651,6 +1659,12 @@ export default function InspectionEditPage() {
  onAction={onViewerAction}
  streamCustomerSubdomain={streamCustomerSubdomain}
  inspectionId={String(state.inspection.id)}
+ />
+ <DefectPhotoOverlays
+ ops={defectPhotoOps}
+ inspectionId={String(state.inspection.id)}
+ streamCustomerSubdomain={streamCustomerSubdomain}
+ sectionName={state.currentSection?.title || state.currentSection?.name || ""}
  />
  {/* Plan 7 — poster-frame picker for a video entry (opened by the "Poster
   * frame" toolbar action). Fails closed when the Stream subdomain is absent. */}
