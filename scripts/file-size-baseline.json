@@ -19,7 +19,7 @@
   "server/lib/messaging/providers/telnyx-compliance.ts": 657,
   "app/components/editor/ItemEditor.tsx": 650,
   "app/components/inspection-edit/CompliancePanel.tsx": 638,
-  "app/lib/collab/results-binding.ts": 637,
+  "app/lib/collab/results-binding.ts": 574,
   "server/api/auth.ts": 611,
   "app/hooks/useInspection.ts": 600,
   "server/services/concierge.service.ts": 595,
