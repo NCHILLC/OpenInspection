@@ -289,7 +289,33 @@ DB design policies (2026-06-04 DBA review). These apply to ALL new tables/column
 
 ## Quality gates
 
-Pre-commit and CI run the same logical checks; CI's `verify` job is the authoritative gate (wire it up as a required status check). The pre-commit hook is a fast local guard — bypass only with `--no-verify` (discouraged). Mechanism, steps, and Node version are aligned across the superproject and the portal/cms submodules.
+Pre-commit and CI run the same logical checks; CI's `verify` job is the authoritative gate (wire it up as a required status check). The pre-commit hook is a fast local guard. Mechanism, steps, and Node version are aligned across the superproject and the portal/cms submodules.
+
+**Run the gates BEFORE writing, not at commit.** `npm run lint:gates` is the
+20-gate pre-commit rung and takes seconds. Paying it up front tells you straight
+away that (say) a file is at its size cap — where finding out at commit time
+means discovering it after a multi-minute eslint pass, an hour into work that
+now has to be restructured. Not hypothetical: that is how a duplicate of an
+existing module got written on 2026-09-06. The size cap that would have forced
+the split — and so surfaced the module already there — was not consulted until
+the commit failed.
+
+**Run `npm run preflight` before trusting anything a dev server says.** It
+checks for worktrees shadowing the checkout, a build that is not HEAD, and a
+port that looks alive but is not. Add `--url http://localhost:5173` to compare
+the SERVED commit against HEAD. Every check in it is a trap that has already
+cost a session; the script header says which.
+
+**Worktrees belong OUTSIDE this checkout** (`../oi-worktrees/`, not
+`.claude/worktrees/`). A worktree inside the repo makes the preview launcher
+resolve the project root to it and serve ITS build on the expected port —
+`/status` reports the wrong commit and every observation is about other source.
+An absolute path in `launch.json` does not save you; the launcher rebases it.
+
+**`--no-verify` is blocked**, with `--dangerously-skip-permissions` and
+`HUSKY=0`, by a PreToolUse hook (`~/.claude/hooks/block-verify-skip.mjs`).
+Pushing runs no CI here, so pre-commit is the only automatic gate that exists.
+If a gate fails, fix the cause.
 
 - **Hook mechanism**: `.githooks/pre-commit`, activated by the `prepare` npm script (`git config core.hooksPath .githooks`) on `npm install`/`npm ci` — native git hooks, **no husky**.
 - **Pre-commit** (`.githooks/pre-commit`): tiered type-check (scoped to staged files — skip / api-only / full) → `lint-staged` (eslint --fix) → DS-token conformance (`lint:ds`) → small-text contrast (`lint:contrast`) → migration-ref hygiene (`lint:migrefs`) → Worker bundle-size (gated to bundle-affecting changes). Docs/tests-only commits skip the heavy steps.
