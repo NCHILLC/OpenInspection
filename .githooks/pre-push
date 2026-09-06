@@ -175,7 +175,7 @@ fi
 step "Worker bundle size"
 BUNDLE_OUT=$(node scripts/check-bundle-size.mjs 2>&1)
 BUNDLE_RC=$?
-BUNDLE_LINE=$(echo "$BUNDLE_OUT" | grep -E '^\[bundle-size\] (worker upload|FAIL|WARNING)' | tail -2 | tr '\n' ' ')
+BUNDLE_LINE=$(echo "$BUNDLE_OUT" | grep -E '^\[bundle-size\] (worker upload|eager import closure|FAIL|WARNING)' | tail -3 | tr '\n' ' ')
 if [ "$BUNDLE_RC" -eq 0 ]; then
     pass "Bundle size OK — ${BUNDLE_LINE:-see node scripts/check-bundle-size.mjs}"
     printf '\n%b\n' "${GREEN}Pre-push checks passed.${NC}"
