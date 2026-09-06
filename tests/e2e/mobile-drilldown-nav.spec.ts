@@ -203,4 +203,31 @@ test.describe.serial('Phone drill-down navigation', () => {
 
         expect(loaderCalls, `drill-down refetched the loader: ${loaderCalls.join(', ')}`).toHaveLength(0);
     });
+
+    /**
+     * The 2026-09-06 eval logged the shutter dropping 1-2 of 5 rapid TAPS while
+     * mouse clicks never dropped once. On a zoomable viewport a touch browser
+     * holds each tap ~300ms to see whether it becomes a double-tap zoom, and a
+     * tap landing inside that window is consumed BY the gesture — no click is
+     * dispatched at all. Not delayed, discarded. The opt-out leaves pinch zoom
+     * (and WCAG 1.4.4) intact.
+     *
+     * Asserted as COMPUTED STYLE because the rule is global and unlayered in
+     * tailwind.css: a future Tailwind relayering could swallow it silently, and
+     * the symptom would be lost photos in a crawlspace, not a build error.
+     *
+     * This does NOT prove taps stop dropping — a synthetic touch never runs the
+     * browser's real double-tap heuristic. It proves the opt-out reaches the
+     * controls. The behaviour itself needs a handset.
+     */
+    test('tappable controls opt out of double-tap zoom', async ({ page }) => {
+        await gotoMobile(page, `/inspections/${inspectionId}/edit`, adminToken);
+        await expectLevel(page, 'sections');
+
+        const touchAction = await page.locator('button').first().evaluate(
+            (el) => getComputedStyle(el).touchAction,
+        );
+        expect(touchAction, 'a button still allows double-tap zoom, which eats rapid taps')
+            .toBe('manipulation');
+    });
 });

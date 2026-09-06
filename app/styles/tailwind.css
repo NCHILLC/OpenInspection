@@ -528,3 +528,38 @@ html[data-sidebar-collapsed="1"] .ih-sidebar { width: var(--width-sidebar-collap
   @page { size: Letter; margin: 0.5in 0.5in 0.7in 0.5in; }
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ── Tap suppression on rapid touches ──
+   The 2026-09-06 field eval logged the shutter dropping 1-2 of 5 rapid TAPS
+   while mouse clicks never dropped once. That asymmetry is the tell, and the
+   cause is not our code: the viewport is deliberately zoomable
+   (`initial-scale=1.0`, no `user-scalable=no` — disabling zoom would fail
+   WCAG 1.4.4), so a touch browser must hold each tap for ~300ms to see whether
+   a second one arrives and makes it a double-tap zoom. A tap that lands inside
+   that window is consumed BY the gesture: no click event is ever dispatched.
+   Not delayed — discarded, which is why the frame vanished with no error.
+
+   `manipulation` opts these controls out of double-tap zoom (and other
+   non-standard gestures) while leaving panning and PINCH zoom untouched, so
+   page zoom still works everywhere — the accessible half is kept and only the
+   gesture that eats taps is dropped.
+
+   Scoped to controls a gloved hand hits in bursts rather than to `*`: the
+   camera shutter, and the rating tiles (`role="radio"`), which are tapped
+   item after item down a whole report and would lose entries the same way.
+
+   The eval suspected the 2560-edge re-encode instead. That is worth watching
+   for sluggishness, but a busy main thread DELAYS events, it cannot discard
+   them — so it cannot be what dropped these.
+
+   ⚠️ Confirmed by mechanism and by computed style, NOT by a reproduction: a
+   headless harness dispatches synthetic touches that never run the browser's
+   real double-tap heuristic. Re-check on a handset during the shadow run. */
+button,
+[role="button"],
+[role="radio"],
+[role="tab"],
+label,
+summary {
+  touch-action: manipulation;
+}
