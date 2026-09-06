@@ -15,10 +15,12 @@ import {
     attachRepairItem,
     detachRepairItem,
     toggleCustomDefect,
-    addPhotoToCannedDefect,
-    addPhotoToCustomDefect,
     appendNote,
 } from '../../../app/lib/collab/results-binding';
+import {
+    addPhotoToCannedDefect,
+    addPhotoToCustomDefect,
+} from '../../../app/lib/collab/defect-photo-binding';
 
 // ─── Group 1: Round-trip scalar ───────────────────────────────────────────────
 

@@ -546,70 +546,7 @@ export function toggleCustomDefect(
     upsertCustomComment(doc, findingKey(unitId, sectionId, itemId), 'defects', { id: customId, included });
 }
 
-/**
- * Append a photo to a canned defect's photos array (dedup by key).
- * Reads the current defect state from the live doc, then replaces the photos
- * array wholesale via upsertCanned — element-level LWW is the documented
- * behavior for a defect's photos sub-array (Task 7p).
- * No-ops if the canned defect with `cannedId` is not found.
- */
-export function addPhotoToCannedDefect(
-    doc: Y.Doc,
-    sectionId: string,
-    itemId: string,
-    cannedId: string,
-    photo: { key: string } & Record<string, unknown>,
-    unitId: string | null = null,
-): void {
-    const fk = findingKey(unitId, sectionId, itemId);
-    const entry = readResultMap(doc)[fk];
-    if (!entry) return;
 
-    const tabs = entry.tabs as {
-        defects?: Array<{ cannedId: string; photos?: Array<{ key: string } & Record<string, unknown>> }>;
-    } | undefined;
-
-    const defect = tabs?.defects?.find((d) => d.cannedId === cannedId);
-    if (!defect) return;
-
-    const existing: Array<{ key: string } & Record<string, unknown>> = defect.photos ?? [];
-    if (existing.some((p) => p.key === photo.key)) return;
-
-    const nextPhotos = [...existing, photo];
-    upsertCanned(doc, fk, 'defects', { cannedId, photos: nextPhotos });
-}
-
-/**
- * Append a photo to a custom defect's photos array (dedup by key).
- * Reads the current custom defect state from the live doc, then replaces the
- * photos array wholesale via upsertCustomComment.
- * No-ops if the custom defect with `customId` is not found.
- */
-export function addPhotoToCustomDefect(
-    doc: Y.Doc,
-    sectionId: string,
-    itemId: string,
-    customId: string,
-    photo: { key: string } & Record<string, unknown>,
-    unitId: string | null = null,
-): void {
-    const fk = findingKey(unitId, sectionId, itemId);
-    const entry = readResultMap(doc)[fk];
-    if (!entry) return;
-
-    const customComments = entry.customComments as {
-        defects?: Array<{ id: string; photos?: Array<{ key: string } & Record<string, unknown>> }>;
-    } | undefined;
-
-    const defect = customComments?.defects?.find((d) => d.id === customId);
-    if (!defect) return;
-
-    const existing: Array<{ key: string } & Record<string, unknown>> = defect.photos ?? [];
-    if (existing.some((p) => p.key === photo.key)) return;
-
-    const nextPhotos = [...existing, photo];
-    upsertCustomComment(doc, fk, 'defects', { id: customId, photos: nextPhotos });
-}
 
 /**
  * Append `text` to the item's `notes` scalar field.

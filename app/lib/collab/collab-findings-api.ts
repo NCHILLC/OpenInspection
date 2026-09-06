@@ -38,9 +38,9 @@ import {
     toggleCustomLimitation as bindingToggleCustomLimitation,
     attachRepairItem as bindingAttachRepairItem,
     detachRepairItem as bindingDetachRepairItem,
-    addPhotoToCannedDefect as bindingAddPhotoToCannedDefect,
-    addPhotoToCustomDefect as bindingAddPhotoToCustomDefect,
 } from './results-binding';
+// The defect add path lives with the rest of the defect-photo writes.
+import { addPhotoToCannedDefect as bindingAddPhotoToCannedDefect, addPhotoToCustomDefect as bindingAddPhotoToCustomDefect } from './defect-photo-binding';
 
 /** Save-status the editor surfaces. Mirrors the legacy `setSaveStatus` arg. */
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';

@@ -26,6 +26,7 @@ import {
 } from '~/lib/collab/media-upload-queue';
 import type { PendingMediaRecord } from '~/lib/collab/media-pending-store';
 import { resolvePendingPhoto } from '~/lib/collab/results-binding';
+import { resolvePendingDefectPhoto } from '~/lib/collab/defect-photo-binding';
 import { readResultMap } from '~/lib/collab/results-binding';
 import type { PhotoEntry } from '../../server/lib/collab/results-doc.types';
 
@@ -138,14 +139,30 @@ export function useMediaDrain(
             uploader,
             onUploaded: (rec, result) => {
                 // Swap the pending doc entry to the real key + clear pending fields.
-                resolvePendingPhoto(
-                    liveDoc,
-                    rec.findingKey,
-                    rec.pendingId,
-                    rec.kind,
-                    rec.photoKey,
-                    result,
-                );
+                // A defect-scoped photo lives in that defect row's own `photos`
+                // array, not the item's, so it needs the defect-row resolver —
+                // `resolvePendingPhoto` reads only the item's array and would
+                // find nothing to swap, stranding the entry pending forever.
+                if (rec.defectTarget && rec.kind === 'photo') {
+                    if (result.key) {
+                        resolvePendingDefectPhoto(
+                            liveDoc,
+                            rec.findingKey,
+                            rec.defectTarget,
+                            rec.pendingId,
+                            result.key,
+                        );
+                    }
+                } else {
+                    resolvePendingPhoto(
+                        liveDoc,
+                        rec.findingKey,
+                        rec.pendingId,
+                        rec.kind,
+                        rec.photoKey,
+                        result,
+                    );
+                }
                 revokeRef.current?.(rec.pendingId);
             },
         });

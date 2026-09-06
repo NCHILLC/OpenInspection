@@ -22,7 +22,12 @@ import {
     appendPendingPhoto,
     markPhotoPending,
     resolvePendingPhoto,
+    toggleCanned,
 } from '../../../app/lib/collab/results-binding';
+import {
+    appendPendingPhotoToDefect,
+    resolvePendingDefectPhoto,
+} from '../../../app/lib/collab/defect-photo-binding';
 import {
     enqueueMedia,
     drainMediaQueue,
@@ -219,5 +224,136 @@ describe('offline ANNOTATE of an existing photo → keeps base/cropped key', () 
         expect(after.annotatedKey).toBe('r2/base-annotated.png');
         expect(after.pendingId).toBeUndefined();
         expect(after.pendingKind).toBeUndefined();
+    });
+});
+
+/**
+ * The 2026-09-06 field-eval P0: a photo added to a DEFECT ROW offline crashed
+ * the editor and was lost, because that path skipped the queue entirely and
+ * POSTed to a dead network. It now takes the same queue as an item photo — so
+ * the same three properties have to hold, one array deeper.
+ */
+describe('offline DEFECT photo ADD → pending entry → drain swaps to real key', () => {
+    /** Photos on one canned defect row, as the projection exposes them. */
+    function defectPhotos(doc: Y.Doc, cannedId: string): Array<Record<string, unknown>> {
+        const tabs = projectResults(doc)[FK].tabs as
+            | { defects?: Array<{ cannedId: string; photos?: Array<Record<string, unknown>> }> }
+            | undefined;
+        return tabs?.defects?.find((d) => d.cannedId === cannedId)?.photos ?? [];
+    }
+
+    /** A doc with one canned defect included on the item — nothing to add to otherwise. */
+    function docWithDefect(cannedId: string): Y.Doc {
+        const doc = freshDoc();
+        toggleCanned(doc, 's1', 'i1', 'defects', cannedId, true);
+        return doc;
+    }
+
+    it('lands the pending entry on the DEFECT, not the item, and drain swaps it', async () => {
+        const doc = docWithDefect('d1');
+        const pendingId = 'pid-defect-1';
+        const target = { kind: 'canned' as const, id: 'd1' };
+
+        await enqueueMedia({
+            pendingId,
+            inspectionId: 'insp-1',
+            findingKey: FK,
+            defectTarget: target,
+            kind: 'photo',
+            blob: new Blob(['defect-bytes'], { type: 'image/jpeg' }),
+            enqueuedAt: Date.now(),
+        });
+        appendPendingPhotoToDefect(doc, 's1', 'i1', target, pendingId);
+
+        const before = defectPhotos(doc, 'd1');
+        expect(before).toHaveLength(1);
+        expect(before[0].key).toBe('');
+        expect(before[0].pendingUpload).toBe(true);
+        expect(before[0].pendingId).toBe(pendingId);
+        // The item's own strip must NOT have gained a photo — a defect photo
+        // showing on the item is the exact mis-filing the hook tests guard.
+        expect(photos(doc)).toHaveLength(0);
+
+        const uploader: MediaUploader = { upload: async () => ({ key: 'r2/defect-key' }) };
+        const summary = await drainMediaQueue({
+            inspectionId: 'insp-1',
+            uploader,
+            onUploaded: (rec, result) =>
+                resolvePendingDefectPhoto(doc, rec.findingKey, rec.defectTarget!, rec.pendingId, result.key!),
+        });
+
+        expect(summary).toEqual({ uploaded: 1, failed: 0 });
+        const after = defectPhotos(doc, 'd1');
+        expect(after).toHaveLength(1);
+        expect(after[0].key).toBe('r2/defect-key');
+        expect(after[0].pendingUpload).toBeUndefined();
+        expect(after[0].pendingId).toBeUndefined();
+        expect(after[0].pendingKind).toBeUndefined();
+        expect(await listPendingMedia('insp-1')).toHaveLength(0);
+    });
+
+    /**
+     * Three frames at one defect. The append dedups by `key`, and every pending
+     * key is the empty string until the drain runs — so a plain key match called
+     * frames 2 and 3 duplicates of frame 1 and dropped them on the floor.
+     */
+    it('keeps all three frames of a defect capture session', async () => {
+        const doc = docWithDefect('d1');
+        const target = { kind: 'canned' as const, id: 'd1' };
+
+        for (const id of ['A', 'B', 'C']) {
+            await enqueueMedia({
+                pendingId: id,
+                inspectionId: 'insp-1',
+                findingKey: FK,
+                defectTarget: target,
+                kind: 'photo',
+                blob: new Blob([id]),
+                enqueuedAt: Date.now(),
+            });
+            appendPendingPhotoToDefect(doc, 's1', 'i1', target, id);
+        }
+
+        expect(defectPhotos(doc, 'd1')).toHaveLength(3);
+
+        const uploader: MediaUploader = { upload: async (rec) => ({ key: `r2/${rec.pendingId}` }) };
+        await drainMediaQueue({
+            inspectionId: 'insp-1',
+            uploader,
+            onUploaded: (rec, result) =>
+                resolvePendingDefectPhoto(doc, rec.findingKey, rec.defectTarget!, rec.pendingId, result.key!),
+        });
+
+        const keys = defectPhotos(doc, 'd1').map((p) => p.key).sort();
+        expect(keys).toEqual(['r2/A', 'r2/B', 'r2/C']);
+        expect(defectPhotos(doc, 'd1').every((p) => !p.pendingId)).toBe(true);
+    });
+
+    it('leaves the queue clean when the defect row was deleted mid-queue', async () => {
+        const doc = docWithDefect('d1');
+        const target = { kind: 'canned' as const, id: 'gone' };
+        await enqueueMedia({
+            pendingId: 'orphan',
+            inspectionId: 'insp-1',
+            findingKey: FK,
+            defectTarget: target,
+            kind: 'photo',
+            blob: new Blob(['x']),
+            enqueuedAt: Date.now(),
+        });
+
+        // The row is not in the doc, so the swap has nowhere to land. The record
+        // must still drain — the bytes reached R2, and re-queueing it forever is
+        // how a queue wedges and stops draining the photos that DO have a home.
+        const uploader: MediaUploader = { upload: async () => ({ key: 'r2/orphan' }) };
+        const summary = await drainMediaQueue({
+            inspectionId: 'insp-1',
+            uploader,
+            onUploaded: (rec, result) =>
+                resolvePendingDefectPhoto(doc, rec.findingKey, rec.defectTarget!, rec.pendingId, result.key!),
+        });
+
+        expect(summary).toEqual({ uploaded: 1, failed: 0 });
+        expect(await listPendingMedia('insp-1')).toHaveLength(0);
     });
 });

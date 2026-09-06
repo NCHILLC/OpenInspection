@@ -35,6 +35,17 @@ export interface PendingMediaRecord {
     inspectionId: string;
     /** Composite finding key the results doc is keyed by. */
     findingKey:   string;
+    /**
+     * Set when the photo belongs to a DEFECT ROW rather than to the item itself.
+     * The upload endpoint does not care (it takes bytes and returns an R2 key) —
+     * this exists so the drain knows WHICH photos array to swap the real key
+     * into. Absent = an item-scoped photo, the original shape.
+     *
+     * No DB_VERSION bump: the store is keyed by `pendingId` and carries no index
+     * over this field, so an added property is just a wider structured clone,
+     * and records written by an older build simply lack it.
+     */
+    defectTarget?: { kind: 'canned' | 'custom'; id: string };
     kind:         PendingMediaKind;
     /** The client-produced bytes (photo / cropped jpeg / annotated png). */
     blob:         Blob;

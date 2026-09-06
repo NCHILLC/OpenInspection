@@ -3,6 +3,7 @@ import type * as Y from "yjs";
 import { findingKey } from "~/hooks/findings/shared";
 import { pushToast } from "~/hooks/useToast";
 import { appendPendingPhoto } from "~/lib/collab/results-binding";
+import { appendPendingPhotoToDefect } from "~/lib/collab/defect-photo-binding";
 import { enqueueMedia } from "~/lib/collab/media-upload-queue";
 import { preprocessImage } from "~/components/media-studio/preprocessImage";
 import { m } from "~/paraglide/messages";
@@ -130,10 +131,17 @@ export function useEditorPhotoUpload({
      * between frames. A queued capture is never blocked by the one before it, so
      * neither control has to refuse a tap.
      *
-     * Two cases still take the fetcher, both because there is nothing to enqueue
-     * INTO: a defect-targeted add (the pending-doc model represents item photos
-     * only — there is no shape for "photo 3 of canned defect X"), and the window
-     * before the collab doc is live.
+     * DEFECT-scoped photos now take the same queue. They used to go straight to
+     * the fetcher on the reasoning that the pending-doc model had no shape for
+     * "photo 3 of canned defect X" — but it does: a defect row's `photos` array
+     * holds the same PhotoEntry the item's does, pending markers included. What
+     * was actually missing was the drain knowing WHICH array to swap into, which
+     * is one optional field on the queue record. Offline, the old path posted to
+     * a dead network, threw into the route error boundary ("Something went
+     * wrong") and lost the photo — the P0 from the 2026-09-06 field eval.
+     *
+     * ONE case still takes the fetcher: the window before the collab doc is
+     * live, where there is genuinely nothing to enqueue into.
      */
     const submitPhotos = useCallback(
         async (files: File[], itemId: string, target: PendingPhotoTarget): Promise<void> => {
@@ -151,7 +159,7 @@ export function useEditorPhotoUpload({
             // real key.
             const doc = collabDoc ?? null;
             const sid = state.sectionIdForItem(itemId) ?? state.currentSection?.id;
-            if (doc && sid && !target) {
+            if (doc && sid) {
                 // Phase U (Batch C2a) — key the offline pending-photo doc entry to the active
                 // unit. At activeUnitId == null this === the legacy `_default:{sid}:{itemId}`.
                 const fk = findingKey(activeUnitId, sid, itemId);
@@ -161,11 +169,18 @@ export function useEditorPhotoUpload({
                         pendingId,
                         inspectionId: String(state.inspection.id),
                         findingKey: fk,
+                        // Absent for an item photo — the drain reads it to pick which
+                        // photos array the real key gets swapped into.
+                        ...(target ? { defectTarget: target } : {}),
                         kind: "photo",
                         blob: baked,
                         enqueuedAt: Date.now(),
                     });
-                    appendPendingPhoto(doc, fk, pendingId);
+                    if (target) {
+                        appendPendingPhotoToDefect(doc, sid, itemId, target, pendingId, activeUnitId);
+                    } else {
+                        appendPendingPhoto(doc, fk, pendingId);
+                    }
                 }
                 // Online this uploads immediately; offline the drain finds an empty
                 // network and leaves the records queued for the `online` / collab-
@@ -318,11 +333,12 @@ export function useEditorPhotoUpload({
     /** Arms the target, then opens whichever picker this device wants. */
     const openPicker = useCallback(
         (target: PendingPhotoTarget) => {
-            // Only a DEFECT add shares the single upload fetcher, where a second
-            // submit aborts the one in flight. An item add rides the queue and is
-            // never busy — refusing it (silently, which is how this read on rural
-            // LTE: tap, nothing, tap again, nothing) was the bug, not the guard.
-            if (target && uploadFetcher.state !== "idle") {
+            // The fetcher is now reached ONLY before the collab doc is live, so
+            // that is the only state where a second submit could abort the one in
+            // flight. With a doc, a defect add rides the queue like an item add
+            // and must not be refused — refusing it (silently, which is how this
+            // read on rural LTE: tap, nothing, tap again, nothing) was the bug.
+            if (target && !collabDoc && uploadFetcher.state !== "idle") {
                 pushToast({
                     message: m.editor_route_photo_upload_busy(),
                     variant: "warning",
@@ -338,7 +354,7 @@ export function useEditorPhotoUpload({
             if (isMobile && itemId) setAddMediaChooser({ itemId });
             else libraryInputRef.current?.click();
         },
-        [uploadFetcher.state, state.activeItemId, isMobile, setAddMediaChooser, libraryInputRef],
+        [uploadFetcher.state, collabDoc, state.activeItemId, isMobile, setAddMediaChooser, libraryInputRef],
     );
 
     const openPickerForItem = useCallback(() => openPicker(null), [openPicker]);

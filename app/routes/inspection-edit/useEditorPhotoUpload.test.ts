@@ -11,9 +11,13 @@ vi.mock("~/hooks/useToast", () => ({ pushToast: vi.fn() }));
 
 const enqueueMedia = vi.fn((_rec: unknown) => Promise.resolve("id"));
 const appendPendingPhoto = vi.fn((..._args: unknown[]) => {});
+const appendPendingPhotoToDefect = vi.fn((..._args: unknown[]) => {});
 vi.mock("~/lib/collab/media-upload-queue", () => ({ enqueueMedia: (r: unknown) => enqueueMedia(r) }));
 vi.mock("~/lib/collab/results-binding", () => ({
     appendPendingPhoto: (...a: unknown[]) => appendPendingPhoto(...a),
+}));
+vi.mock("~/lib/collab/defect-photo-binding", () => ({
+    appendPendingPhotoToDefect: (...a: unknown[]) => appendPendingPhotoToDefect(...a),
 }));
 
 /**
@@ -108,6 +112,7 @@ beforeEach(() => {
     drain.mockClear();
     enqueueMedia.mockClear();
     appendPendingPhoto.mockClear();
+    appendPendingPhotoToDefect.mockClear();
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
 });
 
@@ -270,9 +275,44 @@ describe("useEditorPhotoUpload — every item photo rides the queue", () => {
         expect(enqueueMedia).toHaveBeenCalledTimes(1);
     });
 
-    // A defect photo has no pending-doc shape, so it stays on the fetcher.
-    it("still posts a defect-targeted photo", async () => {
+    /**
+     * The 2026-09-06 field-eval P0. A defect photo used to go straight to the
+     * fetcher; offline that POST failed into the route error boundary, killed
+     * the editor with "Something went wrong" and lost the photo. It now rides
+     * the same queue as an item photo, tagged so the drain knows which array to
+     * swap the real key into.
+     */
+    it("queues a defect-targeted photo, tagged with the defect", async () => {
         const { result } = setup(doc);
+        act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
+        await pickAPhoto(result.current.handlePhotoUpload);
+        expect(submit).not.toHaveBeenCalled();
+        expect(enqueueMedia).toHaveBeenCalledTimes(1);
+        expect(enqueueMedia.mock.calls[0]?.[0]).toMatchObject({
+            defectTarget: { kind: "canned", id: "d1" },
+        });
+        expect(appendPendingPhotoToDefect).toHaveBeenCalledTimes(1);
+        expect(appendPendingPhoto).not.toHaveBeenCalled();
+    });
+
+    // Three frames at one defect must produce three records, not one. The doc
+    // append dedups by key, and every pending key is "" until the drain runs.
+    it("queues every frame of a defect capture session", async () => {
+        const { result } = setup(doc);
+        act(() => result.current.openPickerForDefect({ kind: "custom", id: "c9" }));
+        await shootAFrame(result.current.handleCameraFrame);
+        await shootAFrame(result.current.handleCameraFrame);
+        await shootAFrame(result.current.handleCameraFrame);
+        expect(enqueueMedia).toHaveBeenCalledTimes(3);
+        expect(appendPendingPhotoToDefect).toHaveBeenCalledTimes(3);
+        const ids = appendPendingPhotoToDefect.mock.calls.map((c) => c[4]);
+        expect(new Set(ids).size).toBe(3);
+        expect(submit).not.toHaveBeenCalled();
+    });
+
+    // The one remaining fetcher case: no collab doc means nothing to enqueue into.
+    it("still posts a defect-targeted photo when the doc is not live", async () => {
+        const { result } = setup();
         act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
         await pickAPhoto(result.current.handlePhotoUpload);
         expect(enqueueMedia).not.toHaveBeenCalled();
