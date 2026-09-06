@@ -121,7 +121,18 @@ async function networkFirstWithCacheFallback(request) {
     if (response.ok) cache.put(request, response.clone());
     return response;
   } catch {
-    const cached = await cache.match(request);
+    // ⚠️ THE SECOND MATCH IS THE ONE THAT SAVES A CRAWLSPACE SESSION.
+    // `cache.match` keys on the FULL url, query string included, and the phone
+    // editor drills down via search params (`?section=&item=` — the D3 nav
+    // decision) using client-side routing, which issues no navigation request
+    // and therefore caches nothing. So the only document ever cached is the
+    // bare URL the inspector arrived on, and an offline reload three taps deep
+    // asked for `…/edit?section=X&item=Y`, missed, and got the 503 below —
+    // a dead page, with the whole inspection sitting intact in IndexedDB.
+    // `ignoreSearch` serves that same route's cached document; the app rehydrates
+    // from local state and the address bar still holds the real params.
+    const cached =
+      (await cache.match(request)) ?? (await cache.match(request, { ignoreSearch: true }));
     // ⚠️ `charset=utf-8` is load-bearing. The em-dash below is two UTF-8 bytes,
     // and a `text/plain` response with no charset is decoded with the browser's
     // legacy default — which rendered this sentence as "Offline 钦� please
