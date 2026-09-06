@@ -34,6 +34,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import type { APIRequestContext, BrowserContext, Page } from '@playwright/test';
+import { awaitEditorInteractive } from './helpers/editor-ready';
 
 // Must be `localhost` (not 127.0.0.1): the auth cookie is added with
 // domain 'localhost', and Chromium only treats http://localhost as a secure
@@ -45,6 +46,9 @@ const ADMIN_EMAIL = process.env.TEST_EMAIL || 'admin@autotest.com';
 const ADMIN_PASSWORD = process.env.TEST_PASSWORD || 'Password123!';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Same fixture batch-photo-upload.spec.ts uses. */
+const FIXTURE_IMAGE = path.join(__dirname, '..', 'assets', 'test-logo.png');
 
 // ─── Helpers (mirror collab-editing.spec.ts) ─────────────────────────────────
 
@@ -284,6 +288,123 @@ test.describe.serial('Collab offline + auto-reconnect — 2-client browser E2E (
       await a.context.setOffline(false).catch(() => { /* ignore */ });
       await a.context.close();
       await b.context.close();
+    }
+  });
+});
+
+// ─── Defect-row photo, offline (2026-09-06 field-eval P0) ────────────────────
+
+/**
+ * A photo added to a DEFECT ROW while offline used to POST straight to a dead
+ * network, throw into the route error boundary ("Something went wrong") and
+ * lose the photo — item photos queued fine, defect photos did not. Fixed in
+ * 85669e05 by routing them through the same media queue, tagged with a
+ * `defectTarget` so the drain knows which photos[] to swap the real key into.
+ *
+ * The unit specs cover the queue and the doc swap directly. This covers the one
+ * thing they cannot: that the real editor, offline, does not die.
+ */
+test.describe.serial('Offline photo on a defect row survives to the drain', () => {
+  let token = '';
+  let insId = '';
+
+  test.beforeAll(async ({ request }) => {
+    token = await loginApi(request, ADMIN_EMAIL, ADMIN_PASSWORD);
+
+    const tplRes = await apiPost(request, '/api/inspections/templates', token, {
+      name: 'Defect Photo Offline E2E Template',
+      schema: {
+        schemaVersion: 2,
+        sections: [
+          {
+            id: 's_general',
+            title: 'General',
+            items: [
+              {
+                id: 'roof',
+                label: 'Roof',
+                type: 'rich',
+                ratingOptions: ['Inspected', 'Repair'],
+                tabs: {
+                  information: [],
+                  limitations: [],
+                  // `default: true` so the row is already included and the
+                  // per-defect photo control renders without a toggle step.
+                  defects: [
+                    {
+                      id: 'd_shingle',
+                      title: 'Damaged shingles',
+                      category: 'Roof',
+                      location: '',
+                      comment: 'Shingles are damaged.',
+                      photos: [],
+                      default: true,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(tplRes.status()).toBe(201);
+    const templateId = (await tplRes.json()).data?.template?.id;
+    expect(templateId, 'No template id returned').toBeTruthy();
+
+    const insRes = await apiPost(request, '/api/inspections', token, {
+      propertyAddress: '3 Crawlspace Ct, Offline City',
+      clientName: 'Ada Lovelace',
+      clientEmail: 'ada@example.com',
+      templateId,
+    });
+    expect(insRes.status()).toBe(201);
+    insId = (await insRes.json()).data?.inspection?.id;
+    expect(insId, 'No inspection id returned').toBeTruthy();
+  });
+
+  test('adds offline, editor survives, drains on reconnect', async ({ browser }) => {
+    const a = await openEditorContext(browser, token, insId);
+    try {
+      // Not the local selectRoofItem(): it clicks once and waits, which loses the
+      // hydration race on a cold editor — the exact failure awaitEditorInteractive
+      // exists for ("collab's click on Roof opened no pane"). It retries the
+      // click until the pane actually mounts.
+      await awaitEditorInteractive(a.page, 'Roof');
+
+      // The per-defect photo control only renders on the Defects tab, on a row
+      // that is included.
+      await a.page.getByRole('button', { name: /Defects/i }).first().click();
+      const addPhoto = a.page.getByRole('button', { name: 'Add photo to this defect' }).first();
+      await expect(addPhoto).toBeVisible({ timeout: 15000 });
+
+      await a.context.setOffline(true);
+
+      // Arms the defect target, then hands the file to the library input the
+      // picker opens — same funnel a real tap goes through.
+      await addPhoto.click();
+      await a.page.locator('input[type="file"][multiple]').setInputFiles([FIXTURE_IMAGE]);
+
+      // THE REGRESSION. Before the fix this was the route error boundary and
+      // the photo was gone.
+      await expect(a.page.getByText(/Something went wrong/i)).toHaveCount(0);
+      await expect(addPhoto).toBeVisible();
+
+      // The queued photo is on the DEFECT ROW while still offline — the count
+      // control the row renders once it holds a photo.
+      await expect(a.page.getByRole('button', { name: 'Photo (1)' })).toBeVisible({ timeout: 15000 });
+
+      await a.context.setOffline(false);
+
+      // A reload proves it reached the server, not just local component state:
+      // a photo that only ever lived in memory does not come back.
+      await a.page.reload({ timeout: NAV_TIMEOUT, waitUntil: 'domcontentloaded' });
+      await awaitEditorInteractive(a.page, 'Roof');
+      await a.page.getByRole('button', { name: /Defects/i }).first().click();
+      await expect(a.page.getByRole('button', { name: 'Photo (1)' })).toBeVisible({ timeout: 30000 });
+    } finally {
+      await a.context.setOffline(false).catch(() => { /* ignore */ });
+      await a.context.close();
     }
   });
 });

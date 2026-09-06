@@ -48,7 +48,19 @@ export function makeDefectPhotoChip(
         };
         if (count === 0) {
             return (
-                <button type="button" disabled={photoUploading} onClick={add} className={defectRowButtonClass}>
+                // The item header carries its own "Add photo" button, so without a
+                // label both compute the SAME accessible name and nothing tells a
+                // screen-reader user which one files under the defect. The
+                // `count > 0` branch below already labels its `+` this way.
+                // "Add photo" stays the visible text and is contained in the
+                // label, so Label-in-Name (WCAG 2.5.3) still holds.
+                <button
+                    type="button"
+                    disabled={photoUploading}
+                    aria-label={m.editor_item_add_defect_photo_aria()}
+                    onClick={add}
+                    className={defectRowButtonClass}
+                >
                     {photoIcon}
                     <span className="text-[12px] font-medium">{m.editor_item_add_photo()}</span>
                 </button>
