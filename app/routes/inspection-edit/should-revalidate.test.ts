@@ -4,6 +4,22 @@ import { isDrilldownOnlyChange, shouldRevalidate } from "./should-revalidate";
 const url = (s: string) => new URL(s, "https://example.test");
 
 describe("isDrilldownOnlyChange", () => {
+    // The regression this predicate shipped with: an explicit
+    // revalidator.revalidate() hands React Router the SAME url twice, the param
+    // loop found nothing different, and every caller skipped the revalidation.
+    // A unit created server-side never appeared in the drawer.
+    it("is false when the url has not changed at all", () => {
+        expect(isDrilldownOnlyChange(url("/inspections/1/edit"), url("/inspections/1/edit"))).toBe(false);
+        expect(
+            isDrilldownOnlyChange(url("/inspections/1/edit?section=s2"), url("/inspections/1/edit?section=s2")),
+        ).toBe(false);
+    });
+
+    it("revalidates an explicit same-url revalidate", () => {
+        const same = url("/inspections/1/edit?section=s2&item=i9");
+        expect(shouldRevalidate({ currentUrl: same, nextUrl: same, defaultShouldRevalidate: true })).toBe(true);
+    });
+
     it("is true when only the section param moves", () => {
         expect(isDrilldownOnlyChange(url("/inspections/1/edit"), url("/inspections/1/edit?section=s2"))).toBe(true);
     });
