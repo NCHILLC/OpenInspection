@@ -156,17 +156,28 @@ jobs:
     # is not the ceiling: `lint:eslint` asked for a 12 GB heap on an 8 GB
     # runner, so V8 deferred GC past physical RAM and the OS swapped.
     #
-    # 6144 CONFIRMED that and overshot: the job fell from 30m36s to 8m28s, then
-    # died `FATAL ERROR: Ineffective mark-compacts near heap limit` at 6030 MB
-    # with `average mu = 0.105` — 90% of its time in GC. The live set is
-    # genuinely over 6 GB, so this workload is squeezed from both sides on an
-    # 8 GB box: 12 GB swaps, 6 GB OOMs. Now 7168 (package.json), leaving ~1 GB
-    # for the OS, with 45 minutes as the margin.
+    # 6144 confirmed that and overshot — 30m36s down to 8m28s, then OOM at
+    # 6030 MB with `average mu = 0.105`, 90% of its time in GC. 7168 OOMed too,
+    # at 7034 MB. No heap value fits: the type-aware program needs more than an
+    # 8 GB machine has, and raising the number again cannot help.
     #
-    # IF IT OOMs AGAIN, the answer is not more heap — 8 GB is the machine.
-    # Shard eslint across a matrix the way the unit tests already are, so each
-    # process only ever holds part of the program.
-    timeout-minutes: 45
+    # So the job now runs with ESLINT_FAST=1 (see the note at the top of
+    # eslint.config.js), and the important part is that this does not change
+    # what CI can fail on. FAST turns off exactly the rules that need type
+    # information, every one of which is 'warn', and `lint:eslint` passes no
+    # `--max-warnings` — so those rules could never fail this job. The only
+    # error-level TypeScript rules, no-explicit-any and no-unused-vars, read no
+    # types and still run. Same files, same errors, no 7 GB program.
+    #
+    # WHAT IS LOST is the type-aware findings being PRINTED here — the
+    # no-floating-promises / no-unsafe-* warn-first rollout. They were advisory
+    # in this job, never blocking. To get them back in CI, split this job by
+    # PROGRAM rather than by file count: one shard linting app/ with
+    # project ./tsconfig.json, one linting server/ + packages/ with
+    # ./tsconfig.api.json. Sharding by file list alone would NOT help, because
+    # typescript-eslint builds the program from the tsconfig, not from the
+    # files being linted.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
@@ -219,6 +230,8 @@ jobs:
           key: eslint-${{ hashFiles('eslint.config.js', 'package-lock.json') }}-${{ github.sha }}
           restore-keys: eslint-${{ hashFiles('eslint.config.js', 'package-lock.json') }}-
       - run: npm run lint:eslint
+        env:
+          ESLINT_FAST: '1'
 
   lint-gates:
     name: lint (gates)
