@@ -108,7 +108,7 @@ version is gone):
 - `lint:agent-routes` stays removed — it went with the fork's agent-portal
   removal (`2172d817`) and nothing references it.
 - SaaS MCP mount is `/mcp/{slug}` (upstream `a4620cd1`), no longer the broad
-  `/company/` prefix; the fork's lazy-gate spec and the predicate's comment
+  `/company/` prefix <!-- no-portal-routes-allow: naming the retired prefix, not documenting a route -->; the fork's lazy-gate spec and the predicate's comment
   were updated to say so. No code change.
 
 **A silent clash the merge did not flag**: both sides had added the same lazy
@@ -124,6 +124,21 @@ upstream had already reviewed.
 
 **Line endings**: upstream's `.gitattributes` (`* text=auto eol=lf`) now
 governs; the Windows working tree was renormalised with `npm run lint:eol -- --fix`.
+
+**Two CI-only gates upstream added inside this window** (`b9cdb712` middleware
+budget, and `lint:no-portal-routes`) were never in the fork's smaller pre-commit
+rung, so their first run was in PR CI, not locally. Both were re-baselined
+rather than papered over:
+
+- `lint:middleware-budget`: `template-edit.tsx`'s fan-out moved 3 -> 4 in
+  upstream's own baseline update. The 4th call, `contractorTypes.$get`, is fork
+  work that predates this merge, not something the merge resolution added; the
+  baseline was authored against upstream's tree, which has no contractor types.
+  Ten agent-portal route entries also dropped out on the same re-baseline —
+  legitimately, since `2172d817` deleted those files.
+- `lint:no-portal-routes`: the SaaS-mount line above, naming the prefix that no
+  longer applies, is exactly the negative statement the gate's own docstring
+  warns about — it needed the documented allow-comment, not a rewrite.
 
 ## Fork deviations
 

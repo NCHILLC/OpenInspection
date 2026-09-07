@@ -6,8 +6,8 @@
   ],
   "globalMiddlewareUse": 12,
   "fanOutTotals": {
-    "files": 142,
-    "dollarMethods": 563,
+    "files": 132,
+    "dollarMethods": 537,
     "apiWorker": 9
   },
   "fanOut": {
@@ -88,42 +88,6 @@
       "apiWorker": 0
     },
     "app/lib/view-tracking.server.ts": {
-      "dollarMethods": 2,
-      "apiWorker": 0
-    },
-    "app/routes/agent-layout.tsx": {
-      "dollarMethods": 3,
-      "apiWorker": 0
-    },
-    "app/routes/agent/accept-terms.tsx": {
-      "dollarMethods": 2,
-      "apiWorker": 0
-    },
-    "app/routes/agent/dashboard.tsx": {
-      "dollarMethods": 1,
-      "apiWorker": 0
-    },
-    "app/routes/agent/inspectors.tsx": {
-      "dollarMethods": 1,
-      "apiWorker": 0
-    },
-    "app/routes/agent/login.tsx": {
-      "dollarMethods": 2,
-      "apiWorker": 0
-    },
-    "app/routes/agent/repair-items.tsx": {
-      "dollarMethods": 5,
-      "apiWorker": 0
-    },
-    "app/routes/agent/settings-legal.tsx": {
-      "dollarMethods": 1,
-      "apiWorker": 0
-    },
-    "app/routes/agent/settings-profile.tsx": {
-      "dollarMethods": 7,
-      "apiWorker": 0
-    },
-    "app/routes/agent/signup.tsx": {
       "dollarMethods": 2,
       "apiWorker": 0
     },
@@ -317,10 +281,6 @@
     },
     "app/routes/reset-password.tsx": {
       "dollarMethods": 1,
-      "apiWorker": 0
-    },
-    "app/routes/resources/agent-notices.tsx": {
-      "dollarMethods": 3,
       "apiWorker": 0
     },
     "app/routes/resources/agreement-signers.tsx": {
@@ -568,7 +528,7 @@
       "apiWorker": 0
     },
     "app/routes/template-edit.tsx": {
-      "dollarMethods": 3,
+      "dollarMethods": 4,
       "apiWorker": 0
     },
     "app/routes/templates.tsx": {
