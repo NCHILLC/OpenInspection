@@ -18,9 +18,11 @@ describe('isMcpSurfacePath', () => {
         expect(isMcpSurfacePath('/mcp/messages', STANDALONE)).toBe(true);
     });
 
-    it('accepts the saas company prefix and a per-workspace endpoint', () => {
-        expect(isMcpSurfacePath('/company/', SAAS)).toBe(true);
-        expect(isMcpSurfacePath('/company/acme/mcp', SAAS)).toBe(true);
+    // SaaS mounts per-workspace endpoints UNDER the same /mcp prefix
+    // (InspectorHub/OpenInspection a4620cd1 narrowed it from /company/).
+    it('accepts the saas per-workspace endpoint under the shared prefix', () => {
+        expect(isMcpSurfacePath('/mcp', SAAS)).toBe(true);
+        expect(isMcpSurfacePath('/mcp/acme', SAAS)).toBe(true);
     });
 
     it('accepts the configured OAuth endpoints', () => {
@@ -47,10 +49,11 @@ describe('isMcpSurfacePath', () => {
         }
     });
 
-    // In standalone the company prefix is not the mount path, so it must not be
-    // treated as the MCP surface just because SaaS uses it.
-    it('does not treat the company prefix as MCP in standalone', () => {
+    // /company/* is an ordinary application namespace in BOTH modes now; the
+    // old broad SaaS prefix swallowed all of it.
+    it('does not treat the company namespace as MCP in either mode', () => {
         expect(isMcpSurfacePath('/company/acme/mcp', STANDALONE)).toBe(false);
+        expect(isMcpSurfacePath('/company/acme/mcp', SAAS)).toBe(false);
     });
 });
 

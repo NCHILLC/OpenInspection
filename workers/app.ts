@@ -19,6 +19,13 @@ import { isMcpSurfacePath } from "../server/lib/mcp/oauth-paths";
 // resolver over `ProfileEnv`. Pulling it in does not drag the API graph in
 // behind it, which is the thing that rule protects.
 import { getDeploymentProfile } from "../server/lib/deployment-profile";
+// Same top-level exemption as `deployment-profile.ts` above, for the same
+// reason: `request-scope.ts` imports nothing at all, so it cannot drag the API
+// graph in behind it.
+import { createRequestScope, REQUEST_SCOPE } from "../server/lib/request-scope";
+// Five string constants, no imports — safe at the top level for the same reason
+// as the two above, and what lets /status answer without importing the API graph.
+import { BUILD } from "../server/generated/version";
 // i18n Phase C — request-scoped locale. paraglideMiddleware establishes an
 // AsyncLocalStorage scope so getLocale()/m.*() resolve per-request (never a
 // module-global) across the multi-tenant Worker. Generated (git-ignored); the
@@ -61,11 +68,18 @@ const requestHandler = createRequestHandler(
 // env.API_WORKER.fetch) instead of an HTTP loopback to this same worker — no
 // extra network hop, no API_URL needed.
 const ssr = (c: Ctx) => {
+  // One scope per OUTER request, shared by every in-process API call this
+  // render fans out. Built once here rather than per call: the 15 calls must
+  // see the SAME scope or nothing is shared. `toApi` — the entry for real
+  // external HTTP traffic — keeps passing the raw `c.env`, so memoisation is
+  // unreachable from outside by construction rather than by a flag.
+  const scope = createRequestScope();
+  const innerEnv = { ...c.env, [REQUEST_SCOPE]: scope };
   const env: WorkerEnv = {
     ...c.env,
     API_WORKER: {
       fetch: async (req: Request) =>
-        (await getApi()).app.fetch(req, c.env, c.executionCtx),
+        (await getApi()).app.fetch(req, innerEnv, c.executionCtx),
     },
   };
   const context = new RouterContextProvider();
@@ -113,24 +127,104 @@ const app = new Hono();
 // allowlist entry whose stated reason ("runs before middleware") was true of
 // the context and not of the function.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-app.all("/api/integration/*", (c: any) =>
+app.all("/api/platform/*", (c: any) =>
     getDeploymentProfile(c.env).hasPortalIntegrationApi ? toApi(c) : c.notFound(),
 );
 app.all("/api/*", toApi);
+// Served HERE, not through `toApi`, and that is the whole point: `toApi` calls
+// `getApi()`, which lazily imports the entire API module graph. A health check
+// that answers with a build stamp was paying for that import — measured in
+// production over 24h, `GET /status` averaged 46.8ms of CPU with a max of 108ms,
+// which is module evaluation on a cold isolate, not request work.
+//
+// It is polled by uptime monitoring and by the superproject's
+// check-deploy-lag.mjs, so it is exactly the request most likely to ARRIVE at a
+// cold isolate and warm the whole API for nothing.
+//
+// `generated/version.ts` is a tiny standalone module — five string constants and
+// no imports — so this keeps the entry's top-level graph small, the same
+// exemption `deployment-profile.ts` and `request-scope.ts` already carry.
+//
+// ⚠️ The response shape is load-bearing: check-deploy-lag.mjs reads `commit` and
+// `branch`, and refuses to report "no lag" for a status it cannot parse. Keep it
+// byte-compatible with the `/status` route in server/index.ts, which stays for
+// the standalone and in-process test paths that call the API app directly.
+app.get("/status", (c) =>
+  c.json({
+    status: "ok",
+    app: "openinspection-core",
+    version: BUILD.version,
+    commit: BUILD.shortCommit,
+    branch: BUILD.branch,
+    buildTime: BUILD.buildTime,
+    timestamp: new Date().toISOString(),
+  }),
+);
+// Non-GET verbs keep the old path: they are not health checks and have no
+// reason to bypass the API.
 app.all("/status", toApi);
 app.all("/m2m/*", toApi);
+app.all("/webhooks/*", toApi); // inbound provider webhooks — top-level by design (spec §3)
 app.all("/photos/*", toApi);
 app.all("/.well-known/*", toApi);
 app.all("/doc", toApi); // OpenAPI JSON (the RR /ui Swagger page fetches it); /ui itself is now an RR route
-app.all("/sso", toApi); // saas SSO handoff (coreAuthRoutes is also mounted at '/')
+app.all("/sso", toApi); // saas SSO handoff — the one auth route mounted at '/' (ssoRootRoutes)
 app.all("/sign/*", toApi); // public signing pages — no React Router /sign route
 app.all("/agent/magic-login", toApi); // agent unified link redeem — no React Router page for this path
 app.get("/inspector/:tenant/:slug/calendar.ics", toApi); // ICS feed (API-only)
-app.get("/observe/:token", toApi); // 1-seg observe — RR owns /observe/inspections/:id
+// Removed: `/observe/:token`. It forwarded to the API app, which has never had
+// a route there, and the React Router route its comment claimed ("RR owns
+// /observe/inspections/:id") does not exist either — the observe surface is
+// `/api/portal/{tenant}/inspections/{id}/observe`. It has been dead on both
+// sides since the single-worker migration; the entry-dispatch parity gate is
+// what finally said so.
+
+// NOT listed here on purpose: `/mcp` and `/mcp/{slug}`. That prefix is owned by
+// the OAuthProvider wrapper installed around this whole app in `fetch` below —
+// it matches `apiRoute` as a literal path prefix and hands the request to the
+// McpAgent Durable Object, so it never reaches this router when MCP is enabled.
+// Routing it to `toApi` would be a lie about ownership AND a behaviour change
+// when the flag is off, where the path correctly falls through to the SSR 404.
 
 // Audited as React Router-owned (the RR migration superseded the API HTML; the API
 // still serves their DATA under /api/public/*): /book /report /r /messages /verify
 // /agreements /login /logout /forgot-password /inspections and all app pages.
+
+/**
+ * Vulnerability-scanner probes, answered without rendering anything.
+ *
+ * These paths reach the catch-all below, and the catch-all is a full React
+ * Router SSR render — the 404 page is a real page, with the root layout, the
+ * i18n scope and the whole render pipeline behind it. Measured in production
+ * over 15h: `GET /.env` cost 200ms of CPU, `/config/.env` 89ms, `/backend/.env`
+ * 87ms, `/wordpress/` 172ms. One scanner walking a wordlist, each miss costing
+ * roughly what a real page costs, on a worker whose CPU ceiling is 10ms per
+ * invocation.
+ *
+ * ⚠️ EVERY PATTERN HERE MUST BE ONE NO APP ROUTE COULD EVER USE. A false
+ * positive is a real page turned into a 404 with nothing to explain it, which is
+ * far worse than the CPU this saves. So: no bare-word matching, no guessing at
+ * "suspicious" — only file types this app never serves and tool paths that
+ * belong to other stacks entirely. React Router owns everything else, including
+ * genuine typos, which still get the real 404 page.
+ *
+ * ⚠️ This still costs a Worker INVOCATION — it is a cheap 404, not a free one.
+ * The only free answer is a WAF / firewall rule at the edge, where the request
+ * never reaches the worker at all. That is dashboard configuration rather than
+ * code; this is the half that lives in the repo.
+ */
+const SCANNER_PROBE =
+  /(?:^|\/)\.(?:env|git|svn|hg|aws|ssh)(?:$|[./])|(?:^|\/)(?:wp-admin|wp-login|wp-content|wp-includes|wordpress|phpmyadmin|cgi-bin|vendor\/phpunit)(?:$|\/)|\.(?:php[3457]?|asp|aspx|jsp|cgi|sql|bak|old|swp)$/i;
+
+app.all("*", (c, next) => {
+  if (!SCANNER_PROBE.test(new URL(c.req.url).pathname)) return next();
+  // Plain text, no body worth parsing, and `noindex` so a crawler that stumbles
+  // onto one does not keep asking.
+  return c.text("Not Found", 404, {
+    "cache-control": "public, max-age=3600",
+    "x-robots-tag": "noindex",
+  });
+});
 
 // --- Everything else → React Router SSR (all pages incl. "/") ---
 // Static assets (/favicon.svg, /styles.css, /vendor/*, /fonts/*) are served by the
@@ -160,12 +254,35 @@ export default {
       m.buildOAuthHandler(app.fetch as never, env).fetch(req, env, ctx),
     );
   },
+  // Imported DIRECTLY, not through `getApi()`. The cron tick decides which jobs
+  // are due and enqueues one message each — it never touches a route. Reaching
+  // it through server/index.ts meant evaluating the whole API graph first: all
+  // 426 routes and every Zod schema, measured at ~230ms on a cold isolate (see
+  // the /status note above, where the same import was the entire cost).
+  //
+  // Production, 24h: the `*/5` tick averaged 10.4ms of CPU across 294
+  // invocations against a 10ms ceiling. The tick's own work is a cursor read and
+  // a queue send; the graph it was dragging in is the part worth removing.
+  //
+  // `server/scheduled.ts` is 78 lines and pulls in the cron dispatcher only.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  scheduled: async (controller: any, env: any, ctx: any) =>
-    (await getApi()).default.scheduled(controller, env, ctx),
+  scheduled: async (controller: any, env: any, ctx: any) => {
+    const { scheduled: runScheduled } = await import("../server/scheduled");
+    return runScheduled(controller, env, ctx);
+  },
+  // Imported DIRECTLY, like `scheduled` above and for the same reason: the
+  // dispatcher reads `batch.queue` and hands off, so it never needed the route
+  // graph that living in server/index.ts forced it to evaluate.
+  //
+  // ⚠️ Do not repeat the cron claim here without measuring. That split cut a
+  // cold isolate 273ms -> 59ms locally and moved production NOT AT ALL, because
+  // production invocations land on already-warm isolates. This is the same
+  // shape, so the honest expectation is "cheaper cold start, unchanged warm".
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  queue: async (batch: any, env: any, ctx: any) =>
-    (await getApi()).default.queue(batch, env, ctx),
+  queue: async (batch: any, env: any, ctx: any) => {
+    const { queue: runQueue } = await import("../server/queue");
+    return runQueue(batch, env, ctx);
+  },
 };
 
 // Re-export Durable Objects + Workflow so wrangler can bind them on the single

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useLoaderData, useFetcher } from "react-router";
-import { useCopyClipboard } from "~/hooks/useCopyClipboard";
 import type { Route } from "./+types/team";
 import { requireToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
@@ -8,6 +7,9 @@ import { SeatBanner } from "~/components/SeatBanner";
 import { InviteSeatDrawer } from "~/components/modals/InviteSeatDrawer";
 import { EditMemberDrawer, type EditableMember } from "~/components/modals/EditMemberDrawer";
 import { ConfirmDialog } from "~/components/ConfirmDialog";
+import { InviteLinkModal, type InviteLinkTarget } from "~/components/modals/InviteLinkModal";
+import { ResetTwoFactorDialog, type ResetTwoFactorTarget } from "~/components/modals/ResetTwoFactorDialog";
+import { resetMemberTwoFactor } from "./team.reset-two-factor.server";
 import { useSessionContext } from "~/hooks/useSessionContext";
 import { importEntryHref } from "~/lib/import-entry-points";
 import { Breadcrumb } from "~/components/Breadcrumb";
@@ -15,28 +17,12 @@ import { PageHeader, TabStrip, Card, Pill, Button, EmptyState, Table, Banner } f
 import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
 import { m } from "~/paraglide/messages";
 import { isAdminRole } from "~/lib/access";
+import { ROLE_TONES, expiryLabel, type Member, type LoaderActiveUser, type LoaderInvite } from "./team.shapes";
 
 export function meta() {
   return [{ title: m.settings_team_meta_title() }];
 }
 
-interface Member {
-  id: string;
-  name: string | null;
-  email: string;
-  role: string;
-  status: "active" | "pending";
-  lastActiveAt: string | null;
-  /** Present only on pending rows — the tenant_invites token to cancel/resend. */
-  token: string | null;
-  /** Present only on pending rows — ISO expiry for the "expires in Nd" label. */
-  expiresAt: string | null;
-  /** Capability toggles differing from the role template; seeds the edit drawer (IA-101). */
-  permissionOverrides: Record<string, boolean> | null;
-}
-
-interface LoaderActiveUser { id: string; email: string; role: string; name?: string | null; permissionOverrides?: Record<string, boolean> | null }
-interface LoaderInvite { id: string; email: string; role: string; expiresAt: string }
 
 export async function loader({ request, context }: Route.LoaderArgs) {
   const token = await requireToken(context, request);
@@ -69,16 +55,21 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     const active: Member[] = (body.data?.members ?? []).map((u) => ({
       id: u.id, name: u.name ?? null, email: u.email, role: u.role,
       status: "active", lastActiveAt: null, token: null, expiresAt: null,
+      inviteLink: null,
       permissionOverrides: u.permissionOverrides ?? null,
+      totpEnabled: u.totpEnabled === true,
     }));
     const pending: Member[] = (body.data?.invites ?? []).map((i) => ({
       id: i.id, name: null, email: i.email, role: i.role,
       status: "pending", lastActiveAt: null, token: i.id, expiresAt: i.expiresAt,
+      inviteLink: i.inviteLink ?? null,
       // A pending invite's overrides live on tenant_invites and are replayed
       // at accept time; there is no member row to edit yet.
       permissionOverrides: null,
+      // Nobody has enrolled anything until they accept.
+      totpEnabled: false,
     }));
-    return { members: [...active, ...pending], canManage: isAdminRole(role), loadFailed };
+    return { members: [...active, ...pending], canManage: isAdminRole(role), isOwner: role === "owner", loadFailed };
   } catch {
     // `canManage` is derived from the JWT role, which was resolved BEFORE this
     // try block and is not in doubt. Returning false here downgraded an owner's
@@ -86,7 +77,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     // affordances, which reads as "you are not allowed" rather than "we could
     // not load this".
     loadFailed = true;
-    return { members: [] as Member[], canManage: isAdminRole(role), loadFailed };
+    return { members: [] as Member[], canManage: isAdminRole(role), isOwner: role === "owner", loadFailed };
   }
 }
 
@@ -101,6 +92,9 @@ export async function action({ request, context }: Route.ActionArgs) {
     const res = await api.team.invites[":token"].$delete({ param: { token: inviteToken } });
     return { ok: res.ok };
   }
+  if (intent === "reset-two-factor") {
+    return resetMemberTwoFactor(api, form.get("id") as string);
+  }
   if (intent === "resend-invite") {
     const inviteToken = form.get("token") as string;
     const res = await api.team.invites[":token"].resend.$post({ param: { token: inviteToken } });
@@ -109,38 +103,29 @@ export async function action({ request, context }: Route.ActionArgs) {
   return { ok: false };
 }
 
-const ROLE_TONES: Record<string, "primary" | "info" | "neutral" | "warning" | "monitor" | "sat" | "gen"> = {
-  owner: "primary",
-  manager: "info",
-  inspector: "neutral",
-  lead: "info",
-  specialist: "sat",
-  agent: "warning",
-  office: "gen",
-};
 
 export default function TeamPage() {
-  const { members, canManage, loadFailed } = useLoaderData<typeof loader>();
+  const { members, canManage, isOwner, loadFailed } = useLoaderData<typeof loader>();
   // #106 - cancelling an invite burns the token; a second cancel would 404
   // and read as a failure. `resendFetcher` below is a <Form>, not a submit.
   const { submit: submitCancel, busy: cancelBusy } = useGuardedSubmit<{ ok?: boolean }>();
+  // The owner's two-factor reset. Its own submit rather than sharing the
+  // cancel-invite one: two dialogs sharing a busy flag disable each other, and
+  // a reset that silently rode a cancel's in-flight guard would be dropped.
+  const { submit: submitResetTwoFactor, busy: resetTwoFactorBusy } = useGuardedSubmit<{ ok?: boolean }>();
+  const [pendingReset, setPendingReset] = useState<ResetTwoFactorTarget | null>(null);
   const resendFetcher = useFetcher<{ ok?: boolean; resent?: boolean }>();
-  const { copied, copy } = useCopyClipboard();
   const [pendingCancel, setPendingCancel] = useState<{ token: string; email: string } | null>(null);
+
+  // Which pending invite's link is on screen. The dialog itself is
+  // `InviteLinkModal`, which owns why it SHOWS the URL rather than only
+  // copying it.
+  const [linkInvite, setLinkInvite] = useState<InviteLinkTarget | null>(null);
   const sessionCtx = useSessionContext();
   const [activeTab, setActiveTab] = useState("active");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [editMember, setEditMember] = useState<EditableMember | null>(null);
 
-  // Human "expires in Nd" / "expired Nd ago" from an ISO expiry. Whole-day
-  // granularity is enough for a 7-day invite window.
-  function expiryLabel(iso: string | null): string {
-    if (!iso) return "";
-    const ms = new Date(iso).getTime() - Date.now();
-    const days = Math.round(Math.abs(ms) / 86_400_000);
-    if (ms <= 0) return m.settings_team_invite_expired({ days });
-    return m.settings_team_invite_expires_in({ days });
-  }
 
   // Built in the render (request ALS scope) so the labels resolve per-request
   // rather than freezing the locale at module import.
@@ -262,13 +247,27 @@ export default function TeamPage() {
                       </span>
                       {canManage && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() => copy(`${window.location.origin}/join?token=${member.token}`, member.token as string)}
-                            className="text-[12px] font-medium text-ih-fg-2 hover:underline"
-                          >
-                            {copied === member.token ? m.common_copied() : m.settings_team_copy_invite_link()}
-                          </button>
+                          {/* The invite link, which the server has returned on
+                              creation since the endpoint was written and which
+                              nothing has ever shown. It lives on the ROW rather
+                              than in the create drawer because the drawer is
+                              transient — close it and the link is gone — while
+                              this row is where someone comes back to ask "what
+                              about that invitation".
+
+                              It is also what makes the drawer's "send email"
+                              checkbox honourable: an invite created without an
+                              email is only quiet rather than broken if the
+                              inviter can still fetch the link. */}
+                          {member.inviteLink && (
+                            <button
+                              type="button"
+                              onClick={() => setLinkInvite({ url: member.inviteLink as string, email: member.email })}
+                              className="text-[12px] font-medium text-ih-primary-text hover:underline"
+                            >
+                              {m.settings_team_invite_link_action()}
+                            </button>
+                          )}
                           <resendFetcher.Form method="post" className="inline">
                             <input type="hidden" name="intent" value="resend-invite" />
                             <input type="hidden" name="token" value={member.token} />
@@ -296,6 +295,7 @@ export default function TeamPage() {
                     // through a whole drawer and then 403 on save. The API
                     // enforces owner/manager regardless — this stops us
                     // offering an action we know will be refused.
+                    <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setEditMember({
@@ -309,6 +309,22 @@ export default function TeamPage() {
                     >
                       {m.common_edit()}
                     </button>
+                      {/* OWNER ONLY, and only where there is something to
+                          clear. This is the one action that lowers another
+                          person's authentication requirement, so it is not on
+                          the wider admin tier — and offering it on a member
+                          with no enrolment would answer with a refusal the
+                          owner could have been spared. */}
+                      {isOwner && member.totpEnabled === true && (
+                        <button
+                          type="button"
+                          onClick={() => setPendingReset({ id: member.id as string, email: member.email })}
+                          className="text-[12px] font-medium text-ih-fg-3 hover:text-ih-fg-1"
+                        >
+                          {m.settings_team_reset_two_factor()}
+                        </button>
+                      )}
+                    </div>
                   ) : null,
               },
             ]}
@@ -354,6 +370,20 @@ export default function TeamPage() {
         }}
         onCancel={() => setPendingCancel(null)}
       />
+      <ResetTwoFactorDialog
+        target={pendingReset}
+        busy={resetTwoFactorBusy}
+        onConfirm={(target) => {
+          if (submitResetTwoFactor({ intent: "reset-two-factor", id: target.id }, { method: "post" })) {
+            setPendingReset(null);
+          }
+        }}
+        onCancel={() => setPendingReset(null)}
+      />
+      {/* Keyed on the URL so the Copy button's "Link copied" state cannot
+          survive into the NEXT invitation's dialog and claim a copy that was
+          never made for it. */}
+      <InviteLinkModal key={linkInvite?.url ?? ""} target={linkInvite} onClose={() => setLinkInvite(null)} />
     </div>
   );
 }

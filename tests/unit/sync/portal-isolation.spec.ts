@@ -109,7 +109,7 @@ describe('SaaS-Portal isolation', () => {
     expect(stray, `raw integration.routes/outbox imports outside server/portal/: ${stray.join(', ')}`).toEqual([]);
   });
 
-  it('no concrete server/portal/ import outside the three composition points', () => {
+  it('no concrete server/portal/ import outside the composition points', () => {
     // Stricter than the route/outbox gate: catches ANY import from server/portal/*
     // (service-binding-guard, portal.provider, etc.). The three composition points
     // are the only allowed importers; everything else uses the seams/abstractions.
@@ -123,6 +123,13 @@ describe('SaaS-Portal isolation', () => {
       // rather than kept alongside.
       'server/cron/jobs/integrations.ts',
       'server/lib/middleware/di.ts',
+      // Same move as `scheduled.ts` above, in the other direction: the queue
+      // dispatcher left `server/index.ts` so the entry could reach it without
+      // evaluating every route, and the portal imports it already owned
+      // (cmd-batch, sync-dlq) travelled with it. The queue composition point
+      // moved address; it was not created here. `server/index.ts` stays on this
+      // list because it still imports portal for `registerPortalIntegration`.
+      'server/queue.ts',
     ];
     const stray = hits.filter(
       f => !f.startsWith('server/portal/') && !ALLOWED_IMPORTERS.includes(f),
@@ -133,8 +140,12 @@ describe('SaaS-Portal isolation', () => {
 
 import workerEntry from '../../../workers/app';
 describe('standalone integration 404', () => {
-  it('GET /api/integration/anything → 404 when APP_MODE is not saas', async () => {
-    const req = new Request('https://x/api/integration/from-core', { method: 'POST' });
+  it('GET /api/platform/anything → 404 when APP_MODE is not saas', async () => {
+    // A LIVE endpoint under the prefix. The old URL here named a portal
+    // endpoint retired in 2026-06; after the rename it would still 404, but by
+    // falling through to the API app rather than by hitting the mode gate this
+    // test exists to prove.
+    const req = new Request('https://x/api/platform/sso-handoff', { method: 'POST' });
     const res = await workerEntry.fetch(req, { APP_MODE: 'standalone' } as any, {} as any);
     expect(res.status).toBe(404);
   });

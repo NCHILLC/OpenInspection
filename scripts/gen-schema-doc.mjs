@@ -37,6 +37,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { resolveEnum } from './lib/resolve-enum.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(root, 'docs', 'reference', 'database-schema.md');
@@ -135,6 +136,7 @@ const meta = {};
 // Counted from the schema text rather than the migrations: the storage type is
 // `integer` either way, and only the Drizzle mode says whether the integer is
 // seconds or milliseconds.
+
 let nTsMs = 0, nTsRaw = 0;
 for (const file of walk(join(root, 'server', 'lib', 'db', 'schema'))) {
     const raw = readFileSync(file, 'utf8');
@@ -164,7 +166,16 @@ for (const file of walk(join(root, 'server', 'lib', 'db', 'schema'))) {
             } else {
                 const c = s.match(/^(\w+):\s*(?:text|integer|real|blob)\(\s*['"]([a-z_0-9]+)['"]/);
                 if (c) {
-                    const en = (ln + ' ' + (lines[k + 1] || '')).match(/enum:\s*(\[[^\]]*\]|[\w.]+)/);
+                    // Read the NEXT line only when this one leaves the column's
+                    // own call open, which a wrapped `enum: [...]` does. Joining
+                    // unconditionally handed 16 columns the enum belonging to
+                    // the column BELOW: `client_name` documented as the
+                    // signature statuses, `price_cents` as having values at all.
+                    // A plausible-looking name hid it until names began
+                    // resolving to their values.
+                    const unclosed = (ln.match(/\(/g) || []).length - (ln.match(/\)/g) || []).length;
+                    const probe = unclosed > 0 ? `${ln} ${lines[k + 1] || ''}` : ln;
+                    const en = probe.match(/enum:\s*(\[[^\]]*\]|[\w.]+)/);
                     // A TRAILING comment documents its column just as well as a
                     // preceding one, and this file is full of them
                     // (`tokenHash: text('token_hash'), // SHA-256 hex; NULL on …`).
@@ -174,7 +185,7 @@ for (const file of walk(join(root, 'server', 'lib', 'db', 'schema'))) {
                     const tail = s.match(/,\s*\/\/\s*(.+)$/);
                     const parts = buf.slice();
                     if (tail) parts.push(tail[1].trim());
-                    entry.cols[c[2]] = { prop: c[1], raw: parts.join(' '), enum: en ? en[1] : null };
+                    entry.cols[c[2]] = { prop: c[1], raw: parts.join(' '), enum: resolveEnum(en ? en[1] : null, raw, dirname(file)) };
                 }
                 buf = [];
             }

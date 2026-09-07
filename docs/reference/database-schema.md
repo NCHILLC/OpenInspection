@@ -9,11 +9,11 @@ from the Drizzle definitions in `server/lib/db/schema/` — the two that
 
 | | |
 |---|---|
-| Tables | 106 |
-| Columns | 1231 |
-| Indexes (excluding primary keys) | 176 |
+| Tables | 109 |
+| Columns | 1263 |
+| Indexes (excluding primary keys) | 181 |
 | Database foreign keys (all legacy, frozen) | 51 |
-| Columns carrying a source comment | 588 (48%) |
+| Columns carrying a source comment | 604 (48%) |
 
 **Tables without `tenant_id`.** Every table holding tenant data must carry it —
 `npm run lint:tenant-scope` is the gate. These are the tables that are not *about*
@@ -21,10 +21,10 @@ a tenant, which is the only reason to be missing it:
 
 `agent_terms_acceptances` · `deployment_legal_versions` · `discovery_objections` · `marketplace_libraries` · `parked_cmd_events` · `processed_cmd_events` · `processed_webhook_events` · `slug_reservations` · `sms_disclosure_versions` · `statutory_form_sightings` · `statutory_form_versions` · `sync_outbox` · `tenants`
 
-That is 13 of 106. If a table you just added appears here,
+That is 13 of 109. If a table you just added appears here,
 that is the bug, not the list.
 
-**Timestamps.** 199 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
+**Timestamps.** 205 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
 epoch MILLISECONDS, with no legacy `mode: 'timestamp'` columns left.
 Seconds and milliseconds are one multiplication apart and the mistake reads as a
 date tens of thousands of years out, so the Schema Rules allow only the former for
@@ -55,11 +55,11 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `tenant_id` | text | NN IX |  |  | Multi-tenant isolation, per the Schema Rules. |
 | `user_id` | text | NN UQ |  |  | The `users` row this acceptance was committed alongside. |
-| `actor_identity_ref` | text |  |  | `the` | The portal `identities.id` the acceptance was captured against, when it was captured over there. |
+| `actor_identity_ref` | text |  |  |  | The portal `identities.id` the acceptance was captured against, when it was captured over there. |
 | `doc` | text | NN UQ |  |  | Which document. Free text rather than an enum: the set of documents a deployment publishes is the deployment's business, and refusing an unknown one at the seam is the boundary's job, not the column's. |
 | `version` | text | NN UQ |  |  | `YYYY-MM-DD`, the version the person was shown. |
 | `content_hash` | text | NN |  |  | SHA-256 hex of the body shown. What was SHOWN, not where it lived. |
-| `authority_basis` | text | NN |  | `AUTHORITY_BASES` | On what basis this binds anyone — see `lib/auth/authority-basis.ts`. Deliberately separate from any role column: role is an operational fact and says nothing about signing authority. |
+| `authority_basis` | text | NN |  | ` /** Created the company. Binds it. */ owner, /** * An administrator t…` | On what basis this binds anyone — see `lib/auth/authority-basis.ts`. Deliberately separate from any role column: role is an operational fact and says nothing about signing authority. |
 | `accepted_at` | integer | NN IX |  |  | When the HUMAN accepted, epoch ms — not when this row was written. On the portal-originated path those differ by however long the onboarding workflow took, and collapsing them would forge the legal fact to match the plumbing. |
 | `created_at` | integer | NN |  |  | When this row was written. Distinct from the above, on purpose. |
 
@@ -104,7 +104,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `inspection_id` | text | NN IX FK→`inspections.id` |  |  | Every agreement envelope is bound to an inspection (the send UI + every service path require it). |
 | `agreement_id` | text | NN FK→`agreements.id` |  |  | *App-layer reference to another row — no database foreign key.* |
 | `client_email` | text | NN |  |  | *An email address.* |
-| `client_name` | text |  |  | `pending, sent, viewed, signed, declined, expired` | *A name.* |
+| `client_name` | text |  |  |  | *A name.* |
 | `status` | text | NN | `'pending'` | `pending, sent, viewed, signed, declined, expired` | *State-machine column — see the Values column for the vocabulary.* |
 | `signed_at` | integer |  |  |  | Envelope completion time — THAT it completed and WHEN, which is the envelope's own fact. The signature is not: it belongs to the person who made it and lives on their `agreement_signers` row. |
 | `viewed_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
@@ -148,13 +148,13 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `role` | text | NN | `'client'` | `client, co_client, agent, other` | A LABEL on the signing party, not a permission: nothing branches on it. Every signer holds the same token-scoped rights. |
 | `contact_id` | text |  |  |  | → contacts.id (app-layer, optional) |
 | `token_hash` | text | UQ |  |  | SHA-256 hex; NULL on backfilled rows until first link build |
-| `token_enc` | text |  |  | `pending, sent, viewed, signed, declined, expired` | 't1:iv:cipher' sealed plaintext (config-crypto sealToken) |
+| `token_enc` | text |  |  |  | 't1:iv:cipher' sealed plaintext (config-crypto sealToken) |
 | `status` | text | NN | `'pending'` | `pending, sent, viewed, signed, declined, expired` | *State-machine column — see the Values column for the vocabulary.* |
 | `signature_base64` | text |  |  |  | The drawn signature image. Bare base64 OR a full `data:` URL — both are accepted, and agreements-render prefixes the bare form when composing the signed PDF. |
 | `signed_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `viewed_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `ip_address` | text |  |  |  | Captured from cf-connecting-ip (x-forwarded-for as fallback) at sign time and printed in the signed-confirmation email and the audit trail. |
-| `user_agent` | text |  |  | `remote, in_person` | The signer's User-Agent, truncated to 200 chars at the route. Evidence only: nothing branches on it, and it is anonymized with ipAddress above. |
+| `user_agent` | text |  |  |  | The signer's User-Agent, truncated to 200 chars at the route. Evidence only: nothing branches on it, and it is anonymized with ipAddress above. |
 | `channel` | text |  |  | `remote, in_person` | set at sign time |
 | `on_behalf_of` | text |  |  |  | client name an authorized agent signs for |
 | `on_behalf_disclaimer` | text |  |  |  | disclaimer text snapshot shown at sign time |
@@ -281,7 +281,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `recipient_role_key` | text |  |  |  | Spec 2 — the recipient's role-profile key (e.g. 'buyer_agent'), captured at enqueue so the flush/send path can mint a role-keyed portal token per recipient. |
 | `channel` | text | NN UQ | `'email'` | `email, sms, in_app` | Track L — the log's own delivery channel (a multi-channel rule emits one log each). B1 — `in_app` joined email/sms. **[more]** |
 | `send_at` | integer | NN IX |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
-| `delivered_at` | integer |  |  | `pending, sent, failed, skipped` | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
+| `delivered_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `status` | text | NN IX | `'pending'` | `pending, sent, failed, skipped` | *State-machine column — see the Values column for the vocabulary.* |
 | `error` | text |  |  |  | *Message from the most recent failure.* |
 | `event_id` | text | UQ |  |  | *App-layer reference to another row — no database foreign key.* |
@@ -486,11 +486,11 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `tenant_id` | text | NN IX |  |  | *Tenant isolation key. Every read and write must filter on it.* |
 | `inspection_id` | text | NN IX |  |  | *The inspection (order) this belongs to. App-layer reference.* |
-| `uploaded_by_kind` | text | NN |  | `UPLOADER_KINDS` | Who put the file here — and, with `visibility`, the read gate: the client list and download drop inspector+internal rows, and a client may DELETE only rows whose `uploaded_by_ref` is their own. |
+| `uploaded_by_kind` | text | NN |  | `client, co_client, inspector` | Who put the file here — and, with `visibility`, the read gate: the client list and download drop inspector+internal rows, and a client may DELETE only rows whose `uploaded_by_ref` is their own. |
 | `uploaded_by_ref` | text | NN |  |  | client: recipient email; inspector: user id |
 | `uploaded_by_name` | text |  |  |  | *A name.* |
-| `category` | text | NN |  | `DOCUMENT_CATEGORIES` | Filing only: the uploader picks it at upload time (required query param) and the documents list groups rows by it in DOCUMENT_CATEGORIES order. |
-| `visibility` | text | NN |  | `DOCUMENT_VISIBILITIES` | Means something only on an INSPECTOR row: 'internal' hides the file from the client list and 404s its download. |
+| `category` | text | NN |  | ` prior_reports, plans_drawings, environmental, leases_financials, perm…` | Filing only: the uploader picks it at upload time (required query param) and the documents list groups rows by it in DOCUMENT_CATEGORIES order. |
+| `visibility` | text | NN |  | `client_visible, internal` | Means something only on an INSPECTOR row: 'internal' hides the file from the client list and 404s its download. |
 | `r2_key` | text | NN |  |  | *Object key in the R2 bucket.* |
 | `filename` | text | NN |  |  | ORIGINAL name (display + download) |
 | `content_type` | text | NN |  |  | The request's declared content-type, checked against the service allow-list (CAD extensions exempt) and also written onto the R2 object. |
@@ -731,7 +731,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 | Column | Type | Flags | Default | Values | Description |
 |---|---|---|---|---|---|
-| `id` | text | PK NN |  | `agent_terms` | *Primary key — an application-generated string id.* |
+| `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `doc` | text | NN UQ IX |  | `agent_terms` |  |
 | `version` | text | NN |  |  | `YYYY-MM-DD`, the date a reader is shown. Calendar-semantic, so TEXT. |
 | `body_snapshot` | text | NN |  |  | The body exactly as published, NOT NULL. `tenant_legal_versions.body_snapshot` is nullable because a tenant may revert to a built-in template, and "they went back to the default" is a publish worth recording. |
@@ -771,9 +771,9 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `discovery_objections`
 
-<sub>server/lib/db/schema/tenant/core.ts · 5 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/tenant/discovery-objections.ts · 5 columns · primary key `id`</sub>
 
-> People who told us not to look them up. `GET /api/integration/tenants/by-email` answers, for one address, WHICH inspection companies hold a live report grant for it.
+> People who told us not to look them up. `GET /api/platform/tenants/by-email` answers, for one address, WHICH inspection companies hold a live report grant for it.
 
 | Column | Type | Flags | Default | Values | Description |
 |---|---|---|---|---|---|
@@ -996,7 +996,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `inspector_id` | text | FK→`users.id` |  |  | *App-layer reference to another row — no database foreign key.* |
 | `scheduled_at` | integer | NN IX |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `duration_min` | integer | NN |  |  | *An integer value.* |
-| `price_cents` | integer | NN | `0` | `...EVENT_STATUSES` | *Money, integer cents — never a float.* |
+| `price_cents` | integer | NN | `0` |  | *Money, integer cents — never a float.* |
 | `status` | text | NN | `'scheduled'` | `...EVENT_STATUSES` | *State-machine column — see the Values column for the vocabulary.* |
 | `notes` | text |  |  |  |  |
 | `completed_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
@@ -1304,7 +1304,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `address_lng` | real |  |  |  | written with address_lat; likewise no reader |
 | `address_geocoded_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `template_id` | text | FK→`templates.id` |  |  | IA-1 — WHO is captured via inspection_people (client/agent rows); see schema/inspection/people.ts. |
-| `date` | text | NN IX |  | `...INSPECTION_STATUSES` | Calendar-semantic YYYY-MM-DD (inspection date, no time component) — intentionally TEXT per the Schema Rules calendar-field exception, not an epoch timestamp. |
+| `date` | text | NN IX |  |  | Calendar-semantic YYYY-MM-DD (inspection date, no time component) — intentionally TEXT per the Schema Rules calendar-field exception, not an epoch timestamp. |
 | `status` | text | NN IX | `'requested'` | `...INSPECTION_STATUSES` | *State-machine column — see the Values column for the vocabulary.* |
 | `report_status` | text | NN | `'in_progress'` | `...REPORT_STATUSES` | The report's lifecycle, tracked apart from `status` (the appointment). Every anonymous surface — public report, share link, /verify, repair builder — gates on isReportPublished() of this value, and only InspectionStatusService moves it, each transition asserting the current value first. |
 | `payment_status` | text | NN | `'unpaid'` | `unpaid,partial,paid` | Order-level payment state. Every reader tests `=== 'paid'` (publish pre-flight, the report gate, automation conditions), so 'partial' behaves exactly as 'unpaid' here — the finer states live on `invoices`. |
@@ -1323,7 +1323,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `reference_number` | text |  |  |  | The TENANT's own order number, for cross-referencing their other systems — we never generate it, parse it, or enforce uniqueness. |
 | `internal_notes` | text |  |  |  | Staff-private note. NOTHING WRITES IT: no request schema accepts it and no UI edits it. |
 | `year_built` | integer |  |  |  | *An integer value.* |
-| `sqft` | integer |  |  | `getPropertyFacts` | *An integer value.* |
+| `sqft` | integer |  |  |  | *An integer value.* |
 | `foundation_type` | text |  |  |  | Plain text rather than an enum: getPropertyFacts coerces anything outside basement/slab/crawlspace/other to 'other' on read, so an Estated autofill value can land here without the write path having to reject it. |
 | `bedrooms` | integer |  |  |  | *An integer value.* |
 | `bathrooms` | real |  |  |  | `real` because half-baths are normal (2.5). One of the six Property Facts columns patched together by updatePropertyFacts; Estated autofill fills it from `structure.baths`. |
@@ -1508,7 +1508,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `marketplace_libraries`
 
-<sub>server/lib/db/schema/marketplace.ts · 14 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/marketplace.ts · 15 columns · primary key `id`</sub>
 
 > The single marketplace catalogue. Every importable kind lives here, keyed by `kind`: a 1:1 kind ('templates' — one catalogue row becomes one local `templates` row) and a 1:N kind ('comments' — one pack becomes N tagged `comments` rows) share one table, one browse query and one import path.
 
@@ -1516,7 +1516,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 |---|---|---|---|---|---|
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `name` | text | NN |  |  |  |
-| `kind` | text | NN IX |  | `comments, templates` | Also the only browse axis that is an enum — property_type reuses the template validator's, and the two below are bounded free text. |
+| `kind` | text | NN IX |  | `comments, templates, statutory` | See MARKETPLACE_KINDS above for what the values mean. Also the only browse axis that is an enum — property_type reuses the template validator's, and the two below are bounded free text. **[more]** |
 | `semver` | text | NN |  |  | The catalogue's current version. Never ordered or range-compared, only tested for EQUALITY against tenant_library_imports.imported_semver: unequal is what list() reports as `hasUpdate`, equal is what the update paths refuse. |
 | `schema` | text | NN |  |  | The pack ITSELF, not a description of one: a v2 template document for kind='templates' (validated at import time, never on write) or the entries parseLibraryComments explodes into N rows. |
 | `author_id` | text | NN | `'system'` |  | *App-layer reference to another row — no database foreign key.* |
@@ -1528,6 +1528,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `property_type` | text |  |  |  | The legacy `category` did not survive as one column. It was free text mixing three independent concepts (a property type / a jurisdiction's form standard / an inspection kind), so a single column could only ever describe one of the three: a Texas inspector looking for the TREC form and a new-build … **[more]** |
 | `jurisdiction` | text |  |  |  | Both are exact-match conditions in list() and are reachable only as /api/marketplace query params — the browse page ships no control for either, so today they narrow nothing a user can click. |
 | `inspection_kind` | text |  |  |  | exact-match browse filter, reachable only as an API query param |
+| `delisted_at` | integer |  |  |  | When the platform took this entry out of the browse listing, or null. NOT a delete, and the reason is the same one that makes uninstall a flag: `tenant_library_imports.library_id` points here, so removing the row would orphan every workspace that installed the pack — the update path could no longer … **[more]** |
 
 **Indexes**
 
@@ -1604,14 +1605,14 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 |---|---|---|---|---|---|
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `tenant_id` | text | NN IX |  |  | *Tenant isolation key. Every read and write must filter on it.* |
-| `created_by` | text | NN |  | `MIGRATION_INTENTS` | users.id of the operator who staged it. Soft reference. |
-| `intent` | text | NN |  | `MIGRATION_INTENTS` |  |
+| `created_by` | text | NN |  |  | users.id of the operator who staged it. Soft reference. |
+| `intent` | text | NN |  | ` templates.create, templates.overwrite, contacts.import, members.invit…` |  |
 | `target_id` | text |  |  |  | The row this run overwrites. Set ONLY for `templates.overwrite`, where the operator was standing on the template when they started; NULL for every other intent, because nothing else has a single named target. |
 | `vendor` | text | NN |  |  | Provenance for display ("imported from Spectora on ...") — never matched on. |
 | `adapter_name` | text | NN |  |  | *A name.* |
 | `adapter_version` | text | NN |  |  |  |
 | `manifest` | text | NN |  |  | The bundle manifest, stringified ONCE at stage time and JSON.parsed straight back — never re-serialized from a re-read row, so what a report shows is the bytes the producing run made. |
-| `conflict_policy` | text |  |  | `MIGRATION_CONFLICT_POLICIES` | NULL while staged: the policy is a decision made at apply time, and a default here would answer it for the operator. |
+| `conflict_policy` | text |  |  | `skip, overwrite, per_row` | NULL while staged: the policy is a decision made at apply time, and a default here would answer it for the operator. |
 | `status` | text | NN | `'staged'` | `...MIGRATION_BATCH_STATUSES` | *State-machine column — see the Values column for the vocabulary.* |
 | `created_at` | integer | NN IX |  |  | *Creation time, epoch milliseconds.* |
 | `applied_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
@@ -1642,12 +1643,12 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 |---|---|---|---|---|---|
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `batch_id` | text | NN IX |  |  | *App-layer reference to another row — no database foreign key.* |
-| `tenant_id` | text | NN IX |  | `MIGRATION_ENTITY_KINDS` | *Tenant isolation key. Every read and write must filter on it.* |
-| `entity` | text | NN |  | `MIGRATION_ENTITY_KINDS` |  |
+| `tenant_id` | text | NN IX |  |  | *Tenant isolation key. Every read and write must filter on it.* |
+| `entity` | text | NN |  | `template, contact, member` |  |
 | `position` | integer | NN |  |  | Index within the bundle's array for this entity kind — how a report names the entry. |
 | `payload` | text | NN |  |  | The bundle entry, stringified once at stage time. |
-| `conflict_with` | text |  |  | `MIGRATION_ROW_RESOLUTIONS` | id of the existing row this one collides with; NULL = no collision. |
-| `resolution` | text |  |  | `MIGRATION_ROW_RESOLUTIONS` |  |
+| `conflict_with` | text |  |  |  | id of the existing row this one collides with; NULL = no collision. |
+| `resolution` | text |  |  | `skip, overwrite` |  |
 | `status` | text | NN IX | `'pending'` | `...MIGRATION_ROW_STATUSES` | *State-machine column — see the Values column for the vocabulary.* |
 | `outcome` | text |  |  |  | Why this row ended where it did, in words rather than a code. NULL does NOT mean "never failed" — it means "not carrying a reason right now". |
 | `created_id` | text |  |  |  | id of the row this one produced in the real table — the undo reads it. |
@@ -1822,7 +1823,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `tenant_id` | text | NN UQ |  |  | *Tenant isolation key. Every read and write must filter on it.* |
 | `inspection_id` | text | NN UQ |  |  | *The inspection (order) this belongs to. App-layer reference.* |
-| `responses` | text |  |  | `sent, received, declined` | A free-form question -> answer map, NOT a fixed catalogue: whatever keys the upsert sends are rendered verbatim as the Appendix E definition list, so the question wording lives in the data. |
+| `responses` | text |  |  |  | A free-form question -> answer map, NOT a fixed catalogue: whatever keys the upsert sends are rendered verbatim as the Appendix E definition list, so the question wording lives in the data. |
 | `status` | text | NN | `'sent'` | `sent, received, declined` | *State-machine column — see the Values column for the vocabulary.* |
 | `share_token` | text | UQ |  |  | Persistent per-inspection share token for the no-login PSQ form (mirrors the inspection_access_tokens model; opaque, server-issued). |
 | `sent_at` | integer |  |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
@@ -1840,7 +1841,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 <sub>server/lib/db/schema/qbo.ts · 11 columns · primary key `tenant_id`</sub>
 
-> One QuickBooks company, one workspace — and the webhook depends on it. `POST /api/integrations/qbo/webhook` is unauthenticated and platform-wide: in SaaS the Intuit app belongs to the platform, so there is ONE webhook URL and ONE verifier token for every realm, and nothing in the URL names a tenant.
+> One QuickBooks company, one workspace — and the webhook depends on it. `POST /webhooks/quickbooks` is unauthenticated and platform-wide: in SaaS the Intuit app belongs to the platform, so there is ONE webhook URL and ONE verifier token for every realm, and nothing in the URL names a tenant.
 
 | Column | Type | Flags | Default | Values | Description |
 |---|---|---|---|---|---|
@@ -1949,7 +1950,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `location_snapshot` | text |  |  |  | *Serialized JSON snapshot.* |
 | `category_snapshot` | text |  |  |  | *Serialized JSON snapshot.* |
 | `trade_snapshot` | text |  |  |  | IA-57 — the recommended trade ("who fixes this"), snapshotted at add time so the contractor reading the shared list knows which trade to send. **[more]** |
-| `repair_action_tag` | text |  |  | `REPAIR_ACTION_TAGS` | #275 — WHAT THE BUYER IS ASKING FOR on this line: repair it, replace it, give me the money (`fund`), or something else. **[more]** |
+| `repair_action_tag` | text |  |  | `repair, replace, fund, other` | #275 — WHAT THE BUYER IS ASKING FOR on this line: repair it, replace it, give me the money (`fund`), or something else. **[more]** |
 
 **Indexes**
 
@@ -2025,7 +2026,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `rendered_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `source_version` | integer | NN |  |  | inspection.updatedAt timestamp at render time |
 | `version_number` | integer | UQ |  |  | #120 — the report_versions.version_number this PDF renders. Nullable for pre-#120 rows; new publishes always set it. |
-| `size_bytes` | integer |  |  | `queued, rendering, ready, failed` | *A size in bytes.* |
+| `size_bytes` | integer |  |  |  | *A size in bytes.* |
 | `status` | text | NN IX | `'ready'` | `queued, rendering, ready, failed` | *State-machine column — see the Values column for the vocabulary.* |
 | `error` | text |  |  |  | *Message from the most recent failure.* |
 | `content_hash` | text | IX |  |  | Content-hash cache key (SHA-256 of render inputs + RENDER_VERSION salt). Null for rows rendered before this feature; populated for all new renders. |
@@ -2156,7 +2157,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `kind` | text | NN |  | `primary, ancillary` | 'primary' is not just another ancillary: it is the one that must exist, the one the pay gate keys on, and the one a client means by "my report". |
 | `inspection_service_id` | text |  |  |  | The billing LINE this delivers (`inspection_services.id`), when there is one. Nullable and NOT a foreign key: a tenant may produce a report for something they did not bill separately. **[more]** |
 | `template_id` | text |  |  |  | Denormalised pointer to the template this report was generated from, the same treatment `inspections.template_id` keeps for the primary report. |
-| `title` | text | NN |  | `in_progress, published` |  |
+| `title` | text | NN |  |  |  |
 | `status` | text | NN | `'in_progress'` | `in_progress, published` | *State-machine column — see the Values column for the vocabulary.* |
 | `created_at` | integer | NN |  |  | *Creation time, epoch milliseconds.* |
 | `published_at` | integer |  |  |  | When THIS deliverable went out. `inspections.report_status` is the order-wide roll-up and cannot answer "when did the radon report ship", which is the question a client waiting on one of several documents is actually asking. |
@@ -2337,6 +2338,52 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ---
 
+## `statutory_form_entries`
+
+<sub>server/lib/db/schema/inspection/statutory.ts · 6 columns · primary key `id`</sub>
+
+> One inspection's answers to one statutory form. -- WHY ONE ROW PER FORM, NOT PER FIELD ------------------------------------- A document's answers are only ever read and written whole.
+
+| Column | Type | Flags | Default | Values | Description |
+|---|---|---|---|---|---|
+| `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
+| `tenant_id` | text | NN UQ IX |  |  | *Tenant isolation key. Every read and write must filter on it.* |
+| `inspection_id` | text | NN UQ IX |  |  | *The inspection (order) this belongs to. App-layer reference.* |
+| `form_id` | text | NN UQ |  |  | The form, never a revision -- which revision applies is the date's answer. |
+| `values` | text | NN |  |  | JSON `Record<string, string>`. Carries no personal data. |
+| `updated_at` | integer | NN |  |  | *Last write time, epoch milliseconds.* |
+
+**Indexes**
+
+- **UNIQUE** `uq_statutory_form_entries_subject` (tenant_id, inspection_id, form_id)
+- `idx_statutory_form_entries_inspection` (tenant_id, inspection_id)
+
+---
+
+## `statutory_form_productions`
+
+<sub>server/lib/db/schema/statutory-productions.ts · 8 columns · primary key `id`</sub>
+
+> One row per statutory form actually produced. ── WHY THIS EXISTS ───────────────────────────────────────────────────────── `produceStatutoryForm` resolves a revision and returns it, and until this table nothing kept it.
+
+| Column | Type | Flags | Default | Values | Description |
+|---|---|---|---|---|---|
+| `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
+| `tenant_id` | text | NN IX |  |  | *Tenant isolation key. Every read and write must filter on it.* |
+| `inspection_id` | text | NN IX |  |  | *The inspection (order) this belongs to. App-layer reference.* |
+| `form_id` | text | NN IX |  |  | The FORM, never one of its revisions -- e.g. `tx_trec_rei`. |
+| `version` | text | NN IX |  |  | The authority's own revision label, verbatim -- `7-6`, `Rev. 04/26`. |
+| `source_hash` | text | NN |  |  | sha256 (lowercase hex) of the exact PDF bytes rendered onto. The revision label says which document was meant; this says which bytes were actually used, and only the second one can be checked against a field map. |
+| `produced_by` | text | NN |  |  | users.id of whoever asked for the document. Soft reference. |
+| `produced_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
+
+**Indexes**
+
+- `idx_statutory_productions_form_version` (form_id, version)
+- `idx_statutory_productions_inspection` (tenant_id, inspection_id)
+
+---
+
 ## `statutory_form_sightings`
 
 <sub>server/lib/db/schema/statutory-form-sightings.ts · 7 columns · primary key `id`</sub>
@@ -2349,7 +2396,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `form_id` | text | NN UQ IX |  |  | The form we were looking for — never a revision of it. Soft reference. |
 | `source_url` | text | NN UQ |  |  | The authority page that was polled, verbatim from the published revision. |
 | `observed_hash` | text | NN UQ |  |  | sha256 (lowercase hex) of the bytes that page served. |
-| `verdict` | text | NN |  | `SIGHTING_VERDICTS` | How that digest compared with every revision of this form we publish. `unrecognised` is its own answer rather than a flavour of `changed`: with nothing published on our side there is nothing to compare against, and an alarm raised out of that would be one we invented. |
+| `verdict` | text | NN |  | `unchanged, changed, unrecognised` | How that digest compared with every revision of this form we publish. `unrecognised` is its own answer rather than a flavour of `changed`: with nothing published on our side there is nothing to compare against, and an alarm raised out of that would be one we invented. |
 | `first_seen_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `last_seen_at` | integer | NN IX |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 
@@ -2384,6 +2431,33 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 - **UNIQUE** `uq_statutory_form_versions_form_version` (form_id, version)
 - `idx_statutory_form_versions_form` (form_id, effective_from)
+
+---
+
+## `statutory_inspection_details`
+
+<sub>server/lib/db/schema/inspection/statutory.ts · 12 columns · primary key `id`</sub>
+
+> The inspection-level answers an authority's form asks for and no other part of this product has ever needed.
+
+| Column | Type | Flags | Default | Values | Description |
+|---|---|---|---|---|---|
+| `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
+| `tenant_id` | text | NN UQ |  |  | *Tenant isolation key. Every read and write must filter on it.* |
+| `inspection_id` | text | NN UQ |  |  | *The inspection (order) this belongs to. App-layer reference.* |
+| `inspector_signature_date` | text |  |  |  | Calendar day, `YYYY-MM-DD` — a signature is dated, never timestamped, on every form measured. |
+| `employee_printed_name` | text |  |  |  | The second signer on FL OIR-B1-1802 page 5: the employee of the entity the inspector works for, printed rather than signed. |
+| `owner_name` | text |  |  |  | *A name.* |
+| `owner_email` | text |  |  |  | *An email address.* |
+| `owner_mailing_address` | text |  |  |  | Where the owner receives post, which is NOT `property_address`: an absentee owner is exactly who a mailing address is asked for. |
+| `owner_home_phone` | text |  |  |  | Three of them, because the form prints three boxes. Collapsing them into one and splitting it later loses which number the owner gave for what. |
+| `owner_work_phone` | text |  |  |  |  |
+| `owner_cell_phone` | text |  |  |  |  |
+| `updated_at` | integer | NN |  |  | *Last write time, epoch milliseconds.* |
+
+**Indexes**
+
+- **UNIQUE** `uq_statutory_inspection_details_subject` (tenant_id, inspection_id)
 
 ---
 
@@ -2433,7 +2507,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `templates`
 
-<sub>server/lib/db/schema/inspection/template-rating.ts · 12 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/inspection/template-rating.ts · 13 columns · primary key `id`</sub>
 
 | Column | Type | Flags | Default | Values | Description |
 |---|---|---|---|---|---|
@@ -2449,6 +2523,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `description` | text |  |  |  |  |
 | `is_featured` | integer | NN | `false` |  | *Boolean flag, stored as integer 0/1.* |
 | `default_profile_id` | text |  |  |  | Report Style Presets — ties a report type to a default appearance profile. NULL = inherit tenant default. |
+| `retired_at` | integer |  |  |  | When this template stopped being offered for NEW inspections, or null. Not a delete. **[more]** |
 
 **Indexes**
 
@@ -2620,7 +2695,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `r2_bytes` | integer | NN | `0` |  | *A size in bytes.* |
 | `kv_keys` | integer | NN | `0` |  | *An integer value.* |
 | `destroyed_at` | integer | NN IX |  |  | When destruction was INITIATED. The row is written before the cascade, not after — see `status`. |
-| `status` | text | NN | `'completed'` | `DESTRUCTION_STATUSES` | Written BEFORE the D1/R2/KV cascade as 'started', updated to 'completed' with the real counts once every step has run. **[more]** |
+| `status` | text | NN | `'completed'` | `started, completed` | Written BEFORE the D1/R2/KV cascade as 'started', updated to 'completed' with the real counts once every step has run. **[more]** |
 | `completed_at` | integer |  |  |  | Null while 'started'. The gap between this and `destroyed_at` is how long the purge took; its absence is how you find one that never finished. |
 | `record_version` | integer | NN | `1` |  | ── Measurement universe (appended at table end for D1 rebuild safety) ── `status` answers "did the purge finish?". **[more]** |
 | `stores_measured` | text |  |  |  | JSON array of the stores this destruction attempted. Null on generation 1. |
@@ -2643,7 +2718,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `tenant_id` | text | NN UQ IX FK→`tenants.id` |  |  | *Tenant isolation key. Every read and write must filter on it.* |
 | `email` | text | NN UQ |  |  |  |
-| `role` | text | NN | `'inspector'` | `ROLES` | The role the invitee GETS: `joinTeam` copies it straight onto users.role, for a brand-new row and for a reactivated soft-deleted one alike, and emits it on the `user.invited` outbox event that drives portal seat sync. |
+| `role` | text | NN | `'inspector'` | `owner, manager, inspector, agent` | The role the invitee GETS: `joinTeam` copies it straight onto users.role, for a brand-new row and for a reactivated soft-deleted one alike, and emits it on the `user.invited` outbox event that drives portal seat sync. |
 | `status` | text | NN | `'pending'` | `pending, accepted` | Schema Rules: state-machine column declares its enum (type-layer only). |
 | `expires_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `permission_overrides` | text |  |  |  | `mentor_id` and `assigned_section_ids` were here, mirroring the columns of the same name on `users` so an invite could carry them through accept. **[more]** |
@@ -2682,7 +2757,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `tenant_library_imports`
 
-<sub>server/lib/db/schema/marketplace.ts · 7 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/marketplace.ts · 8 columns · primary key `id`</sub>
 
 | Column | Type | Flags | Default | Values | Description |
 |---|---|---|---|---|---|
@@ -2693,6 +2768,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `imported_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `row_count` | integer | NN | `0` |  | *A count.* |
 | `local_entity_id` | text |  |  |  | An import produces ONE local row for a 1:1 kind (templates, tracked by this id) or N tagged rows for a 1:N kind (comments, tracked by row_count). **[more]** |
+| `uninstalled_at` | integer |  |  |  | When this workspace uninstalled the entry, or null. The row is kept rather than deleted: it records which version this workspace was ON, and re-issuing a report produced back then is expected to keep working. **[more]** |
 
 **Indexes**
 
@@ -2749,7 +2825,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `tenants`
 
-<sub>server/lib/db/schema/tenant/core.ts · 10 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/tenant/core.ts · 11 columns · primary key `id`</sub>
 
 > `name` was here — the CONTAINER name, a second column for one fact that was allowed to diverge from `tenant_configs.company_name` and did: of 16 production tenants, 11 matched, 1 had parted ways, 4 had no settings name at all.
 
@@ -2758,13 +2834,14 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `slug` | text | NN UQ |  |  |  |
 | `tier` | text | NN | `'free'` | `free,pro,enterprise` | Commercial plan. Written ONLY by the portal command seam (`portal.provider` handleTenantUpdate) — core has no UI for it, so a standalone deploy stays 'free'. |
-| `stripe_connect_account_id` | text |  |  | `pending,active,suspended,trial` | *App-layer reference to another row — no database foreign key.* |
+| `stripe_connect_account_id` | text |  |  |  | *App-layer reference to another row — no database foreign key.* |
 | `status` | text | NN | `'pending'` | `pending,active,suspended,trial` | *State-machine column — see the Values column for the vocabulary.* |
 | `max_users` | integer | NN | `5` |  | *An integer value.* |
 | `deployment_mode` | text | NN | `'shared'` |  | shared, silo |
 | `applied_cmd_seq` | integer | NN | `0` |  | A-21 — high-water mark of the portal→core command sequence applied to this tenant (envelope `tenantseq`). |
 | `applied_cred_seq` | integer | NN | `0` |  | A-21 batch 2 — high-water mark of the CREDENTIAL stream (envelope `credseq`). Admin credentials ride `cmd.tenant.update` sparsely, so the shared tenantseq can't guard them; this independent sequence ensures a stale credential never overwrites a newer one (closes the batch-1 residual). |
 | `created_at` | integer | NN |  |  | *Creation time, epoch milliseconds.* |
+| `content_version` | text |  |  |  | Which release of the bundled starter content this workspace has been given (`STARTER_CONTENT_VERSION`). **[more]** |
 
 **Indexes**
 
@@ -2794,7 +2871,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `users`
 
-<sub>server/lib/db/schema/tenant/user.ts · 28 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/tenant/user.ts · 30 columns · primary key `id`</sub>
 
 | Column | Type | Flags | Default | Values | Description |
 |---|---|---|---|---|---|
@@ -2808,7 +2885,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `default_signature_base64` | text |  |  |  | Spec 5H D2 — saved signature used for auto-sign on publish + Settings prefill. |
 | `is_signature_enabled` | integer | NN | `true` |  | 2026-06-14 — per-inspector opt-in for the business-card email footer (independent of Point of Contact). |
 | `slug` | text | UQ |  |  | FROZEN for inspectors (2026-06-06, DB-12/IA-26): the per-inspector booking slug is retired — /book/:tenant is the canonical public entry and no inspector-facing route writes this column anymore. **[more]** |
-| `role` | text | NN | `'manager'` | `ROLES` | DDL default is FROZEN (D1 cannot alter column defaults without a table rebuild and users is FK-referenced). |
+| `role` | text | NN | `'manager'` | `owner, manager, inspector, agent` | DDL default is FROZEN (D1 cannot alter column defaults without a table rebuild and users is FK-referenced). |
 | `onboarding_state` | text |  |  |  | Sparse map of one-time UI flags — an ABSENT key means "not done yet", so a NULL column is simply a fresh account and nothing has to backfill it. |
 | `created_at` | integer | NN |  |  | *Creation time, epoch milliseconds.* |
 | `totp_secret` | text |  |  |  | Spec 4A — TOTP 2FA. All fields are per-user opt-in; nullable until enabled. |
@@ -2826,6 +2903,8 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `service_origin_address` | text |  |  |  | Where this inspector STARTS their day, for `closest` routing. NULL on all three columns = inherit the company address coordinates (`tenant_configs.company_lat/lng`), which is the right answer for the single-office workspace and the only reason the strategy is usable without per-person setup. **[more]** |
 | `service_origin_lat` | real |  |  |  | Geocoded from the address by PUT /api/admin/booking-routing/service-origin — and NULL while the address itself is set, whenever that address did not geocode. |
 | `service_origin_lng` | real |  |  |  | written only as a pair with _lat; a lone value is no anchor |
+| `statutory_license_type` | text |  |  |  | The STATE LICENCE CLASS this inspector holds — "Florida-licensed home inspector", "General, residential, building or roofing contractor", "Building code inspector". **[more]** |
+| `statutory_qualification` | text |  |  |  | The qualification category FL OIR-B1-1802 asks the inspector to declare for himself. A different axis from the licence class above, on the same person: the 1802 prints its own six categories and asks which one the signer qualifies under, beside — not instead of — his licence. |
 
 **Indexes**
 

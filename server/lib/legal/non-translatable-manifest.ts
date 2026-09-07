@@ -353,4 +353,26 @@ export const NON_TRANSLATABLE_MANIFEST: NonTranslatableEntry[] = [
         locator: 'object_key',
         reason: 'The stored artifact the form is rendered from. Where a form is prescribed, its spacing, borders and field placement are prescribed with it; a translation pass has nowhere to put the result that would still be the prescribed document.',
     },
+    {
+        id: 'statutory-form-notice',
+        category: 'statutory_certification',
+        source: 'server/lib/statutory/disclaimer.ts',
+        // The load-bearing closing sentence, by a fragment of itself. Locating
+        // the entry on THAT clause rather than on the module name is the point:
+        // the guardrail then fails if somebody trims the sentence for length,
+        // which is the realistic way it would be lost.
+        locator: 'not made the inspector’s responsibility merely by this notice',
+        reason: 'An allocation statement carried with a rendered statutory form: it says the authority published the form, this software implemented it, and the inspector performed and certified the inspection. Translating it would make the allocation arrive in a language nobody agreed to be bound in, and the closing sentence -- which stops the notice becoming an ineffective attempt to shift a rendering fault onto the inspector -- is exactly the kind of clause a summarising translation drops.',
+    },
+    {
+        id: 'statutory-qualification-categories',
+        category: 'statutory_certification',
+        source: 'server/lib/statutory/qualification-categories.ts',
+        // One of the six, verbatim. Located on the SENTENCE rather than on the
+        // module name for the same reason as the entry above: the realistic way
+        // this is lost is somebody shortening a category to fit a control, and
+        // an entry pinned to the file name would not notice.
+        locator: 'Building code inspector certified under Section 468.607, Florida Statutes.',
+        reason: 'The six qualification categories an authority prints beside its own checkboxes, shown so a signer can recognise the line he holds. A translated category names something the form does not print, which leaves the signer choosing between options that are not on the page he is about to sign -- and the declaration he makes there is a certification about himself, not a description of the building.',
+    },
 ];

@@ -13,24 +13,6 @@ import { extendedToolsEnabled } from '../lib/mcp/flag';
 import { MCP_MAX_RESULT_BYTES } from '../lib/mcp/result-limits';
 import type { AppEnv } from '../types/hono';
 
-// The OpenAPI snapshot is ~856 KB of JSON. A STATIC import materialises it as an
-// object literal during MODULE EVALUATION — and this module is evaluated on every
-// cold start of the whole Worker, because `InspectorMcp` must be exported
-// statically for wrangler to bind the Durable Object class. That put ~500 KB of
-// minified literal (~40% of the eager entry chunk) in front of every request,
-// including requests that never touch MCP: `buildOAuthHandler` returns early when
-// MCP_ENABLED is off, but only AFTER this module has already been evaluated.
-//
-// The snapshot is read only while registering a session's tools/resources, so it
-// loads on first use and is cached per isolate. Same reasoning as
-// `getComponentSchemas()` below — pay the OpenAPI-document cost when something
-// actually asks for it.
-let snapshotPromise: Promise<SnapshotEntry[]> | undefined;
-const getSnapshot = (): Promise<SnapshotEntry[]> =>
-    (snapshotPromise ??= import('../lib/mcp/openapi-snapshot.json').then(
-        (m) => m.default as SnapshotEntry[],
-    ));
-
 // `Env` is the global interface from worker-configuration.d.ts (extends Cloudflare.Env),
 // which satisfies McpAgent's `Env extends Cloudflare.Env` constraint.
 // AppEnv is the hand-maintained subset used by Hono routes and other DOs; it does not
@@ -55,6 +37,53 @@ export interface McpProps extends Record<string, unknown> {
  * Lives in `lib/mcp/result-limits` so a handler that must keep a field inside
  * the slice can assert against the same number instead of copying it. */
 const MAX_RESULT_BYTES = MCP_MAX_RESULT_BYTES;
+
+/**
+ * The MCP tool/resource catalogue, loaded ONCE and only when a session needs it.
+ *
+ * ── WHY IT CANNOT BE A STATIC IMPORT ────────────────────────────────────────
+ * `openapi-snapshot.json` is ~900 KB. A static JSON import becomes a JS object
+ * literal that V8 materialises during MODULE EVALUATION — so it is paid on
+ * every cold start of the whole Worker, not on the requests that use it.
+ *
+ * And it cannot be paid anywhere cheaper. `InspectorMcp` must be a static
+ * export for wrangler to bind the Durable Object class, and
+ * `lib/mcp/oauth-provider.ts` imports this module too, with `buildOAuthHandler`
+ * running on every fetch. The snapshot therefore sat in the eager module graph
+ * in front of EVERY request, including requests that never touch MCP.
+ *
+ * `MCP_ENABLED` did not save it either: `buildOAuthHandler` returns
+ * `{ fetch: appFetch }` unchanged when the flag is off — but only after this
+ * module has already been evaluated. A deployment with MCP switched off paid
+ * the full startup cost and got nothing back for it.
+ *
+ * That is a violation of the invariant `workers/app.ts` states over the DO
+ * re-exports: "their import graphs must stay light".
+ *
+ * ── HOW IT WAS FOUND ────────────────────────────────────────────────────────
+ * From the outside, by a self-hoster hitting Cloudflare Error 1102 on `/` and
+ * `/login` at roughly 5% of requests (discussion #325). The signature was
+ * `outcome: exceededCpu` with `cpuTime: 10, wallTime: 13` — 13 ms of wall time
+ * cannot contain a per-request CPU breach, which is what identifies this as the
+ * script STARTUP limit rather than the per-request one. That limit is the same
+ * on Free and Paid, so no plan change addresses it.
+ *
+ * Measured: the eager graph reachable from the entry chunk falls from 1,291 KiB
+ * to 791 KiB, and cold starts of 120–190 ms disappear. Total upload is
+ * unchanged — compressed script size was never the binding constraint, which is
+ * why `check-bundle-size.mjs` passed at ~70% throughout.
+ *
+ * ⚠️ DO NOT RESTORE THE STATIC IMPORT. Both readers below are already async and
+ * only touch the catalogue at session-registration time, which is what makes
+ * this safe. `getComponentSchemas()` a few lines down defers the rest of the
+ * OpenAPI document for exactly the same reason.
+ */
+let snapshotPromise: Promise<SnapshotEntry[]> | undefined;
+
+const getSnapshot = (): Promise<SnapshotEntry[]> =>
+    (snapshotPromise ??= import('../lib/mcp/openapi-snapshot.json').then(
+        (m) => m.default as unknown as SnapshotEntry[],
+    ));
 
 /** OpenAPI document config — MUST match the snapshot generator / route-metadata
  * spec so the `components.schemas` resolved here line up with the snapshot. */

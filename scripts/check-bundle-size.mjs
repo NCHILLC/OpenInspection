@@ -19,30 +19,35 @@
  * before it becomes a deploy outage. Pass `--skip-build` when a fresh
  * build/ already exists (CI runs build as its own step).
  *
- * ── WHY THERE IS A SECOND LIMIT HERE ────────────────────────────────────────
- * Compressed upload size was never the constraint this project actually hit.
- * Cloudflare Error 1102 on /login (upstream discussion #325) fired while this
- * gate passed comfortably: the binding limit is Worker STARTUP TIME — 1 second
- * to parse and execute global scope — and nothing here measured it. Cloudflare's
- * limits page names the cause outright: "generating or consuming a large schema
- * at the top level is a common cause of exceeding this limit".
+ * ── WHY THERE IS A SECOND LIMIT HERE NOW ────────────────────────────────────
+ * Compressed script size was never the constraint this project actually hit.
+ * A self-hoster hit Cloudflare Error 1102 on `/login` (discussion #325) while
+ * this gate was passing comfortably at ~70%: the binding limit is Worker
+ * STARTUP TIME — 1 second to parse and execute global scope — and nothing
+ * measured it. Cloudflare's own limits page names the cause: "generating or
+ * consuming a large schema at the top level is a common cause of exceeding
+ * this limit".
  *
- * So step 3 asserts BYTES IN THE STATIC IMPORT CLOSURE of the worker entry —
- * every chunk V8 must materialise on a cold start, before a request is served.
- * Deterministic, identical on every machine, and the number that moves when a
- * module-scope import becomes a deferred one. The 900 KB openapi-snapshot did
- * exactly that (server/durable-objects/inspector-mcp.ts) and must stay out.
+ * So the measurement moved from `wrangler deploy --dry-run` to
+ * `wrangler check startup`, which reports the SAME size line plus a startup
+ * CPU profile, from one build.
+ *
+ * ⚠️ THE PROFILE IS REPORTED, NEVER ASSERTED ON. Cloudflare's docs are explicit
+ * that it runs on the local machine and "results can vary widely"; measured
+ * here across four runs of one identical build on one machine: 61.0, 64.0,
+ * 65.4, 66.2 ms. A threshold on that number would fail on a slower CI runner
+ * for no reason and teach everyone to ignore it.
+ *
+ * What IS asserted is the ENTRY CHUNK's byte size — deterministic, identical
+ * on every machine, and the thing that actually drives startup work. That is
+ * the number that moved when the 900 KB OpenAPI snapshot stopped being a
+ * module-scope import: 1,272 KiB -> 752 KiB.
  */
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { existsSync, statSync } from "node:fs";
 
 const LIMIT_KIB = 3 * 1024; // Workers Free: 3 MiB gzipped script limit
 const WARN_RATIO = 0.85;
-const ENTRY = "build/server/index.js";
-// Measured 844,158 B across 57 chunks at 5b18bdb. Headroom is deliberate and
-// small: this is a ratchet, and raising it should be a decision, not a drift.
-const CLOSURE_CEILING_BYTES = 880_000;
 
 const skipBuild = process.argv.includes("--skip-build");
 
@@ -59,10 +64,12 @@ try {
     process.exit(1);
   }
 
-  const out = sh("npx wrangler deploy --dry-run -c build/server/wrangler.json");
-  const m = out.match(/Total Upload:\s*([\d.]+)\s*(KiB|MiB)\s*\/\s*gzip:\s*([\d.]+)\s*(KiB|MiB)/i);
+  // `check startup` builds nothing itself here (we already did) and prints the
+  // size line plus the startup profile. Needs wrangler >= 4.116.
+  const out = sh("npx wrangler check startup -c build/server/wrangler.json");
+  const m = out.match(/Bundle:\s*([\d.]+)\s*(KiB|MiB)\s*\/\s*gzip:\s*([\d.]+)\s*(KiB|MiB)/i);
   if (!m) {
-    console.error("[bundle-size] could not find the 'Total Upload … / gzip …' line in wrangler's dry-run output — wrangler format change?");
+    console.error("[bundle-size] could not find the 'Bundle: … / gzip: …' line in `wrangler check startup` output — wrangler format change?");
     process.exit(1);
   }
 
@@ -84,56 +91,44 @@ try {
     console.warn(`[bundle-size] WARNING — above ${WARN_RATIO * 100}% of the limit; plan a diet before this becomes a deploy outage.`);
   }
 
-  // ── 3. The eager import closure — the Error 1102 gate ─────────────────────
-  // NOT the entry FILE's size. This build splits into build/server/assets/*, so
-  // index.js alone is ~18 KB and a ceiling on it could never fire. The cost is
-  // the transitive closure it pulls in statically.
-  if (!existsSync(ENTRY)) {
-    console.error(`[bundle-size] ${ENTRY} is missing — the build produced no worker entry.`);
-    process.exit(1);
-  }
-
-  const seen = new Set();
-  const walkChunk = (file) => {
-    if (seen.has(file)) return 0;
-    seen.add(file);
-    let bytes = statSync(file).size;
-    // Static specifiers only. A dynamic `import("./x.js")` is a separate cold
-    // path and is exactly what this gate rewards, so it must NOT be counted —
-    // both patterns require a bare quote where `(` would be.
-    const STATIC = /(?:^|[;\s}])(?:import|export)[^;'"]*?from\s*["'](\.[^"']+)["']|(?:^|[;\s}])import\s*["'](\.[^"']+)["']/g;
-    for (const m of readFileSync(file, "utf8").matchAll(STATIC)) {
-      const dep = resolve(dirname(file), m[1] ?? m[2]);
-      // Named, not an opaque ENOENT: a relative specifier the build did not
-      // emit means the pattern above is over-matching, not that a chunk is gone.
-      if (!existsSync(dep)) {
-        console.error(`[bundle-size] FAIL — ${relative(process.cwd(), file)} appears to import "${m[1] ?? m[2]}", which does not exist; the closure walker is over-matching.`);
-        process.exit(1);
-      }
-      bytes += walkChunk(dep);
-    }
-    return bytes;
-  };
-  const closureBytes = walkChunk(resolve(ENTRY));
-
-  // A regex that quietly stops matching would make this gate vacuous — the same
-  // silent-pass failure that let 1102 through. The entry has always had static
-  // imports; if it appears to have none, the walker is broken, not the bundle.
-  if (seen.size < 2) {
-    console.error(`[bundle-size] FAIL — found no static imports from ${ENTRY}; the closure walker is broken and this gate is not measuring anything.`);
-    process.exit(1);
-  }
-
+  // ── The startup profile: REPORTED, never asserted on ──────────────────────
+  // See the header. It is measured on this machine's CPU, and `wrangler check
+  // startup` offers no way to pin CPU or memory — the full option list is
+  // --outfile / --workerBundle / --pages / --args. The authoritative number is
+  // `startup_time_ms`, which Cloudflare measures on its own hardware and
+  // reports from `wrangler deploy` or `wrangler versions upload`.
+  const prof = out.match(/Active:\s*([\d.]+)\s*ms/i);
   console.log(
-    `[bundle-size] eager import closure (evaluated on every cold start): ${closureBytes} bytes / ` +
-    `${(closureBytes / 1024).toFixed(0)} KiB across ${seen.size} chunks (ceiling ${CLOSURE_CEILING_BYTES})`,
+    prof
+      ? `[bundle-size] local startup profile: ${prof[1]} ms active (this machine; not comparable across machines, not a gate)`
+      : "[bundle-size] local startup profile: not reported by this wrangler",
   );
-  if (closureBytes > CLOSURE_CEILING_BYTES) {
-    console.error(`[bundle-size] FAIL — eager closure exceeds the ceiling; this is what trips Cloudflare Error 1102 (Worker exceeded startup limit), which the gzip check above cannot see.`);
-    console.error("[bundle-size] largest chunks in the closure — defer the biggest with a dynamic import(), or raise the ceiling deliberately:");
-    for (const f of [...seen].sort((a, b) => statSync(b).size - statSync(a).size).slice(0, 10)) {
-      console.error(`  ${String(statSync(f).size).padStart(9)} B  ${relative(process.cwd(), f)}`);
+
+  // ── The deterministic half, which IS a gate ───────────────────────────────
+  // Entry-chunk bytes are identical on every machine and are what actually
+  // drives startup work: this is the number that moved 1,302,525 -> 769,776
+  // when a 900 KB module-scope JSON import became a deferred one. A ceiling
+  // here catches the class of regression that the size gate above cannot see,
+  // because compressed upload size barely moves when eager work does.
+  const ENTRY = "build/server/index.js";
+  const ENTRY_CEILING_BYTES = 850_000;
+  if (existsSync(ENTRY)) {
+    const bytes = statSync(ENTRY).size;
+    const kib = (bytes / 1024).toFixed(0);
+    console.log(`[bundle-size] entry chunk (evaluated on every cold start): ${bytes} bytes / ${kib} KiB`);
+    if (bytes > ENTRY_CEILING_BYTES) {
+      console.error(
+        `[bundle-size] FAIL — the entry chunk is over ${ENTRY_CEILING_BYTES} bytes. Something heavy`,
+      );
+      console.error("  moved into module scope. Find it with `wrangler check startup`, which writes a");
+      console.error("  .cpuprofile — open the flamegraph in Chrome DevTools or VS Code — then defer it");
+      console.error("  behind a dynamic import the way server/durable-objects/inspector-mcp.ts defers");
+      console.error("  the OpenAPI snapshot.");
+      process.exit(1);
     }
+  } else {
+    // Not silently fine: a missing entry chunk means this half measured nothing.
+    console.error(`[bundle-size] FAIL — ${ENTRY} is missing, so the entry-chunk ceiling checked nothing.`);
     process.exit(1);
   }
 

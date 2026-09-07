@@ -54,7 +54,7 @@ export const TENANT_CONFIGS_TEST_DDL =
  * It covers users now.
  */
 export const USERS_TEST_DDL =
-    'CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT NOT NULL, password_hash TEXT NOT NULL, name TEXT, phone TEXT, photo_url TEXT, default_signature_base64 TEXT, is_signature_enabled INTEGER NOT NULL DEFAULT true, bio TEXT, service_areas TEXT, slug TEXT, role TEXT NOT NULL DEFAULT \'admin\', google_refresh_token TEXT, google_calendar_id TEXT, google_access_token TEXT, google_token_expiry INTEGER, locale TEXT, onboarding_state TEXT, created_at INTEGER NOT NULL, totp_secret TEXT, is_totp_enabled INTEGER NOT NULL DEFAULT false, totp_recovery_codes TEXT, totp_verified_at INTEGER, is_referral_notification_enabled INTEGER NOT NULL DEFAULT true, is_report_notification_enabled INTEGER NOT NULL DEFAULT true, is_paid_notification_enabled INTEGER NOT NULL DEFAULT false, last_active_at INTEGER, signup_role TEXT, deleted_at INTEGER, terms_accepted TEXT, permission_overrides TEXT, timezone TEXT, date_format TEXT, time_format TEXT, service_origin_address TEXT, service_origin_lat REAL, service_origin_lng REAL);';
+    'CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT NOT NULL, password_hash TEXT NOT NULL, name TEXT, phone TEXT, photo_url TEXT, default_signature_base64 TEXT, is_signature_enabled INTEGER NOT NULL DEFAULT true, bio TEXT, service_areas TEXT, slug TEXT, role TEXT NOT NULL DEFAULT \'admin\', google_refresh_token TEXT, google_calendar_id TEXT, google_access_token TEXT, google_token_expiry INTEGER, locale TEXT, onboarding_state TEXT, created_at INTEGER NOT NULL, totp_secret TEXT, is_totp_enabled INTEGER NOT NULL DEFAULT false, totp_recovery_codes TEXT, totp_verified_at INTEGER, is_referral_notification_enabled INTEGER NOT NULL DEFAULT true, is_report_notification_enabled INTEGER NOT NULL DEFAULT true, is_paid_notification_enabled INTEGER NOT NULL DEFAULT false, last_active_at INTEGER, signup_role TEXT, deleted_at INTEGER, terms_accepted TEXT, permission_overrides TEXT, timezone TEXT, date_format TEXT, time_format TEXT, service_origin_address TEXT, service_origin_lat REAL, service_origin_lng REAL, statutory_license_type TEXT, statutory_qualification TEXT);';
 
 /**
  * `account_acceptances` is here because `applyAdminCredential` now writes it in
@@ -95,3 +95,28 @@ export const MIGRATION_ROWS_TEST_DDL =
 
 export const AUDIT_LOGS_TEST_DDL =
     'CREATE TABLE IF NOT EXISTS audit_logs (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, user_id TEXT, action TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT, metadata TEXT, ip_address TEXT, inspector_slug TEXT, created_at INTEGER NOT NULL, actor_kind TEXT NOT NULL DEFAULT \'tenant_user\', platform_actor_id TEXT);';
+
+/**
+ * `tenants` is the fourth table to learn this, and it learned it the worst way:
+ * the DDL was copy-pasted into SEVEN cmd specs, so it was not one hand-written
+ * statement drifting from the schema but seven of them, and adding
+ * `content_version` to the schema broke 20 tests across two files while
+ * `test:unit`, `test:web` and every pre-commit gate stayed green. The header of
+ * this file already said "one source, one sync assertion"; `tenants` simply was
+ * not in it.
+ *
+ * The reason it bites here and not everywhere is the same as for `users`:
+ * `handleTenantUpdate` does `db.insert(tenants).values({...})` with a partial
+ * object, and drizzle emits EVERY column of the table, filling the rest with
+ * null. So a column in the Drizzle schema and not in this DDL is not a missing
+ * default — it is `table tenants has no column named ...`, at real-workerd time.
+ *
+ * ⚠️ Two specs deliberately keep their own narrower `tenants` DDL and are NOT
+ * converted: `quota-cap-concurrency.spec.ts` creates four columns because that
+ * is all its fixture needs, and `cmd-migration-deliver.spec.ts` omits
+ * `stripe_connect_account_id`. Neither inserts through drizzle's full column
+ * list, which is why neither broke. They are left alone rather than quietly
+ * widened, because a fixture that states what it needs is not drift.
+ */
+export const TENANTS_TEST_DDL =
+    'CREATE TABLE IF NOT EXISTS tenants (id TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NULL, tier TEXT NOT NULL DEFAULT \'free\', stripe_connect_account_id TEXT, status TEXT NOT NULL DEFAULT \'pending\', max_users INTEGER NOT NULL DEFAULT 5, deployment_mode TEXT NOT NULL DEFAULT \'shared\', applied_cmd_seq INTEGER NOT NULL DEFAULT 0, applied_cred_seq INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, content_version TEXT);';
