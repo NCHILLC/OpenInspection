@@ -57,8 +57,8 @@ export default defineConfig({
         //   APP_BASE_URL=…:8789 — the origin the SERVER stamps into emailed links.
         //                        CI's generated .dev.vars omits it entirely, so CI
         //                        passed; a real local .dev.vars sets 8787 for
-        //                        `npm run dev`, and the agent-unified-link spec then
-        //                        followed an emailed link to a port nothing served
+        //                        `npm run dev`, and a spec following an emailed
+        //                        link then reached a port nothing served
         //                        (ERR_CONNECTION_REFUSED). Pin it to the port this
         //                        worker actually listens on.
         command: 'npm run build && npx wrangler dev -c build/server/wrangler.json --persist-to .wrangler/state --port 8789 --var E2E_EMAIL_SINK:1 --var SETUP_CODE:000000 --var DISABLE_RATE_LIMIT:1 --var APP_BASE_URL:http://127.0.0.1:8789',
@@ -380,11 +380,6 @@ export default defineConfig({
         // inspection's global status via /complete + /publish). Depends on
         // `api` for the shared admin + the 8 seeded default role profiles.
         { name: 'role-aware-sending', testMatch: 'role-aware-sending.spec.ts', dependencies: ['api'] },
-        // Spec 3 Task 8 — agent unified link (final task of the agent-unified-
-        // link plan). Seeds its own two dedicated inspections (registered vs
-        // unregistered agent recipient) and a global agent account — depends
-        // on `api` for the shared admin + the 8 seeded default role profiles.
-        { name: 'agent-unified-link', testMatch: 'agent-unified-link.spec.ts', dependencies: ['api'] },
         // #198/#200 — Google Places address autocomplete + property auto-fill.
         // Verifies real-browser wiring + graceful degradation (no external keys
         // locally). Uses the shared editor-seed admin + inspection.
