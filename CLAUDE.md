@@ -8,6 +8,45 @@ API in-process and delegates page routes to React Router v8 SSR.
 
 **This checkout is a fork.** `origin` is `NCHILLC/OpenInspection` (private), `upstream` is `InspectorHub/OpenInspection`. What has been taken from upstream, skipped, or deliberately diverged on is recorded in [`docs/develop/fork-log.md`](docs/develop/fork-log.md) — read it before merging upstream or before "fixing" behaviour that looks like drift. It is linked from here rather than from `docs/README.md` on purpose: that map is upstream's, and a fork-only row in it would conflict on every merge.
 
+## Check upstream BEFORE debugging anything
+
+**Before investigating any error, bug, failing test or red gate: look for the
+fix upstream first.** This fork sits 250+ commits behind a fast-moving upstream,
+so the odds that a failure has already been diagnosed and fixed there are high,
+and re-deriving a fix costs far more than the lookup does. Not optional, and not
+a judgement call about how obvious the symptom looks.
+
+```bash
+git fetch upstream
+git log main..upstream/main --oneline --no-merges -i --grep='<symptom keyword>'
+git log main..upstream/main --oneline --no-merges -- <file you suspect>
+```
+
+A hit: cherry-pick or port it, and record the decision in
+[`docs/develop/fork-log.md`](docs/develop/fork-log.md). A miss is worth knowing
+too — it means the bug is this fork's own, and once fixed it belongs in the fork
+log as a deviation. Either way the lookup takes seconds and its answer changes
+what you do next.
+
+**Reading CI requires the `gh` CLI, not the GitHub MCP connector.** The
+connector's token has no Checks permission: `pull_request_read` does expose a
+`get_check_runs` method, but it and `get_status` both return
+`403 Resource not accessible by integration` (verified 2026-09-07). Confirm `gh`
+before reporting that CI results are unavailable — do not repeat the limitation
+from memory without checking:
+
+```bash
+gh auth status                                    # expect: Logged in to github.com account NCHILLC
+gh pr checks <n> --repo NCHILLC/OpenInspection
+gh run view --job <id> --log-failed
+```
+
+Installed via `winget install --id GitHub.cli`. It may be missing from an
+existing shell's PATH if that shell started before the install — call it as
+`"/c/Program Files/GitHub CLI/gh.exe"` rather than concluding it is absent. A
+timed-out job archives no log, so `--log-failed` returns EMPTY for one; use
+`gh run view --job <id>` and read the annotation instead.
+
 ## Commands
 
 ```bash
