@@ -64,16 +64,20 @@ test.describe('Batch photo upload (Task 16)', () => {
         await expect(libraryInput).toBeAttached();
         await libraryInput.setInputFiles([FIXTURE_IMAGE, FIXTURE_IMAGE, FIXTURE_IMAGE]);
 
-        // All 3 uploads (bounded CONCURRENCY=4 server-side) round-trip through
-        // the upload-photo action before the effect attaches keys — give the
-        // thumbnail strip room to catch up.
+        // The thumbnails ARE the confirmation now, and there is no toast to wait
+        // for. `85669e05` routed every photo — item and defect, online included
+        // — through the offline media queue, leaving the fetcher only for the
+        // window before the collab doc is live. The `results[]`-driven
+        // "N photos added" toast in useEditorPhotoUpload hangs off
+        // `uploadFetcher.data`, which a queued upload never populates, so that
+        // toast no longer fires for a library pick and asserting it was testing
+        // a path the product deliberately stopped taking. The queue's own
+        // feedback is these thumbnails (with pending badges while in flight),
+        // which appear immediately and persist.
         await expect(page.getByTestId('thumb-0')).toBeVisible({ timeout: 15000 });
         await expect(page.getByTestId('thumb-1')).toBeVisible({ timeout: 15000 });
         await expect(page.getByTestId('thumb-2')).toBeVisible({ timeout: 15000 });
         await expect(page.getByTestId('thumb-3')).toHaveCount(0);
-
-        // "3 photos added" success toast (Task 16's all-succeeded branch).
-        await expect(page.getByText('3 photos added', { exact: false })).toBeVisible();
 
         // Right-item association: switching to Plumbing must show zero photos
         // — the batch attached to Roof only, not every item.
