@@ -1504,8 +1504,8 @@ export default function InspectionEditPage() {
  /* ---------------------------------------------------------------- */
 
  /**
-  * The four dialogs that END a job: report settings, sign, the publish
-  * readiness gate, and publish itself.
+  * The dialogs that END a job — report settings, sign, the publish
+  * readiness gate, publish — plus the unsaved-changes blocker.
   *
   * Held in a fragment rendered by BOTH the mobile and the desktop tree. They
   * used to live only in the desktop one, below the `isMobile` early return —
@@ -1516,6 +1516,12 @@ export default function InspectionEditPage() {
   */
  const finishActionsEl = (
  <>
+ {/* ⚠️ SHARED — `useBlocker` arms for BOTH layouts, so the release must mount for both. Desktop-only, a dirty inspection refused to navigate with nothing on screen to release it, and the back chevron stayed dead for the rest of the session. See editor-mobile-dialog-mount.spec.ts. */}
+ <UnsavedChangesBlocker
+ open={blocker.state === "blocked"}
+ onStay={cancelLeave}
+ onLeave={confirmLeave}
+ />
  {/* Inspection settings sheet */}
  <InspectionSettingsSheet
  open={state.settingsOpen}
@@ -1866,12 +1872,6 @@ export default function InspectionEditPage() {
 
 
 
- {/* Unsaved changes blocker dialog */}
- <UnsavedChangesBlocker
- open={blocker.state === "blocked"}
- onStay={cancelLeave}
- onLeave={confirmLeave}
- />
 
 
  {/* #181 — Version history panel (collab Phase 4). Only reachable when the
