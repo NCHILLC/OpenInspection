@@ -333,21 +333,28 @@ The DI proxy in `server/lib/middleware/di.ts` lazy-instantiates each service on 
 
 - **React Router v8 SSR**: Routes in `app/routes/` use `loader()` for data fetching and `action()` for mutations. Full server-side rendering on Cloudflare Workers.
 - **React components**: 59 components in `app/components/`, organized by domain (inspection, template, booking, etc.).
-- **Hooks**: 9 custom hooks handle complex state — `useInspection` (866 LOC), `useFindings`, `useKeyboard` (shortcuts), `useCannedComments`, `useOfflineQueue`, `usePresence` (WebSocket), `useTheme`, `useUnsavedChanges`, `useSessionContext`.
+- **Hooks**: 9 custom hooks handle complex state — `useInspection` (866 LOC), `useFindings`, `useKeyboard` (shortcuts), `useCannedComments`, `usePresence` (WebSocket), `useTheme`, `useUnsavedChanges`, `useSessionContext`.
 - **Design tokens**: Tailwind v4 with Design System 0523 tokens in `app/styles/tailwind.css`.
 - **Shared UI**: `packages/shared-ui/` provides 12 design-system components (Button, Pill, Card, etc.) consumed by the frontend.
 - **Dark mode**: `data-color-scheme` attribute on `<html>`, managed by `useTheme` hook (auto/light/dark).
 
 ### Future app path
 
-1. **PWA** (current) — installable, offline-capable via Service Worker plus the
-   `useOfflineQueue` hook, which carries the photo-upload queue and field sync.
+1. **PWA** (current) — installable; the Service Worker caches the shell, and
+   the field data is a Yjs CRDT document buffered in IndexedDB (`y-indexeddb`),
+   with photo bytes held in `app/lib/collab/media-pending-store.ts` until they
+   drain to R2 — see [`collab-editing.md`](../concepts/collab-editing.md).
 2. **A capture-first native client** (decided 2026-09-07) — capture is its
    primary job. Photos, findings and voice notes are written to device storage
    at the moment of capture, with no round trip to the server; sync happens
    afterwards. Report editing, templates and admin stay on the web surface.
    Local storage, sync ordering, de-duplication and conflict resolution are the
-   architecture of this client, not features added to it later.
+   architecture of this client, not features added to it later — and they are
+   already decided: the native client speaks the same Yjs document to the same
+   Durable Object. Its open question is the runtime, because that picks the
+   Yjs binding and the local doc store — JavaScript keeps `yjs` and swaps
+   `y-indexeddb` for a device-storage adapter; Swift or Kotlin means the `yrs`
+   bindings. Nothing about ordering, de-duplication or conflicts is redesigned.
 
 **Capacitor was on this list and is not any more** (2026-08-18). It was a
 WebView wrapper with native camera and offline capture deferred to later work,
@@ -361,9 +368,11 @@ requirements decide it — capture where there is no signal, and offline sync
 that lands what was captured in order, without duplicates, resolving conflicts
 when two devices or a web session touched the same inspection. Both are
 structural. They are cheap to design in from the start and expensive to
-retrofit into a browser-first codebase. The `useOfflineQueue` hook is today's
-light version of the second one, a fallback around a server-first data path; the
-capture-first client makes that path the primary one. Were those two
+retrofit into a browser-first codebase. The collab layer already gives the web
+editor the second one — CRDT merge, last-writer-wins per scalar field, arrays
+keyed by id, a version history for the value that lost — and the pending-media
+store gives it the first for photos. The capture-first client makes that
+offline path the primary one instead of the fallback. Were those two
 requirements not real, responsive web would stay the field surface and this
 client could wait.
 
