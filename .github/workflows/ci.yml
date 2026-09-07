@@ -137,7 +137,15 @@ jobs:
   lint-eslint:
     name: lint (eslint)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 30, not 15. A COLD eslint here exceeded 15 minutes and the job was killed
+    # before its post-steps ran — so the cache below was never saved, and the
+    # next run was cold again. Permanently red, and never for a lint error.
+    # The 442s cold figure in the cache comment was measured on the upstream
+    # repo; this one runs materially slower (type-check (app) takes 14m45s here
+    # against the 337s recorded at the top of this file), so the old ceiling had
+    # no margin left. A warm run is ~6s, so the raised ceiling costs nothing
+    # once one run has completed and seeded the cache.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
