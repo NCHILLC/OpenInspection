@@ -289,7 +289,7 @@ DB design policies (2026-06-04 DBA review). These apply to ALL new tables/column
 
 ## Quality gates
 
-Pre-commit and CI run the same logical checks; CI's `verify` job is the authoritative gate (wire it up as a required status check). The pre-commit hook is a fast local guard. Mechanism, steps, and Node version are aligned across the superproject and the portal/cms submodules.
+Pre-commit and CI run the same logical checks. CI's `verify` job is the authoritative REPORT, and pre-commit is the only thing that actually BLOCKS — see below for why the two are not the same here. Mechanism, steps, and Node version are aligned across the superproject and the portal/cms submodules.
 
 **Run the gates BEFORE writing, not at commit.** `npm run lint:gates` is the
 20-gate pre-commit rung and takes seconds. Paying it up front tells you straight
@@ -314,7 +314,12 @@ An absolute path in `launch.json` does not save you; the launcher rebases it.
 
 **`--no-verify` is blocked**, with `--dangerously-skip-permissions` and
 `HUSKY=0`, by a PreToolUse hook (`~/.claude/hooks/block-verify-skip.mjs`).
-Pushing runs no CI here, so pre-commit is the only automatic gate that exists.
+CI does run now — `verify` fires on pull requests and on pushes to `main`
+(2026-09-07) — but it **cannot block a merge on this plan**. Branch protection
+and rulesets are unenforced on a private repository under GitHub Free; the
+`verify` ruleset on `NCHILLC/OpenInspection` exists and is inert, and goes live
+only if the org moves to Team. So a red `verify` is a signal you have to choose
+to honour, and **pre-commit remains the only gate that actually stops anything**.
 If a gate fails, fix the cause.
 
 - **Hook mechanism**: `.githooks/pre-commit`, activated by the `prepare` npm script (`git config core.hooksPath .githooks`) on `npm install`/`npm ci` — native git hooks, **no husky**.
