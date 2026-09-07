@@ -66,7 +66,13 @@ jobs:
   typecheck-app:
     name: type-check (app)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 30, not 15. This job measured 14m45s and 15m23s on consecutive runs
+    # against a 15-minute ceiling — it was passing by seconds and then stopped.
+    # A private repo gets a 2-core/8GB runner where the public upstream this
+    # workflow was tuned on gets 4-core/16GB, so every figure recorded at the
+    # top of this file (type-check 337s) is roughly a third of what it costs
+    # here. Raised to a ceiling that reflects the machine actually running it.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
@@ -145,7 +151,13 @@ jobs:
     # against the 337s recorded at the top of this file), so the old ceiling had
     # no margin left. A warm run is ~6s, so the raised ceiling costs nothing
     # once one run has completed and seeded the cache.
-    timeout-minutes: 30
+    #
+    # 30 was not enough either — the cold run hit it exactly (30m36s). The cause
+    # is not the ceiling: `lint:eslint` asked for a 12 GB heap on an 8 GB
+    # runner, so V8 deferred GC past physical RAM and the OS swapped. That flag
+    # is now 6144 (package.json), which should cut the cold time rather than
+    # just survive it. 45 is the margin while that is confirmed.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
