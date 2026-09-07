@@ -6,6 +6,8 @@ API in-process and delegates page routes to React Router v8 SSR.
 
 **Docs**: `docs/README.md` is the map — `docs/operate/` (deploy, upgrade, configure) · `docs/develop/` (architecture, testing, design system) · `docs/reference/` (API, database, roles, deployment modes) · `docs/concepts/` (how the engine works) · `docs/integrations/` (external services) · `docs/compliance/` (data handling). Docs here cover the **engine**: deploying it, operating it, changing it, integrating it. Using the product day to day is documented at <https://inspectorhub.io/docs>, which serves self-hosted and hosted deployments alike.
 
+**This checkout is a fork.** `origin` is `NCHILLC/OpenInspection` (private), `upstream` is `InspectorHub/OpenInspection`. What has been taken from upstream, skipped, or deliberately diverged on is recorded in [`docs/develop/fork-log.md`](docs/develop/fork-log.md) — read it before merging upstream or before "fixing" behaviour that looks like drift. It is linked from here rather than from `docs/README.md` on purpose: that map is upstream's, and a fork-only row in it would conflict on every merge.
+
 ## Commands
 
 ```bash
