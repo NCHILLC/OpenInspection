@@ -342,16 +342,30 @@ The DI proxy in `server/lib/middleware/di.ts` lazy-instantiates each service on 
 
 1. **PWA** (current) — installable, offline-capable via Service Worker plus the
    `useOfflineQueue` hook, which carries the photo-upload queue and field sync.
-2. **A native client** (direction, unspecified) — designed for the field rather
-   than inherited from the browser: capture, local storage, sync and conflict
-   resolution are the requirement, not follow-ups to a shell.
+2. **A capture-first native client** (decided 2026-09-07) — capture is its
+   primary job. Photos, findings and voice notes are written to device storage
+   at the moment of capture, with no round trip to the server; sync happens
+   afterwards. Report editing, templates and admin stay on the web surface.
+   Local storage, sync ordering, de-duplication and conflict resolution are the
+   architecture of this client, not features added to it later.
 
 **Capacitor was on this list and is not any more** (2026-08-18). It was a
 WebView wrapper with native camera and offline capture deferred to later work,
 and those deferred items are the actual requirement — an inspector works
 basements and crawlspaces with no usable connection. That is a judgement about
-what this product needs, not about the tool. Until a native client exists,
-responsive web is the field surface.
+what this product needs, not about the tool. Until the capture-first client
+exists, responsive web is the field surface.
+
+**Why it is built early rather than after the web app matures**: two
+requirements decide it — capture where there is no signal, and offline sync
+that lands what was captured in order, without duplicates, resolving conflicts
+when two devices or a web session touched the same inspection. Both are
+structural. They are cheap to design in from the start and expensive to
+retrofit into a browser-first codebase. The `useOfflineQueue` hook is today's
+light version of the second one, a fallback around a server-first data path; the
+capture-first client makes that path the primary one. Were those two
+requirements not real, responsive web would stay the field surface and this
+client could wait.
 
 ## Storage
 
