@@ -43,6 +43,11 @@ name: CI
 # the fact is to open a throwaway PR, which means adding a commit to main in
 # order to test main.
 on:
+  # Both triggers are load-bearing. `pull_request` gates the merge; `push` to
+  # main gates commits that never opened a PR — which is how 47 commits reached
+  # this fork's main without `verify` ever running (2026-09-07).
+  push:
+    branches: [main]
   pull_request:
     branches: [master, main]
   workflow_dispatch:
