@@ -26,6 +26,37 @@ git cherry upstream/main main                            # '-' marks fork commit
 `git cherry` is the reason the PR template forbids squashing: a squash rewrites
 the branch's commits, and `git cherry` then reports landed work as unmerged.
 
+## The upstream mirror
+
+`upstream-track` is a branch on `origin` holding **exactly** `upstream/main` —
+all of upstream's commits, none of this fork's. It exists so upstream can be
+run, deployed and diffed without touching the working line.
+
+Two rules, and they are the whole contract:
+
+- **Never commit to it.** A commit here turns the mirror into a third divergent
+  line, which is the one thing it exists to prevent.
+- **Fast-forward only.** If a refresh ever refuses to fast-forward, something
+  has been committed to it — fix that rather than forcing the update.
+
+```bash
+git fetch upstream
+git push origin upstream/main:refs/heads/upstream-track   # refresh the mirror
+git switch upstream-track && git merge --ff-only upstream/main   # or locally
+```
+
+It tracks `origin/upstream-track`, **not** `upstream/main`, and that is not an
+oversight to correct: tracking upstream would make a stray `git push` on this
+branch aim at somebody else's repository. Refresh with the explicit commands
+above.
+
+CI does not run on it: the `push` trigger is scoped to `main`, deliberately.
+Upstream tests its own commits, and a mirror burning runner minutes to confirm
+that is waste.
+
+When an upstream scope in the table below is decided as **take**, this branch is
+what you merge from.
+
 ## Snapshot — 2026-09-07
 
 | | |
