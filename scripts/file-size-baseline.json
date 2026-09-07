@@ -19,12 +19,12 @@
   "server/lib/messaging/providers/telnyx-compliance.ts": 657,
   "app/components/editor/ItemEditor.tsx": 650,
   "app/components/inspection-edit/CompliancePanel.tsx": 638,
-  "app/lib/collab/results-binding.ts": 574,
   "server/api/auth.ts": 611,
   "app/hooks/useInspection.ts": 600,
   "server/services/concierge.service.ts": 595,
   "server/api/public-report.ts": 586,
   "server/api/bookings/agreement.ts": 582,
+  "app/lib/collab/results-binding.ts": 574,
   "server/services/agent/referral.ts": 566,
   "app/routes/settings-profile.tsx": 548,
   "server/api/inspections/media-studio.ts": 546,
@@ -45,8 +45,8 @@
   "server/lib/compliance/erasure-orchestrator.ts": 484,
   "server/services/report-export-consumer.ts": 482,
   "server/api/admin/admin-config.ts": 472,
-  "app/components/editor/CannedCommentTabs.tsx": 468,
   "server/services/inspection/inspection-core.service.ts": 465,
+  "app/components/editor/CannedCommentTabs.tsx": 463,
   "app/components/inspection/PeopleEditor.tsx": 462,
   "server/api/calendar.ts": 453,
   "app/components/portal/sections/RepairBuilderSection.tsx": 450,
@@ -67,5 +67,5 @@
   "app/routes/calendar.tsx": 415,
   "server/lib/db/schema/inspection/core.ts": 415,
   "server/services/agreement/signer-state.ts": 413,
-  "playwright.config.ts": 409
+  "playwright.config.ts": 404
 }
