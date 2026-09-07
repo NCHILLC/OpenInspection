@@ -64,22 +64,34 @@ test.describe('Batch photo upload (Task 16)', () => {
         await expect(libraryInput).toBeAttached();
         await libraryInput.setInputFiles([FIXTURE_IMAGE, FIXTURE_IMAGE, FIXTURE_IMAGE]);
 
-        // All 3 uploads (bounded CONCURRENCY=4 server-side) round-trip through
-        // the upload-photo action before the effect attaches keys — give the
-        // thumbnail strip room to catch up.
-        await expect(page.getByTestId('thumb-0')).toBeVisible({ timeout: 15000 });
-        await expect(page.getByTestId('thumb-1')).toBeVisible({ timeout: 15000 });
-        await expect(page.getByTestId('thumb-2')).toBeVisible({ timeout: 15000 });
-        await expect(page.getByTestId('thumb-3')).toHaveCount(0);
-
-        // "3 photos added" success toast (Task 16's all-succeeded branch).
-        await expect(page.getByText('3 photos added', { exact: false })).toBeVisible();
+        // The thumbnails ARE the confirmation now, and there is no toast to wait
+        // for. `85669e05` routed every photo — item and defect, online included
+        // — through the offline media queue, leaving the fetcher only for the
+        // window before the collab doc is live. The `results[]`-driven
+        // "N photos added" toast in useEditorPhotoUpload hangs off
+        // `uploadFetcher.data`, which a queued upload never populates, so that
+        // toast no longer fires for a library pick and asserting it was testing
+        // a path the product deliberately stopped taking. The queue's own
+        // feedback is these thumbnails (with pending badges while in flight),
+        // which appear immediately and persist.
+        // 30s, not 15. Three files ride the queue and land independently, and CI
+        // runs this on the 2-core/8GB runner a private repo gets rather than the
+        // 4-core/16GB one the public upstream is tuned on — the same halving
+        // that put type-check over its ceiling. It passes locally in ~2.8s and
+        // failed here once on a slower runner; the assertions are right, the
+        // budget was set on faster hardware.
+        await expect(page.getByTestId('thumb-0')).toBeVisible({ timeout: 30000 });
+        await expect(page.getByTestId('thumb-1')).toBeVisible({ timeout: 30000 });
+        await expect(page.getByTestId('thumb-2')).toBeVisible({ timeout: 30000 });
+        // toHaveCount RETRIES until the count holds, so a timeout here only buys
+        // the strip time to settle — it cannot make a wrong count pass.
+        await expect(page.getByTestId('thumb-3')).toHaveCount(0, { timeout: 10000 });
 
         // Right-item association: switching to Plumbing must show zero photos
         // — the batch attached to Roof only, not every item.
         await page.getByRole('button', { name: /Plumbing/ }).first().click();
         await page.getByRole('heading', { name: 'Plumbing' }).waitFor({ state: 'visible' });
-        await expect(page.getByTestId('thumb-0')).toHaveCount(0);
+        await expect(page.getByTestId('thumb-0')).toHaveCount(0, { timeout: 15000 });
     });
 
     test('re-selecting after a batch resets the input (same files fire onChange again)', async ({ page }) => {

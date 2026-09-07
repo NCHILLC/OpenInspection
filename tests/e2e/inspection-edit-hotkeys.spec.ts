@@ -46,14 +46,22 @@ test.describe('Inspection Edit hotkeys (Sprint 1 A-1..A-9)', () => {
         }
     });
 
-    test('press 4 sets the active item rating to Not Inspected', async ({ page }) => {
+    test('press 2 sets the active item rating to Not Inspected', async ({ page }) => {
         // Select an item so the rating hotkeys act on a live finding.
         await page.getByRole('button', { name: /Roof/ }).first().click();
         await page.getByRole('heading', { name: 'Roof' }).waitFor({ state: 'visible' });
-        await page.keyboard.press('4');
-        // Rating hotkey 4 = "Not Inspected": the rating row is now a RatingSegment
-        // radiogroup, so the matching tile becomes the checked radio (was a
-        // button with aria-pressed before the shared-ui migration).
+        await page.keyboard.press('2');
+        // The digit is a 1-based INDEX INTO THE LIVE LADDER, not a fixed code for
+        // a level: useKeyboard sends `onRate(parseInt(key))` and the row resolves
+        // position N. Since IN/NI/NP became the shipped default, Not Inspected is
+        // position 2 — `4` addresses a level that no longer exists, so the press
+        // is silently a no-op and the radio stays unchecked. Assert the position
+        // the ladder actually publishes, which the tile's own title carries as
+        // "Not Inspected (2)".
+        //
+        // The rating row is a RatingSegment radiogroup, so the matching tile
+        // becomes the checked radio (was a button with aria-pressed before the
+        // shared-ui migration).
         await expect(page.getByRole('radio', { name: /Not Inspected/ })).toHaveAttribute('aria-checked', 'true');
     });
 
