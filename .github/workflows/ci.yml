@@ -154,9 +154,18 @@ jobs:
     #
     # 30 was not enough either — the cold run hit it exactly (30m36s). The cause
     # is not the ceiling: `lint:eslint` asked for a 12 GB heap on an 8 GB
-    # runner, so V8 deferred GC past physical RAM and the OS swapped. That flag
-    # is now 6144 (package.json), which should cut the cold time rather than
-    # just survive it. 45 is the margin while that is confirmed.
+    # runner, so V8 deferred GC past physical RAM and the OS swapped.
+    #
+    # 6144 CONFIRMED that and overshot: the job fell from 30m36s to 8m28s, then
+    # died `FATAL ERROR: Ineffective mark-compacts near heap limit` at 6030 MB
+    # with `average mu = 0.105` — 90% of its time in GC. The live set is
+    # genuinely over 6 GB, so this workload is squeezed from both sides on an
+    # 8 GB box: 12 GB swaps, 6 GB OOMs. Now 7168 (package.json), leaving ~1 GB
+    # for the OS, with 45 minutes as the margin.
+    #
+    # IF IT OOMs AGAIN, the answer is not more heap — 8 GB is the machine.
+    # Shard eslint across a matrix the way the unit tests already are, so each
+    # process only ever holds part of the program.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5

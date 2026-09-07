@@ -74,16 +74,24 @@ test.describe('Batch photo upload (Task 16)', () => {
         // a path the product deliberately stopped taking. The queue's own
         // feedback is these thumbnails (with pending badges while in flight),
         // which appear immediately and persist.
-        await expect(page.getByTestId('thumb-0')).toBeVisible({ timeout: 15000 });
-        await expect(page.getByTestId('thumb-1')).toBeVisible({ timeout: 15000 });
-        await expect(page.getByTestId('thumb-2')).toBeVisible({ timeout: 15000 });
-        await expect(page.getByTestId('thumb-3')).toHaveCount(0);
+        // 30s, not 15. Three files ride the queue and land independently, and CI
+        // runs this on the 2-core/8GB runner a private repo gets rather than the
+        // 4-core/16GB one the public upstream is tuned on — the same halving
+        // that put type-check over its ceiling. It passes locally in ~2.8s and
+        // failed here once on a slower runner; the assertions are right, the
+        // budget was set on faster hardware.
+        await expect(page.getByTestId('thumb-0')).toBeVisible({ timeout: 30000 });
+        await expect(page.getByTestId('thumb-1')).toBeVisible({ timeout: 30000 });
+        await expect(page.getByTestId('thumb-2')).toBeVisible({ timeout: 30000 });
+        // toHaveCount RETRIES until the count holds, so a timeout here only buys
+        // the strip time to settle — it cannot make a wrong count pass.
+        await expect(page.getByTestId('thumb-3')).toHaveCount(0, { timeout: 10000 });
 
         // Right-item association: switching to Plumbing must show zero photos
         // — the batch attached to Roof only, not every item.
         await page.getByRole('button', { name: /Plumbing/ }).first().click();
         await page.getByRole('heading', { name: 'Plumbing' }).waitFor({ state: 'visible' });
-        await expect(page.getByTestId('thumb-0')).toHaveCount(0);
+        await expect(page.getByTestId('thumb-0')).toHaveCount(0, { timeout: 15000 });
     });
 
     test('re-selecting after a batch resets the input (same files fire onChange again)', async ({ page }) => {
