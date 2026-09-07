@@ -17,6 +17,16 @@ const NAV_ONLY_PARAMS = new Set(["section", "item"]);
  * and will, because it is not in the set.
  */
 export function isDrilldownOnlyChange(currentUrl: URL, nextUrl: URL): boolean {
+    // An IDENTICAL url is not a drill-down change, it is not a change at all.
+    // React Router passes the same URL as both current and next for an explicit
+    // `revalidator.revalidate()`, and the loop below finds no differing param
+    // and returns true for it — so every caller read "same URL" as
+    // "drilldown-only" and skipped the revalidation. That silently made every
+    // explicit revalidate() in the editor a no-op: the units drawer never
+    // showed a unit the server had already created (200 on POST .../units), and
+    // the offline-sync refresh `should-revalidate` documents as still working
+    // did not. Answer the question actually being asked before walking params.
+    if (currentUrl.href === nextUrl.href) return false;
     if (currentUrl.pathname !== nextUrl.pathname) return false;
     const keys = new Set([...currentUrl.searchParams.keys(), ...nextUrl.searchParams.keys()]);
     for (const key of keys) {
