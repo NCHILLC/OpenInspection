@@ -581,6 +581,9 @@ export function ItemEditor({
   canInsertCanned={taEntries.length > 0}
   suggestionsOpen={taOpen}
   onOpenSuggestions={() => { setTaQuery(""); setTaOpen(true); notesRef.current?.focus(); }}
+  notesValue={(result.notes as string) || ""}
+  onNotesChange={onNotes}
+  notesRef={notesRef}
  />
  <div className="relative">
  <textarea

@@ -23,7 +23,7 @@
   "app/components/media-studio/PhotoAnnotator.tsx": 692,
   "app/hooks/usePhotoOps.ts": 670,
   "server/lib/messaging/providers/telnyx-compliance.ts": 657,
-  "app/components/editor/ItemEditor.tsx": 639,
+  "app/components/editor/ItemEditor.tsx": 642,
   "app/components/inspection-edit/CompliancePanel.tsx": 638,
   "server/api/auth.ts": 611,
   "app/hooks/useInspection.ts": 600,

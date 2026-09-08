@@ -1,6 +1,8 @@
+import { useRef } from "react";
 import { Button } from "@core/shared-ui";
 import { BUILT_IN_DEFECT_CATEGORIES, type CustomDefectCategory } from "../../lib/custom-defects";
 import { DEFECT_TRADE_OPTIONS, type DefectTrade } from "../../lib/defect-fields";
+import { DictationButton } from "./DictationButton";
 import { m } from "~/paraglide/messages";
 
 export interface CustomDefectFormProps {
@@ -43,6 +45,7 @@ export function CustomDefectForm({
   onCancel,
   onSubmit,
 }: CustomDefectFormProps) {
+  const commentRef = useRef<HTMLTextAreaElement>(null);
   return (
     <div className="p-2.5 rounded-lg border border-dashed border-ih-border-strong space-y-2">
       <input
@@ -53,13 +56,27 @@ export function CustomDefectForm({
         autoFocus
         className="w-full h-9 px-3 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] focus:shadow-ih-focus focus:border-ih-primary outline-none"
       />
-      <textarea
-        value={comment}
-        onChange={(e) => onCommentChange(e.target.value)}
-        placeholder={m.editor_customdefect_narrative_placeholder()}
-        aria-label={m.editor_customdefect_narrative_aria()}
-        className="w-full h-16 px-3 py-2 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
-      />
+      {/* Field eval P1 — dictation. The button sits in the corner rather than a
+          separate toolbar row: this compact form (unlike the item Notes field)
+          has no header row to put one in, so `pr-9` keeps typed text from
+          running under it instead. */}
+      <div className="relative">
+        <textarea
+          ref={commentRef}
+          value={comment}
+          onChange={(e) => onCommentChange(e.target.value)}
+          placeholder={m.editor_customdefect_narrative_placeholder()}
+          aria-label={m.editor_customdefect_narrative_aria()}
+          className="w-full h-16 px-3 py-2 pr-9 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
+        />
+        <DictationButton
+          value={comment}
+          onChange={onCommentChange}
+          targetRef={commentRef}
+          size="sm"
+          className="absolute top-1.5 right-1.5"
+        />
+      </div>
       <div className="flex items-center flex-wrap gap-2">
         <select
           value={category}

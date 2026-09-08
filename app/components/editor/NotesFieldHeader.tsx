@@ -1,5 +1,6 @@
 import { Button } from "@core/shared-ui";
 import { m } from "~/paraglide/messages";
+import { DictationButton } from "./DictationButton";
 
 /** Past this the meter turns bad-toned; the note is not blocked, only flagged. */
 const NOTES_SOFT_LIMIT = 2000;
@@ -15,6 +16,11 @@ export interface NotesFieldHeaderProps {
   suggestionsOpen: boolean;
   /** Open that list and put the caret back in the note. */
   onOpenSuggestions: () => void;
+  /** Field eval P1 — dictation. The note text + setter + the textarea's own
+   *  ref, so the mic button can insert at caret and (no speech engine) focus it. */
+  notesValue: string;
+  onNotesChange: (value: string) => void;
+  notesRef: React.RefObject<HTMLTextAreaElement | null>;
 }
 
 /**
@@ -46,12 +52,16 @@ export function NotesFieldHeader({
   canInsertCanned,
   suggestionsOpen,
   onOpenSuggestions,
+  notesValue,
+  onNotesChange,
+  notesRef,
 }: NotesFieldHeaderProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
       <label htmlFor={fieldId} className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3">
         {m.editor_item_notes_label()}
       </label>
+      <DictationButton value={notesValue} onChange={onNotesChange} targetRef={notesRef} />
       {canInsertCanned && (
         // Same vocabulary as the editor's other dropdown triggers
         // (see CloneLastButton): secondary/sm plus a caret glyph.
