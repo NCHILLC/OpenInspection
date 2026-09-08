@@ -107,7 +107,20 @@ export function DefectFieldsRow({
                     <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">
                         {m.editor_defect_severity_label()}
                     </label>
-                    <div role="radiogroup" aria-label={m.editor_defect_severity_label()} className="flex gap-1.5 flex-wrap">
+                    {/* Equal-width grid, not flex-wrap — field eval P2. Three
+                        categories at their natural widths ("Safety/Major"
+                        beside "Minor") already wrapped to two rows at 375px,
+                        and a tenant's fourth wraps worse. minmax(0,1fr)
+                        columns give every tile the same share of the row
+                        regardless of name length; `truncate` keeps a long
+                        tenant-configured name from clipping the 44px height
+                        instead of wrapping into it. */}
+                    <div
+                        role="radiogroup"
+                        aria-label={m.editor_defect_severity_label()}
+                        className="grid gap-1.5"
+                        style={{ gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))` }}
+                    >
                         {categories.map(c => {
                             const isSelected = c.id === selectedCategory;
                             const color = categoryColor?.get(c.id);
@@ -132,7 +145,7 @@ export function DefectFieldsRow({
                                     }}
                                     // h-11 is the 44px touch floor — this row is used one-handed
                                     // on a phone, which is the surface it was built for.
-                                    className={`h-11 px-3 rounded border text-[16px] font-bold transition-colors ${
+                                    className={`h-11 px-2 rounded border text-[16px] font-bold truncate transition-colors ${
                                         isSelected
                                             ? 'text-ih-fg-inverse border-transparent'
                                             : 'bg-transparent text-ih-fg-3 border-ih-border'

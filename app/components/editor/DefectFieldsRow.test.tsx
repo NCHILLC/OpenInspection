@@ -38,6 +38,33 @@ function renderRow(value: Record<string, unknown>, onChange = vi.fn()) {
   return onChange;
 }
 
+// Field eval P2 — equal-width grid instead of flex-wrap, so three or four
+// tenant categories stay on one row regardless of name length.
+describe("DefectFieldsRow severity grid", () => {
+  it("sizes the grid to the tenant's category count, not a hardcoded number", () => {
+    renderRow({ category: "cat-minor" });
+    const grid = screen.getByRole("radiogroup");
+    expect(grid.style.gridTemplateColumns).toBe("repeat(3, minmax(0, 1fr))");
+  });
+
+  it("tracks a fourth tenant category without wrapping the grid math", () => {
+    const onChange = vi.fn();
+    render(
+      <label>
+        <input type="checkbox" data-testid="inclusion" onChange={() => {}} checked readOnly />
+        <DefectFieldsRow
+          cannedId="d1"
+          value={{ category: "cat-minor" }}
+          locationSuggestions={[]}
+          onChange={onChange}
+          categories={[...CATEGORIES, { id: "cat-custom", name: "Tenant Custom" }]}
+        />
+      </label>,
+    );
+    expect(screen.getByRole("radiogroup").style.gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
+  });
+});
+
 describe("DefectFieldsRow severity", () => {
   it("offers every configured severity as a control", () => {
     renderRow({ category: "cat-minor" });
