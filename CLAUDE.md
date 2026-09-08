@@ -11,7 +11,7 @@ API in-process and delegates page routes to React Router v8 SSR.
 ## Check upstream BEFORE debugging anything
 
 **Before investigating any error, bug, failing test or red gate: look for the
-fix upstream first.** This fork sits 250+ commits behind a fast-moving upstream,
+fix upstream first.** This fork tracks a fast-moving upstream (232 commits merged on 2026-09-07 alone),
 so the odds that a failure has already been diagnosed and fixed there are high,
 and re-deriving a fix costs far more than the lookup does. Not optional, and not
 a judgement call about how obvious the symptom looks.

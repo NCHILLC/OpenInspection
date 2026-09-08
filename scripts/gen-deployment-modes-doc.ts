@@ -51,14 +51,12 @@ const DESCRIPTIONS: Record<keyof DeploymentProfile, string> = {
         'Whether the platform picks the video backend. Standalone operators set `videoMode` themselves, which is why the self-host settings form exists and the saas one refuses to save.',
     hasManagedCompliance:
         'A platform-operated compliance path (managed SMS 10DLC brand/campaign filing) exists. Absent in standalone — nobody can file on your behalf.',
-    hasContentMarketplace:
-        'The content marketplace surface exists. Standalone 404s the browse route rather than rendering an empty shelf: the catalogue is curated first-party and nothing can reach it.',
     qboAppManaged:
         'The platform supplies the Intuit app tenants connect through, so nobody is asked for a Client ID. Standalone brings its own: Intuit matches a redirect URI byte for byte and a self-hosted deploy answers on its own domain, so the platform app cannot work there — which is why the credential form, including `QBO_ENV`, renders only in standalone.',
     tenantRecordOwnedByPortal:
         'Whether a platform stores the authoritative tenant record and this worker reads a projection of it. Decides which admin provider is constructed; in standalone this deployment owns the row outright.',
     hasPortalIntegrationApi:
-        'Whether the portal machine-to-machine surface (`/api/integration/*`) is mounted. Standalone 404s the whole prefix rather than answering on an API nobody can authenticate to.',
+        'Whether the portal machine-to-machine surface (`/api/platform/*`) is mounted. Standalone 404s the whole prefix rather than answering on an API nobody can authenticate to.',
     hasAssistedMigration:
         'An import whose file no adapter can read may be handed to a support team. Absent in standalone, where the file is refused before it is stored rather than kept for nobody.',
     importMaxCsvBytes:
@@ -105,8 +103,12 @@ function cell(value: unknown): string {
  * to introduce, which is the leak the gate exists to catch.
  */
 const ROUTE_ALLOW: Partial<Record<keyof DeploymentProfile, string>> = {
-    mcpApiRoute:
-        "this cell is the VALUE of this engine's own mcpApiRoute setting, not a link to a hosted screen",
+    // Empty on purpose. `mcpApiRoute` lived here while its saas value was
+    // `/company/`, which the gate reads as a hosted-service path. The mount is
+    // `/mcp` in both modes now, so the exemption has nothing left to exempt —
+    // and a line-scoped allow left behind on a live row silently exempts
+    // whatever VALUE that row takes next, which is the leak the gate exists
+    // to catch.
 };
 
 export function renderModesTable(): string {

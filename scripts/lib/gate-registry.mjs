@@ -35,6 +35,18 @@ export const SCRIPT_GATES = [
     // -digit milliseconds, the cheapest entry in this list.
     { key: 'chromerecord', label: 'Chrome-record judge self-test', script: 'check-chrome-record.mjs', fix: 'npm run lint:chrome-record', rung: PRECOMMIT, args: ['--self-test'] },
     { key: 'filesize', label: 'Large-file ratchet', script: 'check-file-size.mjs', fix: 'npm run lint:filesize', rung: PRECOMMIT },
+    // PRECOMMIT, not PUSH. What this catches IS a keystroke: someone adds a key
+    // to TemplateItem and does not add it to the five silent mirrors -- the ones
+    // that strip it, never serialize it, or simply do not read it, all without
+    // an error. The damage lands the moment that commit exists, and the author
+    // is the only person who will ever know which of the seven they meant to
+    // change. It reads six files with six parsers; cost is milliseconds.
+    //
+    // It was written already red: `number` was being dropped by two mirrors
+    // before this gate existed. It is registered here, not when it was written,
+    // because a gate that arrives red forces every commit in between to choose
+    // between a failing hook and --no-verify.
+    { key: 'itemkeyparity', label: 'Template item-key parity', script: 'check-item-key-parity.mjs', fix: 'npm run lint:item-key-parity', rung: PRECOMMIT },
     { key: 'tz', label: 'Calendar timezone-safety', script: 'check-tz-safety.mjs', fix: 'npm run lint:tz', rung: PRECOMMIT },
     { key: 'idempotency', label: 'Mutating-route retry safety', script: 'check-idempotency-coverage.mjs', fix: 'npm run lint:idempotency', rung: PRECOMMIT },
     // PRECOMMIT, and the rung is the point. D1 stops at 100 columns per table,
@@ -62,6 +74,23 @@ export const SCRIPT_GATES = [
     // has pulled yet costs nothing, renaming one after it lands costs everyone a
     // merge. An fs walk of ~2765 files, no parsing; among the cheapest here.
     { key: 'extcollide', label: 'Extension collisions (files invisible to tsc)', script: 'check-extension-collisions.mjs', fix: 'npm run lint:ext-collisions', rung: PRECOMMIT },
+    // Pre-commit, and for the same reason as the gate above it: what it catches
+    // is free to fix while the line is still being typed and annoying to find
+    // later. A raw NUL byte makes the whole file BINARY to git grep, ripgrep and
+    // every review diff -- they answer "Binary file ... matches" with no line
+    // number -- while compiling and behaving exactly as intended, so nothing
+    // else here reports it. Three files had one, in three unrelated subsystems,
+    // and the oldest had been unreadable that way for months. A `git ls-files`
+    // walk with an indexOf per file; among the cheapest gates in this list.
+    { key: 'rawnul', label: 'Raw NUL bytes (files invisible to git grep)', script: 'check-raw-nul.mjs', fix: 'npm run lint:raw-nul', rung: PRECOMMIT },
+    // The CR twin of the gate above, at PRECOMMIT for the same reason: one tool
+    // writing one file creates it, and it is free to undo in that commit and a
+    // whole-file merge conflict on somebody else's branch later. Not redundant
+    // with `.gitattributes` -- `text=auto` calls a LONE-CR file binary and so
+    // declines to normalise the worst case. Why, and the ten files it was
+    // already true of, are in check-line-endings.mjs's header. Cost measured
+    // against `rawnul` beside it: 310 ms vs 272 ms over 4002 files.
+    { key: 'eol', label: 'LF line endings (no CRLF, no lone CR)', script: 'check-line-endings.mjs', fix: 'npm run lint:eol', rung: PRECOMMIT },
     // Belongs at pre-commit rather than CI: what it catches is a CAPABILITY
     // being added -- a money column, a money field on the inspection record, a
     // money input on a new screen. By the time CI sees one it is written and
@@ -138,6 +167,17 @@ export const SCRIPT_GATES = [
     // plan that builds a primitive before its caller, and a gate that is red
     // for a legitimate reason all week is a gate people learn to pass with
     // --no-verify. ~10s: one knip pass over the production entry graph.
+    // PUSH, not PRECOMMIT: it reads node_modules, which is environment state
+    // rather than anything a commit stages. What it guards is the one kind of
+    // dependency change that leaves NO trace where anyone looks -- `npm ls`,
+    // package.json and the lockfile all read 4.129.0 whether the patch applied
+    // or not. Without it, a lost postinstall silently restores the bug that
+    // failed this repository's e2e job three times out of four.
+    // ⚠️ `fix` is the DIAGNOSTIC, not the remedy: the remedy is `npm install`,
+    // which re-runs patch-package. The registry requires a real npm script here
+    // and the lock is right to -- a fix line naming a command nobody can run is
+    // worse than none. The script itself prints what to do.
+    { key: 'wranglerpatch', label: 'wrangler patch present (workers-sdk#15317)', script: 'check-wrangler-patch.mjs', fix: 'npm run lint:wrangler-patch', rung: PUSH },
     { key: 'unwired', label: 'lint:unwired', script: 'check-unwired.mjs', fix: 'npm run lint:unwired', rung: PUSH },
     { key: 'erasure', label: 'lint:erasure', script: 'check-erasure-manifest.mjs', fix: 'npm run lint:erasure', rung: PUSH },
     { key: 'retention', label: 'lint:retention', script: 'check-retention-manifest.mjs', fix: 'npm run lint:retention', rung: PUSH },
@@ -175,6 +215,20 @@ export const SCRIPT_GATES = [
     { key: 'testimports', label: 'lint:test-imports', script: 'check-test-imports.mjs', fix: 'npm run lint:test-imports', rung: PUSH },
     { key: 'deadcode', label: 'lint:deadcode', script: 'check-deadcode.mjs', fix: 'npm run lint:deadcode', rung: PUSH },
     { key: 'timestamps', label: 'lint:timestamps', script: 'check-timestamps.mjs', fix: 'npm run lint:timestamps', rung: PUSH },
+    // PUSH, not PRECOMMIT: it walks 778 files under app/, too much to charge
+    // every commit for drift that only matters once work leaves the machine.
+    // It protects a measurement -- a render fans out into 15 in-process API
+    // calls that each re-enter the whole global chain, so a new app.use('*')
+    // costs 15x, not 1x. Its third check is not a ratchet but the security
+    // invariant: the request scope must never reach toApi.
+    { key: 'middlewarebudget', label: 'lint:middleware-budget', script: 'check-middleware-budget.mjs', fix: 'npm run lint:middleware-budget', rung: PUSH },
+    // PUSH, same reasoning. Separate from the middleware budget above because it
+    // measures a different thing: not how much work one call does, but how many
+    // calls a loader waits for IN SEQUENCE. Round-trip depth, not count -- the
+    // inspection loader once awaited fifteen calls one at a time and spent 86ms
+    // of a 156ms render waiting on them. Nothing else can see that: it is not a
+    // type error, not a test failure, and eslint has no rule for it.
+    { key: 'loaderawaits', label: 'lint:loader-awaits', script: 'check-loader-awaits.mjs', fix: 'npm run lint:loader-awaits', rung: PUSH },
     { key: 'i18n', label: 'lint:i18n', script: 'check-i18n.mjs', fix: 'npm run lint:i18n', rung: PUSH },
     { key: 'i18ncatalog', label: 'lint:i18n-catalog', script: 'check-i18n-catalog.mjs', fix: 'npm run lint:i18n-catalog', rung: PUSH },
     { key: 'i18nglossary', label: 'lint:i18n-glossary', script: 'check-i18n-glossary.mjs', fix: 'npm run lint:i18n-glossary', rung: PUSH },
@@ -193,6 +247,18 @@ export const SCRIPT_GATES = [
     // commits, and the note above is explicit that a new pre-commit row is a
     // cost decision for every commit in the repo and belongs in its own change.
     { key: 'cronbudget', label: 'lint:cron-budget', script: 'check-cron-budget.mjs', fix: 'npm run lint:cron-budget', rung: PUSH },
+    // Same rung and the same reasoning as the row above: the bundled fixtures
+    // are not something anyone edits between two ordinary commits, and a new
+    // PRECOMMIT row is a cost every commit in the repo pays. What it catches --
+    // a fixture changed without bumping STARTER_CONTENT_VERSION, so existing
+    // workspaces never receive it -- is silent and has no other detector.
+    // `fix` is the bare script, not the `-- --update` form, because this field
+    // is also the registry's KEY: check-gate-registry.mjs strips `npm run ` and
+    // matches the remainder against package.json, so a fix carrying arguments
+    // registers nothing and leaves the gate reported as running on no rung.
+    // How to record a new baseline is in the gate's own failure output, which
+    // is where someone reading a red run is already looking.
+    { key: 'contentversion', label: 'lint:content-version', script: 'check-content-version.mjs', fix: 'npm run lint:content-version', rung: PUSH },
     // NOTE: there is no `docsmarkers` row any more. The user-guide prose is
     // published from the hosted docs site and its marker gate went with it.
     // `tests/docs-shots/` here still PRODUCES the captures, but no markdown in
@@ -273,7 +339,72 @@ export const SCRIPT_GATES = [
     // and costs milliseconds; what it protects is a document somebody files
     // with a government agency, and its own output states the one thing it
     // cannot check (that a person read the form).
+    // PUSH, beside the fidelity gate and for the same reason: a form revision is
+    // published by hand, weeks apart, so there is no stream of commits for a
+    // pre-commit rung to watch. What it protects is narrow and specific -- an
+    // answer this software accepts that the authority's page has nowhere to
+    // record. Measured on the Citizens four-point: `electrical.wiring_types`
+    // offers `other`, the page prints a bare "Other", and an inspector who
+    // picks it sends an insurer a lone X.
+    // ⚠️ It reads 0 options today, because TX TREC REI 7-6 has no `other` at
+    // all, and it PRINTS that zero rather than a tick.
+    { key: 'statutoryanswerable', label: 'lint:statutory-answerable', script: 'check-statutory-answerable.mjs', fix: 'npm run lint:statutory-answerable', rung: PUSH },
     { key: 'statutoryfidelity', label: 'lint:statutory-fidelity', script: 'check-statutory-fidelity.mjs', fix: 'npm run lint:statutory-fidelity', rung: PUSH },
+    // Same rung as `statutoryfidelity` beside it and for the same reason: its
+    // subject is published by hand, weeks or months apart, so there is no stream
+    // of commits for a pre-commit rung to watch. It reads one directory and one
+    // baseline file.
+    //
+    // What it protects is narrower than the fidelity gate and harder to see: a
+    // revision REMOVED from the catalogue takes with it the ability to re-issue
+    // every report already produced from it, and those reports are official
+    // documents already in other people's hands. Withdrawing a revision is
+    // allowed and keeps this gate green — the forbidden move is disappearing.
+    { key: 'statutoryadditive', label: 'lint:statutory-additive', script: 'check-statutory-versions-additive.mjs', fix: 'npm run lint:statutory-additive', rung: PUSH },
+    // PUSH rather than PRECOMMIT, and the argument runs the same way as
+    // `consentsubjects` above rather than the price/tracking family. What this
+    // catches is not a keystroke: it is a WRITE PATH to the marketplace
+    // catalogue appearing somewhere other than the seeder, and the commit that
+    // creates the danger is usually not the commit that creates the write — a
+    // perfectly ordinary "let an admin edit a catalogue entry" endpoint is what
+    // disarms the relaxed statutory import validator, and neither commit
+    // mentions the other. PUSH is the first rung that sees the whole change.
+    // It reads ~1,039 server sources with one regex and parses the payload of
+    // the handful that name the table.
+    { key: 'cataloguewrites', label: 'lint:catalogue-writes', script: 'check-catalogue-write-points.mjs', fix: 'npm run lint:catalogue-writes', rung: PUSH },
+    // Green since the un-import path landed: 6/6 halves across three kinds. It
+    // arrived RED on purpose — neither existing kind had a second half, which
+    // was a gap already in the tree that nothing could see — and this note used
+    // to say so. Left as history rather than deleted, because the next kind
+    // added will turn it red again and that is the gate working.
+    //
+    // ⚠️ It used to check only that the BRANCHES existed, and so reported 6/6
+    // green over an `uninstall()` with no route, no action and no button — the
+    // whole of the commit that turned it green. It now also requires each half
+    // to be called from server/api or server/portal. That is its honest limit: a
+    // request can reach the half, not a person — a route with no button still
+    // passes.
+    //
+    // PUSH rather than PRECOMMIT for the ordinary reason and one extra. The
+    // ordinary one: a catalogue kind is added in a change, not a keystroke, and
+    // the two halves are routinely written in different commits — a per-commit
+    // rung would go red on the first of the pair and blame the wrong change.
+    // The extra one: while it is legitimately red, PUSH is the rung where that
+    // is visible without standing between every commit and the person making
+    // it, which is how a red gate turns into a habit of --no-verify.
+    { key: 'marketplacekindhalves', label: 'lint:marketplace-kind-halves', script: 'check-marketplace-kind-halves.mjs', fix: 'npm run lint:marketplace-kind-halves', rung: PUSH },
+    // The URL taxonomy: webhooks at the top level, the M2M seam at
+    // /api/platform/, no /company/ here. PRECOMMIT because it reads three files
+    // and a mount path is wrong the moment it is typed -- there is no
+    // half-finished state for it to blame the wrong commit for.
+    { key: 'urltaxonomy', label: 'lint:url-taxonomy', script: 'check-url-taxonomy.mjs', fix: 'npm run lint:url-taxonomy', rung: PRECOMMIT },
+    // Entry-dispatch parity, at PUSH for `marketplacekindhalves`'s reason: it
+    // checks that TWO files agree, and the Hono mount and the entry's forward
+    // are routinely written in different commits. Worth having because the
+    // failure is silent -- an unforwarded prefix reaches React Router and 404s,
+    // and unit tests call the handler directly, so nothing else can see it.
+    // Registering it found a forward dead since the single-worker migration.
+    { key: 'routedispatch', label: 'lint:route-dispatch', script: 'check-route-dispatch-parity.mjs', fix: 'npm run lint:route-dispatch', rung: PUSH },
 ];
 
 export const DUP_GATE = { key: 'dup', label: 'Duplicate-code ceiling', fix: 'npm run lint:dup', rung: PRECOMMIT };
@@ -295,4 +426,5 @@ export const UNREGISTERED = new Map([
     ['lint:eslint', 'eslint keeps its own process — it needs the type-aware program and a 12 GB heap, which is not something to import into a shared runner'],
     ['lint:advisories', 'queries the network (npm audit), so it cannot run at a rung that must work offline'],
     ['verify:real-corpus', 'reads real vendor exports that are NOT in this repository and must never be. A release-time manual rung run by somebody holding the private corpus: CI here runs on a public repository and cannot hold credentials for private material. Listed rather than omitted so that its absence from every rung is a recorded decision instead of an oversight'],
+    ['verify:statutory-render', 'renders a statutory field map onto the AUTHORITY\'S own published PDF, which is that agency\'s document and is not in this repository. Same rung and same reason as verify:real-corpus above: a release-time manual check run by whoever holds the forms, driven by STATUTORY_PDF_DIR, which no CI job here can be given. It is what nothing else in the subsystem can do — every other check is satisfiable by a map and a test that agree with each other about a form neither has opened'],
 ]);

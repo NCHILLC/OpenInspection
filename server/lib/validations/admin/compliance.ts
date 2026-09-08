@@ -82,6 +82,16 @@ export const InviteMemberSchema = z.object({
     // TeamService stores the diff (or null when nothing differs) and it is
     // replayed onto the new users row at accept time.
     permissionOverrides: capabilityToggleMap().optional().openapi({ example: { publish: false } }).describe('Sparse capability override map for the invited member'),
+    /**
+     * Whether to email the invitation. DEFAULTS TO TRUE, so a caller that does
+     * not mention it behaves exactly as before.
+     *
+     * `false` creates the invite and sends nothing. That is only usable because
+     * the response carries `inviteLink` and the pending row exposes the same
+     * link to copy — an invitation nobody can reach is not a quieter invitation,
+     * it is a broken one.
+     */
+    notify: z.boolean().default(true).openapi({ example: true }).describe('Email the invitation. False creates it silently; deliver the returned inviteLink yourself.'),
 }).openapi('InviteMember');
 
 /**
@@ -229,6 +239,10 @@ export const TeamMembersResponseSchema = createApiResponseSchema(z.object({
         // names come from TOGGLEABLE, so read and write describe one set.
         permissionOverrides: capabilityToggleMap().nullable().optional()
             .describe("Capability toggles that differ from this member's role template, or null when they match it exactly."),
+        // The FLAG only. Never the secret and never the recovery-code hashes:
+        // this list is readable by every inspector, and the page needs exactly
+        // one bit — whether there is a second factor for an owner to clear.
+        totpEnabled: z.boolean().describe('Whether this member has two-factor authentication enrolled. An owner can clear it from the team page when they have lost both their authenticator and their recovery codes.'),
         createdAt: z.string().describe('TODO describe createdAt field for the OpenInspection MCP integration'),
     })).describe('TODO describe members field for the OpenInspection MCP integration'),
     invites: z.array(z.object({
@@ -237,6 +251,15 @@ export const TeamMembersResponseSchema = createApiResponseSchema(z.object({
         role: z.string().describe('TODO describe role field for the OpenInspection MCP integration'),
         status: z.string().describe('TODO describe status field for the OpenInspection MCP integration'),
         expiresAt: z.string().describe('TODO describe expiresAt field for the OpenInspection MCP integration'),
+        // The SAME string the invitation email carries, built from the same
+        // deployment base URL. It is here rather than composed by the caller
+        // because a client that pastes its own origin in front of the token
+        // produces a second, different URL for one invitation — and on any
+        // deployment reached at an address other than its configured base
+        // (a proxy, a preview host, a custom domain) that second URL is the
+        // wrong one. `id` above already IS the token, so this exposes nothing
+        // the response did not already carry.
+        inviteLink: z.string().describe('Absolute accept URL for this invitation — identical to the one emailed.'),
     })).describe('TODO describe invites field for the OpenInspection MCP integration'),
 })).openapi('TeamMembersResponse');
 

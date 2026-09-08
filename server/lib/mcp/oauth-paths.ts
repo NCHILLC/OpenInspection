@@ -31,8 +31,8 @@ const OAUTH_DISCOVERY_PREFIX = '/.well-known/oauth';
  * True when `pathname` belongs to the MCP/OAuth surface and the request
  * therefore needs the (heavy, lazily loaded) provider graph.
  *
- * `apiRoute` is `profile.mcpApiRoute`: '/mcp' standalone, '/company/' in SaaS,
- * where the real endpoint is /company/{slug}/mcp. Both the route itself and
+ * `apiRoute` is `profile.mcpApiRoute`, '/mcp' in both modes; SaaS serves its
+ * per-workspace endpoints beneath it as /mcp/{slug}. Both the route itself and
  * anything beneath it count — OAuthProvider treats the whole subtree as its
  * API surface.
  */
