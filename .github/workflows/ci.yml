@@ -61,85 +61,40 @@ permissions:
   contents: read
 
 jobs:
-  # ── Type checking ────────────────────────────────────────────────────────
-  # ONE job, not two. This was split when app and api were two independent tsc
-  # programs and together formed the longest step in the old chain. They are no
-  # longer independent: tsconfig.api.json is a composite project that
-  # tsconfig.json references, so `type-check:app` builds api first and reports
-  # its errors. A second job was re-compiling the same project for the same
-  # answer — see the note below where it used to be.
-  typecheck-app:
-    name: type-check (app)
-    runs-on: ubuntu-latest
-    # 30, not 15. This job measured 14m45s and 15m23s on consecutive runs
-    # against a 15-minute ceiling — it was passing by seconds and then stopped.
-    # A private repo gets a 2-core/8GB runner where the public upstream this
-    # workflow was tuned on gets 4-core/16GB, so every figure recorded at the
-    # top of this file (type-check 337s) is roughly a third of what it costs
-    # here. Raised to a ceiling that reflects the machine actually running it.
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v5
-        with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v5
-        with: { node-version: 22.22.x, cache: npm }
-      - run: npm ci
-      # server/generated/version.ts is git-ignored and produced by the build;
-      # type-check imports it, so stamp it on a fresh checkout.
-      - run: npm run gen-version
-      # Keyed on the compiler's INPUTS, so a hit can only ever restore output
-      # that those exact inputs produced — unlike a build-info cache, there is no
-      # staleness to reason about. The stamp inside app/paraglide comes back with
-      # it, so the script below sees "unchanged" and skips a ~66s compile.
-      - uses: actions/cache@v4
-        with:
-          path: app/paraglide
-          key: paraglide-${{ hashFiles('messages/**', 'project.inlang/**') }}
-      - run: npm run i18n:compile:cached
-      # Same shape as the paraglide cache above, and for the same reason: the
-      # output is a pure function of the route TREE, so a key built from those
-      # inputs can only restore what they produced. Five jobs need these types
-      # and every one of them was paying the full ~60s generate — five runner
-      # minutes per CI run for identical output. Hashing the route file bodies
-      # over-invalidates (editing a loader cannot change the generated types)
-      # but never under-invalidates, which is the safe direction for a cache.
-      - uses: actions/cache@v4
-        with:
-          path: .react-router/types
-          key: rr-typegen-${{ hashFiles('app/routes.ts', 'app/routes/**', 'react-router.config.ts', 'package-lock.json') }}
-      - run: npx react-router typegen
-      - run: npm run type-check:app
-      # Also HERE rather than in its own job, and for the same arithmetic as
-      # `test:types` below. `tsconfig.tests.json` is the program for
-      # `tests/unit/**` + `tests/workers/**` — 785 files that no tsc program
-      # compiled at all before it existed. It REFERENCES the api project rather
-      # than joining it, so the `tsc -b` on the line above has already built
-      # everything it consumes: what is left is one up-to-date check plus the
-      # specs themselves.
-      #
-      # ⚠️ Do NOT move this into `tsconfig.api.json`'s include instead. That
-      # project is composite and is a reference of the app program, so
-      # `type-check:app` would build those 785 files FIRST — every pure-frontend
-      # commit would pay for the spec tree, and so would this job's first step.
-      - run: npm run type-check:tests
-      # Runs HERE rather than in its own job. `test:types` only checks four
-      # `*.spec-d.ts` files, but its tsconfig references the api project, and
-      # `tsc -b` has already built that one line above — so this costs ~6s
-      # instead of the ~4m36s a fresh runner spent rebuilding the same program.
-      - run: npm run test:types
-
-  # There is deliberately NO separate `type-check (api)` job. Since the two
-  # programs became TypeScript project references, `type-check:app` IS
-  # `tsc -b tsconfig.json`, which builds tsconfig.api.json first and reports its
-  # errors — so a second job re-compiled the same project for the same answer.
+  # ── Type checking runs on YOUR MACHINE, not here ─────────────────────────
+  # There was a `type-check (app)` job here, running type-check:app,
+  # type-check:tests and test:types. Removed 2026-09-07. The instinct on reading
+  # this is to add it back, so the reasoning stays:
   #
-  # Verified rather than reasoned: a type error planted in `server/api/admin.ts`,
-  # a file the app program does not import, is reported by `type-check:app` as
-  # `server/api/admin.ts(53,7): error TS2322` with exit 2.
+  # A type error CANNOT reach production. `npm run deploy` builds first, and a
+  # build fails on one, in front of the person deploying. Pre-commit already
+  # type-checks every commit. This job was the third place computing the same
+  # deterministic answer — and the only one of the three that could not stop
+  # anything, since branch protection is unenforceable on a private repo under
+  # GitHub Free.
   #
-  # `npm run type-check:api` still exists and is still the right local loop for
-  # server-only work — pre-commit's api tier uses it. What was removed is the
-  # duplicate CI runner, not the check.
+  # It was also the most expensive job on a runner that CANNOT HOLD IT, and that
+  # is measured rather than argued. On the merged tree, `type-check:app`:
+  #
+  #     6144 cap  → OOM after 693s, average mu = 0.290 (71% of its time in GC)
+  #     8192 cap  → OOM, exit 134, before reporting a single type error
+  #
+  # A private repo's runner has 8 GB TOTAL, so 8192 is already the whole machine
+  # with nothing left for the OS. Upstream raised this to 12288 in 572506c7
+  # ("needs more than 8 GB now") — correct, and correct on the 4-core/16GB runner
+  # a PUBLIC repo gets. There is no value that both fits 8 GB and compiles this
+  # program. Lowering it was tried here and is what produced the two lines above.
+  #
+  # Read that as the plain fact it is: this check cannot run on this plan's
+  # hardware at all. It is not a tuning problem.
+  #
+  # `test:types` is NOT orphaned: it is now the last step of `npm run
+  # type-check`, where the api program it references is already built. In CI it
+  # cost a ~4m36s rebuild for a ~6s check.
+  #
+  # The budget this frees goes to failures that are SILENT and reach the field —
+  # the offline photo queue, the editor's revalidation — rather than to one that
+  # fails loudly at build time.
 
   # ── Lint ─────────────────────────────────────────────────────────────────
   # eslint is type-aware here (unlike pre-commit, which sets ESLINT_FAST and
@@ -299,6 +254,13 @@ jobs:
   test-unit:
     name: API unit tests (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
+    # Push to main only. The eight unit shards plus the two e2e legs are ~54 of
+    # the ~66 runner-minutes a full run costs, and most runs are a PR being
+    # revised — 32 runs on 2026-09-07 exhausted a month of the 2,000 free
+    # private-repo minutes in a day. They still gate what SHIPS, because the
+    # merge commit is a push to main. `verify` allows these three to skip; it
+    # names the always-run jobs explicitly instead.
+    if: github.event_name != 'pull_request'
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -357,6 +319,8 @@ jobs:
   test-web:
     name: web unit tests (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
+    # Push to main only — see the note on test-unit.
+    if: github.event_name != 'pull_request'
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -419,7 +383,6 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
-      - typecheck-app
       - lint-eslint
       - lint-gates
       - test-unit
@@ -447,11 +410,23 @@ jobs:
       # workflow file issue" — which looks nothing like a syntax error. Local
       # `yaml.safe_load` does not catch it either: that validates YAML, not
       # Actions expressions. This is how the first version of this file broke.
+      # `skipped` is no longer a blanket failure, because three jobs are now
+      # SUPPOSED to skip on a pull request — test-unit, test-web and e2e run on
+      # push to main only (see their `if:`). The original blanket test was right
+      # for its time and its reason still holds: a job that skips silently must
+      # not read as green. So the always-run jobs are named explicitly and must
+      # be `success`; only failure and cancellation are caught wholesale.
+      #
+      # Add a job to this workflow ⇒ add it here too, or it can vanish unnoticed.
       - name: Fail if any check did not succeed
         if: >-
           contains(needs.*.result, 'failure')
           || contains(needs.*.result, 'cancelled')
-          || contains(needs.*.result, 'skipped')
+          || needs.lint-eslint.result != 'success'
+          || needs.lint-gates.result != 'success'
+          || needs.test-contract.result != 'success'
+          || needs.test-workers.result != 'success'
+          || needs.build.result != 'success'
         run: |
           echo "::error::One or more checks did not succeed."
           exit 1
@@ -485,6 +460,9 @@ jobs:
   e2e:
     name: e2e (${{ matrix.suite.label }})
     runs-on: ubuntu-latest
+    # Push to main only — see the note on test-unit. This is the suite that
+    # caught the revalidation bug, so it gates the merge commit, not the PR.
+    if: github.event_name != 'pull_request'
     timeout-minutes: 25
     strategy:
       fail-fast: false
