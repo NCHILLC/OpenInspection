@@ -43,6 +43,7 @@ export {
     marketplaceLibraries,
     tenantLibraryImports,
     tenantMarketplaceImportHistory,
+    MARKETPLACE_KINDS,
 } from './marketplace';
 export { inspectionMessages } from './message';
 export type { MessageAttachment } from './message';
@@ -130,3 +131,14 @@ export { statutoryFormSightings } from './statutory-form-sightings';
 export type {
     StatutoryFormSightingRow, NewStatutoryFormSightingRow,
 } from './statutory-form-sightings';
+
+// One inspection's answers to one statutory form — keyed by form as well as
+// inspection, because a single visit commonly produces more than one form.
+export * from './inspection/statutory';
+
+// One row per statutory form actually produced. Without it "which reports were
+// produced with revision X" has no answer, and a recall is impossible.
+export { statutoryFormProductions } from './statutory-productions';
+export type {
+    StatutoryFormProductionRow, NewStatutoryFormProductionRow,
+} from './statutory-productions';

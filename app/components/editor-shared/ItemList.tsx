@@ -6,7 +6,12 @@ import { useSortableReorder } from "./useSortableReorder";
 import { InlineRename } from "./InlineRename";
 import { findingKey } from "~/hooks/findings/shared";
 import { hasFlaggedComment } from "./item-tab-projections";
+import type { EditorGroup } from "~/lib/editor/statutory-groups";
 import { m } from "~/paraglide/messages";
+import { itemDepths, outlineNumbers, subtreeOf, MAX_ITEM_DEPTH } from "../../../server/lib/template-hierarchy";
+import { useItemRowMenu } from "~/hooks/useItemRowMenu";
+import { ItemRowIndent } from "./ItemRowIndent";
+import { ItemSubtreeDeleteModal, type PendingSubtreeDelete } from "./ItemSubtreeDeleteModal";
 
 // Handle + ⋯ occupy reserved flex slots so they never cover the item number,
 // label, or rating dot. Desktop reveals on hover; touch always shows them.
@@ -14,7 +19,15 @@ const REVEAL = "invisible group-hover:visible focus-within:visible [@media(hover
 
 interface SharedItemListProps {
   mode: EditorMode;
-  items: Array<{ id: string; label: string; type: string }>;
+  /**
+   * The section's items, in the order they are printed.
+   *
+   * `parentId` is optional and every reader fails open to top level, so a
+   * caller that has never heard of nesting keeps working byte-for-byte. The
+   * array stays one-dimensional: its order IS the pre-order walk of the tree,
+   * which is what lets this list keep rendering one row per entry.
+   */
+  items: Array<{ id: string; label: string; type: string; parentId?: string | null }>;
   sectionId: string;
   activeItemId: string | null;
   onSelect: (id: string) => void;
@@ -32,6 +45,17 @@ interface SharedItemListProps {
   onBatchRange?: (fromId: string, toId: string) => void;
   /** D8 structural editing — when provided, a per-item ⋯ menu + "+ Add item" render. */
   onAddItem?: () => void;
+  /** Add an item nested under `parentItemId`. Absent = the gesture is not offered. */
+  onAddSubItem?: (parentItemId: string) => void;
+  /**
+   * Ask before a delete that would take rows the reader cannot see with it.
+   *
+   * Opt-in, because a caller may already own a confirmation: the inspection
+   * editor routes every structural delete through StructureDeleteModal, which
+   * counts ratings, notes and photos too. Two modals for one click is worse
+   * than one.
+   */
+  confirmSubtreeDelete?: boolean;
   onDuplicateItem?: (itemId: string) => void;
   onDeleteItem?: (itemId: string) => void;
   onMoveItem?: (itemId: string, dir: -1 | 1) => void;
@@ -39,6 +63,55 @@ interface SharedItemListProps {
   onReorderItem?: (fromId: string, toId: string) => void;
   /** Rename an item inline (double-click / F2 / ⋯ menu). */
   onRenameItem?: (itemId: string, label: string) => void;
+  /**
+   * Repeated blocks the authority's form prints, when this template declares one.
+   *
+   * Absent is the ordinary case and changes nothing -- which is what keeps the
+   * template author's list and every narrative template exactly as they were.
+   * Present, the run of items stops being flat: each slot is announced by the
+   * name the FORM prints over it, and `+ Add item` gives way to an add that
+   * knows what it is adding. A free item would reach no binding, so whatever
+   * were typed into it would never arrive on the form and nothing would say so.
+   */
+  groups?: readonly EditorGroup[];
+  /** Add another instance of a group. Called with the group's id. */
+  onAddGroupInstance?: (groupId: string) => void;
+}
+
+/**
+ * itemId -> the slot heading to print above it, and the group it closes.
+ *
+ * Position is decided by where the items SIT IN THE LIST, never by the order the
+ * declaration happens to list a slot's fields. A declaration's bindings are a
+ * map; their insertion order says nothing about the section. Anchoring to "the
+ * slot's first field as written" puts the heading one row off, and one row off
+ * is a heading that claims the panel above it is the Second one. Found in the
+ * browser, not by a fixture whose bindings happened to be in a helpful order.
+ */
+function slotHeadings(
+  groups: readonly EditorGroup[] | undefined,
+  items: ReadonlyArray<{ id: string }>,
+) {
+  const heading = new Map<string, { slotLabel: string }>();
+  const closes = new Map<string, EditorGroup>();
+  const position = new Map(items.map((item, i) => [item.id, i]));
+  const earliest = (ids: string[]) =>
+    ids.filter((id) => position.has(id))
+       .sort((a, b) => (position.get(a) as number) - (position.get(b) as number));
+
+  for (const group of groups ?? []) {
+    let lastPresent: string | null = null;
+    for (const slot of group.slots) {
+      const present = earliest(Object.values(slot.fields));
+      if (present.length === 0) continue;
+      heading.set(present[0], { slotLabel: slot.label });
+      lastPresent = present[present.length - 1];
+    }
+    // Only the LAST printed slot closes the group: the add belongs after every
+    // slot the form prints, not after each one.
+    if (lastPresent) closes.set(lastPresent, group);
+  }
+  return { heading, closes };
 }
 
 /** Map rating to dot color for the item list */
@@ -61,27 +134,34 @@ export function ItemList({
   onBatchToggle,
   onBatchRange,
   onAddItem,
+  onAddSubItem,
+  confirmSubtreeDelete,
   onDuplicateItem,
   onDeleteItem,
   onMoveItem,
   onReorderItem,
   onRenameItem,
   activeUnitId = null,
+  groups,
+  onAddGroupInstance,
 }: SharedItemListProps) {
-  const lastClickedRef = useRef<string | null>(null);
-  const [menuItemId, setMenuItemId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  // The ⋯ menu is rendered in a portal at this viewport anchor so the
-  // overflow-y-auto item column never clips it (the last item's menu opens
-  // downward past the scroll container's edge).
-  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
-  const openItemMenu = (itemId: string, el: HTMLElement) => {
-    if (menuItemId === itemId) { setMenuItemId(null); setMenuAnchor(null); return; }
-    const r = el.getBoundingClientRect();
-    setMenuItemId(itemId);
-    setMenuAnchor({ x: r.right, y: r.bottom });
+  const { heading: slotHeading, closes: groupClosedBy } = slotHeadings(groups, items);
+  const grouped = Boolean(groups?.length);
+  // Both derived, never stored. `itemDepths` is also where the dangling-parent
+  // and cycle defences live, so this list inherits them for free.
+  const depths = itemDepths(items);
+  const outlines = outlineNumbers(items);
+  const [pendingDelete, setPendingDelete] = useState<PendingSubtreeDelete | null>(null);
+  const requestDelete = (id: string, label: string) => {
+    // Only ASK when something invisible would go too. A confirm on every delete
+    // makes the ordinary case worse in order to protect the rare one.
+    const count = subtreeOf(items, id).length - 1;
+    if (!confirmSubtreeDelete || count === 0) { onDeleteItem?.(id); return; }
+    setPendingDelete({ id, label, count });
   };
-  const closeItemMenu = () => { setMenuItemId(null); setMenuAnchor(null); };
+  const lastClickedRef = useRef<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const { menuItemId, menuAnchor, openItemMenu, closeItemMenu } = useItemRowMenu();
   const structuralEditing = Boolean(onDuplicateItem || onDeleteItem || onMoveItem || onRenameItem);
   const resultsMap = results ?? {};
   // Phase U (Batch C1) — resolve a result in the active unit scope. The bare
@@ -112,11 +192,19 @@ export function ItemList({
 
       {/* Item list */}
       <div ref={containerRef} className="flex-1 overflow-y-auto p-2 space-y-0.5">
-        {items.map((item, idx) => {
+        {items.map((item) => {
           const result = scopedResult(item.id);
           const fullIdx = items.findIndex((i) => i.id === item.id);
           const editing = editingId === item.id;
+          const openSlot = slotHeading.get(item.id);
+          const closingGroup = groupClosedBy.get(item.id);
           return (
+            <div key={`wrap-${item.id}`}>
+            {openSlot && (
+              <div className="px-2 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-ih-fg-3">
+                {openSlot.slotLabel}
+              </div>
+            )}
             <div
               key={item.id}
               data-sortable-item
@@ -149,7 +237,7 @@ export function ItemList({
 
               {editing && onRenameItem ? (
                 <div className="min-w-0 flex-1 flex items-center gap-2 px-2 py-2 min-h-14 md:min-h-0">
-                  <span className="text-[13px] text-ih-fg-3 font-mono w-5 shrink-0">{String(idx + 1).padStart(2, "0")}</span>
+                  <ItemRowIndent depth={depths.get(item.id) ?? 0} outline={outlines.get(item.id) ?? ""} />
                   <InlineRename
                     value={item.label}
                     ariaLabel={m.editor_shared_item_name_aria()}
@@ -190,10 +278,11 @@ export function ItemList({
                       )}
                     </span>
                   )}
-                  {/* Number, label and rating dot are ALWAYS visible. */}
-                  <span className="text-[13px] text-ih-fg-3 font-mono w-5 shrink-0">
-                    {String(idx + 1).padStart(2, "0")}
-                  </span>
+                  {/* Indent, outline number, label and rating dot are ALWAYS
+                      visible. The number is what survives the 280px column's
+                      truncation, which is why it earns its place beside the
+                      indent rather than instead of it. */}
+                  <ItemRowIndent depth={depths.get(item.id) ?? 0} outline={outlines.get(item.id) ?? ""} />
                   <span className="flex-1 truncate">{item.label}</span>
                   {/* Rated with no photograph — the gap that otherwise surfaces
                       at the publish gate, in the truck, instead of in the room
@@ -266,6 +355,21 @@ export function ItemList({
                         {onDuplicateItem && (
                           <MenuItem onClick={(e) => { e.stopPropagation(); closeItemMenu(); onDuplicateItem(item.id); }}>{m.editor_shared_menu_duplicate()}</MenuItem>
                         )}
+                        {/* At the cap: DISABLED and says why. Omitting it —
+                            the previous behaviour — leaves the author
+                            comparing one row's menu against another's to infer
+                            a rule nothing states. Still HIDDEN in a grouped
+                            template, because there the answer is "not in this
+                            kind of template at all": a free item reaches no
+                            binding, so what is typed into it never arrives on
+                            the authority's form. */}
+                        {onAddSubItem && !grouped && (
+                          (depths.get(item.id) ?? 0) < MAX_ITEM_DEPTH - 1 ? (
+                            <MenuItem onClick={(e) => { e.stopPropagation(); closeItemMenu(); onAddSubItem(item.id); }}>{m.editor_shared_add_sub_item()}</MenuItem>
+                          ) : (
+                            <MenuItem disabled aria-disabled="true">{m.editor_shared_add_sub_item_at_cap()}</MenuItem>
+                          )
+                        )}
                         {onMoveItem && fullIdx > 0 && (
                           <MenuItem onClick={(e) => { e.stopPropagation(); closeItemMenu(); onMoveItem(item.id, -1); }}>{m.editor_shared_menu_move_up()}</MenuItem>
                         )}
@@ -273,7 +377,7 @@ export function ItemList({
                           <MenuItem onClick={(e) => { e.stopPropagation(); closeItemMenu(); onMoveItem(item.id, 1); }}>{m.editor_shared_menu_move_down()}</MenuItem>
                         )}
                         {onDeleteItem && (
-                          <MenuItem tone="danger" onClick={(e) => { e.stopPropagation(); closeItemMenu(); onDeleteItem(item.id); }}>{m.common_delete()}</MenuItem>
+                          <MenuItem tone="danger" onClick={(e) => { e.stopPropagation(); closeItemMenu(); requestDelete(item.id, item.label); }}>{m.common_delete()}</MenuItem>
                         )}
                       </div>
                     </>,
@@ -282,10 +386,23 @@ export function ItemList({
                 </div>
               )}
             </div>
+            {closingGroup && onAddGroupInstance && (
+              <div className="px-2 pt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onAddGroupInstance(closingGroup.id)}
+                  className="w-full h-auto py-1.5 border border-dashed border-ih-border-strong text-[12px] text-ih-fg-3 hover:bg-transparent hover:text-ih-primary-text hover:border-ih-primary"
+                >
+                  {m.editor_shared_add_group_instance({ group: closingGroup.label })}
+                </Button>
+              </div>
+            )}
+            </div>
           );
         })}
       </div>
-      {onAddItem && (
+      {onAddItem && !grouped && (
         <div className="p-2 border-t border-ih-border">
           <Button
             variant="ghost"
@@ -297,6 +414,11 @@ export function ItemList({
           </Button>
         </div>
       )}
+      <ItemSubtreeDeleteModal
+        pending={pendingDelete}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={(id) => { onDeleteItem?.(id); setPendingDelete(null); }}
+      />
     </div>
   );
 }

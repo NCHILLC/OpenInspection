@@ -65,6 +65,7 @@ import { PortalProvider } from '../../portal/portal.provider';
 import { PlanQuotaGuard, readTenantPlan } from '../../features/plan-quota/guard';
 import type { TenantPlan } from '../../features/plan-quota/policy';
 import { tenantAiCapsLoader } from '../../features/plan-quota/ai-caps';
+import { memoOnce } from '../request-scope';
 
 /**
  * Middleware that injects a lazy-loaded service registry into the Hono context.
@@ -99,9 +100,12 @@ export async function diMiddleware(c: Context<HonoConfig>, next: Next) {
     // tier carries no status, and null is deliberately NOT an entitlement.
     let tenantPlan: TenantPlan | null = null;
     if (tenantId && c.req.path.startsWith('/api/')) {
-        emailCfg = await loadTenantEmailConfig(c.env, tenantId);
+        // Its own key, NOT the `secrets:` one — the shapes differ, so they
+        // cannot share an entry; see loadEmailSecrets for where the shared
+        // decrypt actually happens.
+        emailCfg = await memoOnce(c.env, `email-cfg:${tenantId}`, () => loadTenantEmailConfig(c.env, tenantId));
         if (!tenantTierForQuota && c.var.profile.hasUsageQuota) {
-            tenantPlan = await readTenantPlan(c.env.DB, tenantId).catch(() => null);
+            tenantPlan = await memoOnce(c.env, `plan:${tenantId}`, () => readTenantPlan(c.env.DB, tenantId)).catch(() => null);
             tenantTierForQuota = tenantPlan?.tier;
         }
     }
@@ -218,6 +222,8 @@ export async function diMiddleware(c: Context<HonoConfig>, next: Next) {
                     break;
                 case 'branding':
                     target.branding = new BrandingService(c.env.DB, c.env.TENANT_CACHE, c.env.PHOTOS);
+                    // Request scope, so the tenant_configs reads memoise per request.
+                    target.branding.requestEnv = c.env;
                     break;
                 case 'legalVersion':
                     target.legalVersion = new LegalVersionService(drizzle(c.env.DB));
@@ -227,12 +233,18 @@ export async function diMiddleware(c: Context<HonoConfig>, next: Next) {
                     break;
                 case 'inspection':
                     target.inspection = new InspectionService(c.env.DB, c.env.PHOTOS, c.get('sdb'), c.env.TENANT_CACHE, (c.env as unknown as { IMAGES?: ImagesBinding }).IMAGES, buildPlanQuota(), c.env.KEY_ENCRYPTION_SECRET || c.env.JWT_SECRET);
+                    // This middleware is the only layer holding `c.env`, so it is
+                    // the only place the request scope can enter the service tree.
+                    // Without it PeopleService.listPeople cannot memoise and the
+                    // render reads the same people join once per endpoint.
+                    target.inspection.setRequestEnv(c.env);
                     break;
                 case 'portal':
                     // PortalService depends on InspectionService — resolve it via the
                     // proxy target the same way auditLog resolves signingKey.
                     if (!target.inspection) {
                         target.inspection = new InspectionService(c.env.DB, c.env.PHOTOS, c.get('sdb'), c.env.TENANT_CACHE, (c.env as unknown as { IMAGES?: ImagesBinding }).IMAGES, buildPlanQuota(), c.env.KEY_ENCRYPTION_SECRET || c.env.JWT_SECRET);
+                        target.inspection.setRequestEnv(c.env);
                     }
                     target.portal = new PortalService(c.env.DB, target.inspection);
                     break;
@@ -302,7 +314,7 @@ export async function diMiddleware(c: Context<HonoConfig>, next: Next) {
                     );
                     break;
                 case 'marketplace':
-                    target.marketplace = new MarketplaceService(c.env.DB, c.get('tenantId'));
+                    target.marketplace = new MarketplaceService(c.env.DB, c.get('tenantId'), c.env.PHOTOS);
                     break;
                 case 'message':
                     target.message = new MessageService(c.env.DB, new NotificationService(c.env.DB));

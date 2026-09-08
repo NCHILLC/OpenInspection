@@ -4,6 +4,7 @@ import { createApi } from "~/lib/api-client.server";
 import { sanitizeSettingsPatch } from "~/lib/settings-patch";
 import { unwrapResultsResponse } from "~/lib/results";
 import { mapPool } from "~/lib/map-pool";
+import { handleStatutoryIntent } from "./action-statutory.server";
 
 export async function action({ request, params, context }: Route.ActionArgs) {
  const token = await requireToken(context, request);
@@ -19,6 +20,11 @@ export async function action({ request, params, context }: Route.ActionArgs) {
  const completeEndpoint = () => (api.inspections[":id"] as unknown as {
  complete: { $post: (args: { param: { id: string } }) => Promise<Response> };
  }).complete.$post({ param: { id: params.id } });
+
+ // Both statutory writes live together in action-statutory.server.ts; null
+ // means "not one of mine" and the chain below carries on.
+ const statutory = await handleStatutoryIntent(String(intent ?? ""), formData, api, params.id);
+ if (statutory) return statutory;
 
  if (intent === "complete") {
  // Advisory order-lifecycle move; decoupled from publishing, never a gate.

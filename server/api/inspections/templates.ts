@@ -10,6 +10,7 @@ import { paginationQuerySchema, PaginatedMetaSchema, buildMeta } from '../../lib
 import { CreateTemplateSchema, UpdateTemplateSchema } from '../../lib/validations/template.schema';
 import { createApiResponseSchema, SuccessResponseSchema } from '../../lib/validations/shared.schema';
 import { withMcpMetadata } from '../../lib/route-metadata-standards';
+import { refuseStatutoryTemplateEdit } from '../../lib/middleware/refuse-statutory-template-edit';
 
 /**
  * GET /api/inspections/templates
@@ -33,6 +34,14 @@ const listTemplatesRoute = createRoute(withMcpMetadata({
                             version: z.number(),
                             itemCount: z.number(),
                             source: z.enum(['marketplace', 'custom']),
+                            // Retired rows are LISTED, not filtered out. A
+                            // template that simply vanishes reads as a broken
+                            // product or a lost permission; one that stays,
+                            // disabled, with a reason, reads as what happened.
+                            retiredAt: z.number().nullable()
+                                .describe('When this template stopped being offered for new inspections, epoch ms, or null'),
+                            retiredReason: z.enum(['superseded', 'uninstalled']).nullable()
+                                .describe('Why it stopped being offered. The two differ in what anybody can do about it'),
                         })),
                         meta: PaginatedMetaSchema,
                     }),
@@ -162,7 +171,10 @@ const updateTemplateRoute = createRoute(withMcpMetadata({
             },
         },
     },
-    middleware: [requireRole('owner', 'manager', 'inspector'), requireCapability('templateEdit')],
+    // Ahead of the body validator on purpose: a client that round-trips the
+    // whole document would otherwise be answered by `.strict()` with
+    // `unrecognized_keys`. See the middleware's own header.
+    middleware: [requireRole('owner', 'manager', 'inspector'), requireCapability('templateEdit'), refuseStatutoryTemplateEdit()],
     responses: {
         200: {
             content: {
@@ -172,7 +184,7 @@ const updateTemplateRoute = createRoute(withMcpMetadata({
             },
             description: 'Success',
         },
-        403: { description: "Missing the 'templateEdit' capability" },
+        403: { description: "Missing the 'templateEdit' capability, or the template produces an official form and is structurally read-only" },
     },
     operationId: "updateInspectionTemplate",
     description: "Auto-generated placeholder for updateInspectionTemplate (PUT /templates/{id}, inspections domain). TODO: replace with a real description sourced from the handler."

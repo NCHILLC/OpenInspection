@@ -57,54 +57,88 @@ that is waste.
 When an upstream scope in the table below is decided as **take**, this branch is
 what you merge from.
 
-## Snapshot — 2026-09-07
+## Snapshot — 2026-09-07, after the merge below
 
 | | |
 |---|---|
-| Merge base | `f1198ffa`, 2026-08-29 (upstream PR #324) |
-| Upstream-only commits | 254 |
-| Fork-only commits | 47 |
+| Merge base | `ac02ba3e`, 2026-09-07 (upstream PR #344) |
+| Upstream-only commits | 0 |
+| Fork-only commits | 47 plus the merge |
 | Fork commits upstream already has | 0 — nothing has been contributed back |
 
-Divergence is nine days old and upstream is moving fast: 254 commits in that
-window. The triage below is by **scope**, not by commit, because 254 individual
-decisions is not a thing anyone will finish.
+## Merge — 2026-09-07, upstream `f1198ffa..ac02ba3e` (232 commits)
 
-## Upstream work, by scope
+Taken **wholesale**, `statutory` included. Tagged `pre-upstream-2026-09-07` on
+`main` before starting.
 
-| Scope | Commits | Decision |
-|---|---|---|
-| `statutory` | 74 | **undecided — the big one.** A whole subsystem: statutory form definitions, readiness checks, publishing, an editor surface and the first statutory E2E. Nothing in the fork depends on it. Taking it means carrying a subsystem the fork has no requirement for; skipping it means every future upstream merge conflicts against a version of the editor that assumes it exists. |
-| `editor` | 14 | **undecided — see collision zone below.** |
-| `gates` | 13 | recommend taking. Gate and lint work is exactly what the fork wants more of, and it rarely conflicts. |
-| `marketplace` | 9 | undecided. Likely on the removal list. |
-| `perf` | 8 | recommend taking. |
-| `mcp` | 6 | undecided. Named on the eval's removal list. |
-| `auth` | 6 | recommend taking — security-path changes are the worst class to re-derive. |
-| `templates` | 5 | undecided; overlaps fork template work. |
-| everything else | ~40 across `ui`, `tenancy`, `settings`, `routing`, `deps`, `ci`, `cron`, … | case by case |
+**`statutory` — taken, carried dormant.** Authority-issued PDF forms (TX TREC
+REI 7-6; FL Citizens four-point, roof and OIR-B1-1802). North Carolina mandates
+no form and NCHI serves Charlotte only, so it has no use here today. It was
+taken anyway because it cannot be left out: the 74 scoped commits are ~128 of
+the 232 once the overlay renderer, gate, marketplace and editor commits filed
+under other scopes are counted, and 80 of the remaining commits touch files it
+also touched. A merge cannot exclude commits; excluding it is a permanent
+cherry-pick regime. It is inert without an authority's PDF in R2 hashed against
+its field map — `produce` refuses by design. Cost carried: four empty tables,
+four other-state seed templates in the library, four gates.
 
-Counts are `--no-merges` and exclude 22 merge commits.
+**Fifteen files conflicted; five were code.** Resolved toward the fork's
+phone-capture behaviour throughout:
 
-## Collision zone: `app/components/editor`
+- `inspection-edit.tsx`: fork's drill shell kept; upstream's Inspection Details
+  overview and revision banner ported into it (`3cfe124d`, `759425e4`).
+- `ItemList.tsx`, `ItemEditor.tsx`: upstream's indent and heading components
+  taken; the fork's phone font sizes and 56px row target carried into them.
+- `template-edit.tsx`: upstream's extracted save serializer taken; the fork's
+  `abbrev`, `choices` and `recommendedContractorTypeId` wire fields moved into
+  `app/lib/editor/serialize-template.ts`.
+- `di.ts`, `workers/app.ts`: both sides kept (fork's R2 branding argument and
+  lazy MCP import; upstream's per-request memo and scheduled-handler split).
+- `inspection-report.service.ts`: upstream moved the canned-comment types to
+  `report-schema-types.ts`; the fork's `choices` field followed them.
 
-The one area both sides are actively changing, and the reason a blind merge will
-hurt.
+**Taken from upstream in place of fork work** (not deviations — the fork's
+version is gone):
 
-- **Fork**: 20 of its 47 commits are scoped `editor`, touching 60 files under
-  `app/components/editor`. The subject is *field capture on a phone* — camera,
-  offline photo queueing, shutter gestures, mobile layout, a way out of the
-  unsaved-changes blocker.
-- **Upstream**: 14 `editor` commits, nearly all of them *statutory-driven* —
-  statutory groups as slots, item nesting, sub-item CRUD, revision display.
+- Team page invite link: upstream's modal (`settings_team_invite_link_*`)
+  supersedes the fork's copy-link button.
+- Bundle gate: upstream's `wrangler check startup` entry-chunk ceiling replaces
+  the fork's hand-rolled static-closure walker (`cf7a4999`). Same Error 1102
+  risk, measured with a supported command.
+- `lint:agent-routes` stays removed — it went with the fork's agent-portal
+  removal (`2172d817`) and nothing references it.
+- SaaS MCP mount is `/mcp/{slug}` (upstream `a4620cd1`), no longer the broad
+  `/company/` prefix <!-- no-portal-routes-allow: naming the retired prefix, not documenting a route -->; the fork's lazy-gate spec and the predicate's comment
+  were updated to say so. No code change.
 
-Same directory, different concerns, so most conflicts will be textual rather
-than semantic. Two exceptions worth checking before assuming that:
+**A silent clash the merge did not flag**: both sides had added the same lazy
+loader for the 900 KB OpenAPI snapshot in `server/durable-objects/inspector-mcp.ts`
+(fork `cf7a4999`, upstream discussion #325). The auto-merge kept both; `tsc`
+caught the redeclaration. Upstream's copy kept.
 
-- `fix(editor): the Inspection Details overview rendered nothing on a phone` —
-  upstream fixing a mobile bug this fork may have already solved differently.
-- `refactor(editor): template item CRUD delegates to the shared tree ops` — a
-  structural refactor under files the fork has rewritten.
+**File-size baseline**: locked at merged sizes. Two files grew past every
+reviewed cap *because* of the merge and were bumped as a reviewed decision:
+`ItemList.tsx` 425 (both sides added), `collab-findings-api.ts` 449 (upstream's
+attribute write on top of the fork's photo ops). Every other raised cap is one
+upstream had already reviewed.
+
+**Line endings**: upstream's `.gitattributes` (`* text=auto eol=lf`) now
+governs; the Windows working tree was renormalised with `npm run lint:eol -- --fix`.
+
+**Two CI-only gates upstream added inside this window** (`b9cdb712` middleware
+budget, and `lint:no-portal-routes`) were never in the fork's smaller pre-commit
+rung, so their first run was in PR CI, not locally. Both were re-baselined
+rather than papered over:
+
+- `lint:middleware-budget`: `template-edit.tsx`'s fan-out moved 3 -> 4 in
+  upstream's own baseline update. The 4th call, `contractorTypes.$get`, is fork
+  work that predates this merge, not something the merge resolution added; the
+  baseline was authored against upstream's tree, which has no contractor types.
+  Ten agent-portal route entries also dropped out on the same re-baseline —
+  legitimately, since `2172d817` deleted those files.
+- `lint:no-portal-routes`: the SaaS-mount line above, naming the prefix that no
+  longer applies, is exactly the negative statement the gate's own docstring
+  warns about — it needed the documented allow-comment, not a rewrite.
 
 ## Fork deviations
 
@@ -117,6 +151,7 @@ deliberate departure rather than work upstream simply has not done yet.
 | `ratings` (4) | "Not inspected" reasons, Safety-Major level | — |
 | `intake` (3) | Graded defects filed by position, severity preserved on import | — |
 | CI | `verify` also runs on pushes to `main` | Fork commits directly to `main`; upstream works through PRs |
+| `package.json` `allowScripts` | Kept (upstream removed it); each new native-package version is added by hand | This machine's npm refuses install scripts not on the list, so a wrangler or better-sqlite3 bump that is not added here leaves workerd and the SQLite binding unbuilt with only a warning |
 
 ## Rules
 

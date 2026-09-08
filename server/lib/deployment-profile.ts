@@ -77,11 +77,12 @@ export interface DeploymentProfile {
      *  Read this instead of branching on APP_MODE — see the file header. */
     hasManagedAi: boolean;
 
-    /** Where the MCP OAuth surface mounts. SaaS serves per-workspace endpoints
-     *  under /company/{slug}/mcp, so the provider takes the broad '/company/'
-     *  prefix; standalone has one fixed '/mcp'. The company-slug guard applies
-     *  exactly when this is '/company/' — derive it, do not re-test the mode. */
-    mcpApiRoute: '/mcp' | '/company/';
+    /** Where the MCP OAuth surface mounts. Always '/mcp': standalone serves the
+     *  single fixed endpoint, saas serves per-workspace /mcp/{slug} under the
+     *  same prefix. It used to be '/company/' in saas — a prefix broad enough
+     *  to swallow the entire /company/* namespace, which made "do not add a
+     *  /company/* route" an invisible rule living in a file nobody reads. */
+    mcpApiRoute: '/mcp';
 
     /** Whether the PLATFORM decides the video backend. True in saas (plan gate
      *  on tenants.tier/status); false in standalone, where the operator sets
@@ -96,13 +97,25 @@ export interface DeploymentProfile {
      *  different entitlement. */
     hasManagedCompliance: boolean;
 
-    /** Whether the content marketplace SURFACE exists in this deployment. False
-     *  in standalone: the catalogue is curated first-party and there is no path
-     *  by which anything reaches it, so the browse route 404s rather than
-     *  rendering an empty shelf. This is about the surface EXISTING, not about
-     *  entitlement — the API handlers in `server/api/marketplace.ts` stay
-     *  ungated in both modes (OI #293 reuses them). */
-    hasContentMarketplace: boolean;
+    // `hasContentMarketplace` was removed here, and the removal is the fix
+    // rather than a tidy-up. It answered two questions at once — "may this
+    // deployment BROWSE and INSTALL catalogue entries" and "may it PUBLISH
+    // them" — whose standalone answers are opposite, and it answered both with
+    // the publishing one. Its comment justified the standalone 404 with "there
+    // is no path by which anything reaches the catalogue", which was never
+    // true: `server/services/starter-content/seed-marketplace-libraries.ts`
+    // upserts the catalogue from this repository's own fixtures, and its caller
+    // `server/api/admin/admin-content-install.ts` is gated on role, not on
+    // mode. So a self-hosted deployment always had a populated catalogue and a
+    // 404 in front of it.
+    //
+    // Consumption is now unconditional, which leaves nothing mode-specific to
+    // name: a capability whose two profiles agree is not a capability, it is a
+    // constant with a table row. Publishing keeps its own name and its own
+    // reader — it rides `server/portal/`, mounted only when
+    // `hasPortalIntegrationApi` is true, and that is a fact about the topology
+    // rather than a gate: a standalone deployment has no platform on the other
+    // end and nobody who could act as one.
 
     /** Whether the PLATFORM supplies the Intuit app a tenant connects through.
      *  True in saas: one published app serves every tenant, and asking an
@@ -145,7 +158,7 @@ export interface DeploymentProfile {
      *  mode. Naming the question is what makes the answer checkable. */
     tenantRecordOwnedByPortal: boolean;
 
-    /** Whether the portal M2M surface (`/api/integration/*`) exists at all.
+    /** Whether the portal M2M surface (`/api/platform/*`) exists at all.
      *  False in standalone: there is no platform on the other end, so the entry
      *  404s the prefix rather than mounting a machine-to-machine API nobody can
      *  authenticate to. A surface that answers is a surface somebody probes.
@@ -192,7 +205,6 @@ export const STANDALONE_PROFILE: DeploymentProfile = {
     mcpApiRoute: '/mcp',
     videoBackendManaged: false,
     hasManagedCompliance: false,
-    hasContentMarketplace: false,
     qboAppManaged: false,
     botProtectionMandatory: false,
     tenantRecordOwnedByPortal: false,
@@ -211,10 +223,9 @@ export const SAAS_PROFILE: DeploymentProfile = {
     hasSetupWizard: false,
     aiDevMockFallback: false,
     hasManagedAi: true,
-    mcpApiRoute: '/company/',
+    mcpApiRoute: '/mcp',
     videoBackendManaged: true,
     hasManagedCompliance: true,
-    hasContentMarketplace: true,
     qboAppManaged: true,
     botProtectionMandatory: true,
     tenantRecordOwnedByPortal: true,

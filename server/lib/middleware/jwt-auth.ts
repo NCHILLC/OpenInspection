@@ -30,11 +30,41 @@ import type { UserRole } from '../../types/auth';
 import { bearerToken, AUTH_COOKIE_NAME } from '../auth-helpers';
 import { readPlatformActorClaim } from '../platform-actor-claims';
 import { QBO_CALLBACK_PATH } from '../qbo-oauth-paths';
+import { memoOnce } from '../request-scope';
 
 // Static asset extensions — these bypass JWT verification. We use a strict allowlist
 // rather than path.includes('.') so a dot inside a path segment (e.g. "/inspections/foo.bar")
 // can't trick the middleware into treating a protected route as public.
 const STATIC_ASSET_EXT = /\.(css|js|mjs|map|png|jpe?g|gif|svg|ico|webp|woff2?|ttf|otf|json|txt|pdf)$/i;
+
+/**
+ * Is this path a static asset, and therefore outside authentication?
+ *
+ * ⚠️ AN EXTENSION IS NOT A CLASSIFICATION ON ITS OWN. The test used to be the
+ * bare regex above, and it matched `/api/...` too -- so EVERY API route whose
+ * path ends in one of those extensions skipped authentication entirely, before
+ * a token was even read.
+ *
+ * Measured on `/api/inspections/{id}/statutory-form.pdf`: the middleware
+ * returned early, `userRole` was never set, and the route's own `requireRole`
+ * answered 401 'No role found in context' -- so an inspector pressing Download
+ * on a statutory form got an error, on every workspace, always. That one failed
+ * CLOSED, which is why it read as a broken button rather than as this.
+ *
+ * The shape that does NOT fail closed is the same rule on a route that reads
+ * `tenantId` without demanding a role: in standalone the tenant resolves from
+ * the host, so such a route would have answered with real data and no session
+ * at all. Naming one is not the point -- the point is that adding a `.json`
+ * endpoint would have opened it silently, and nothing here would have said so.
+ *
+ * Static assets are served by the Cloudflare assets layer before this worker
+ * runs; what reaches here under an asset extension is either a miss or an API
+ * route wearing a file name. Neither is a reason to skip authentication.
+ */
+function isStaticAssetPath(path: string): boolean {
+    if (path.startsWith('/api/')) return false;
+    return STATIC_ASSET_EXT.test(path);
+}
 
 export const jwtAuthMiddleware: MiddlewareHandler<HonoConfig> = async (c, next) => {
     const path = c.req.path;
@@ -66,15 +96,21 @@ export const jwtAuthMiddleware: MiddlewareHandler<HonoConfig> = async (c, next) 
     // page as well as the API. Listing it keeps the whole flow outside the
     // gate's reckoning rather than exempted from it; the API half is already
     // covered by the `/api/public/` prefix. See `server/api/unsubscribe.ts`.
-    // `QBO_CALLBACK_PATH` below is public for the same shape of reason as the QBO
-    // webhook beside it: neither caller can hold a session. Intuit returns the
+    // `/webhooks/` below covers every inbound provider webhook in one prefix:
+    // they mount at the top level (see server/index.ts) precisely so they inherit
+    // none of the /api/* middleware, and each one authenticates itself by
+    // verifying the producer's signature over the raw body. A per-path list here
+    // was one forgotten entry away from a webhook that 401s in production only.
+    // `QBO_CALLBACK_PATH` is public for the same shape of reason but is NOT a
+    // webhook — it is the OAuth callback, so it keeps its own exact-match entry.
+    // Neither caller can hold a session. Intuit returns the
     // user by cross-site top-level navigation, and `__Host-inspector_token` is
     // SameSite=Strict, so no cookie is on that request — the route is authorized
     // by a single-use, 600s, owner/manager-issued `state` instead. See
     // `server/api/qbo-oauth.ts`.
-    const isPublic = path.startsWith('/api/__test__/') || path.startsWith('/api/public/') || path.startsWith('/api/integration/') || path.startsWith('/api/admin/connect') || path.startsWith('/api/admin/silo') || path.startsWith('/api/ics/') || path === '/book' || path.startsWith('/book/') || path.startsWith('/inspector/') || path.startsWith('/embed/') || path.startsWith('/photos/') || path === '/' || path === '/status' || path.startsWith('/static/') || path.startsWith('/report/') || path.startsWith('/report-view/') || path.startsWith('/invoice/') || path.startsWith('/agreements/sign/') || path.startsWith('/checkout/') || path.startsWith('/sign/') || path.startsWith('/m2m/') || path.startsWith('/verify/') || path.startsWith('/v/') || path.startsWith('/.well-known/') || STATIC_ASSET_EXT.test(path) || path === '/api/integrations/qbo/webhook' || path === QBO_CALLBACK_PATH || path === '/api/integrations/stripe/webhook' || path.startsWith('/api/integrations/stripe/webhook/') || path.startsWith('/unsubscribe/') || path.startsWith('/repair-request/') || path.startsWith('/repair-builder/') || path.startsWith('/api/portal/') || path.startsWith('/portal/');
+    const isPublic = path.startsWith('/api/__test__/') || path.startsWith('/api/public/') || path.startsWith('/api/platform/') || path.startsWith('/api/admin/connect') || path.startsWith('/api/admin/silo') || path.startsWith('/api/ics/') || path === '/book' || path.startsWith('/book/') || path.startsWith('/inspector/') || path.startsWith('/embed/') || path.startsWith('/photos/') || path === '/' || path === '/status' || path.startsWith('/static/') || path.startsWith('/report/') || path.startsWith('/report-view/') || path.startsWith('/invoice/') || path.startsWith('/agreements/sign/') || path.startsWith('/checkout/') || path.startsWith('/sign/') || path.startsWith('/m2m/') || path.startsWith('/verify/') || path.startsWith('/v/') || path.startsWith('/.well-known/') || isStaticAssetPath(path) || path.startsWith('/webhooks/') || path === QBO_CALLBACK_PATH || path.startsWith('/unsubscribe/') || path.startsWith('/repair-request/') || path.startsWith('/repair-builder/') || path.startsWith('/api/portal/') || path.startsWith('/portal/');
 
-    if (isAuthPublic || isPublic || isAgentPublic || isConciergePublic || path === '/setup' || path === '/login' || path === '/join') return next();
+    if (isAuthPublic || isPublic || isAgentPublic || isConciergePublic || path === '/setup') return next();
 
     // First-time setup is gated solely by the SETUP_CODE secret, validated in
     // POST /api/auth/setup. No KV bootstrap code is generated here.
@@ -115,7 +151,11 @@ export const jwtAuthMiddleware: MiddlewareHandler<HonoConfig> = async (c, next) 
             }
         }
 
-        const payload = await verifyJwt(token, keyring);
+        // Same token, same keyring => same payload; verification is a pure
+        // function of the two. A page render re-enters this chain 16 times
+        // through the in-process API fan-out, and ECDSA verification of that one
+        // token cost 14.84ms/request (measured 2026-09-06).
+        const payload = await memoOnce(c.env, `jwt:${token}`, () => verifyJwt(token, keyring));
         const classification = classifyJwtPayload(payload);
         const userId = payload.sub as string | undefined;
         const tokenIat = payload.iat as number | undefined;
@@ -130,7 +170,14 @@ export const jwtAuthMiddleware: MiddlewareHandler<HonoConfig> = async (c, next) 
         // Making it fail closed instead is a deliberate change, not a cleanup.
         const cache = c.env.TENANT_CACHE as KVNamespace | undefined;
         if (userId && cache) {
-            const invalidatedAt = await cache.get(`pwchanged:${userId}`);
+            // Workers KV is eventually consistent -- a write can take up to 60
+            // seconds to propagate -- so re-reading this marker 16 times inside
+            // one ~350ms render cannot observe anything a single read would
+            // miss. The freshness those 15 extra reads appear to buy does not
+            // exist. Only the read is shared; the comparison below still runs
+            // on every pass.
+            const invalidatedAt = await memoOnce(c.env, `pwchanged:${userId}`,
+                () => cache.get(`pwchanged:${userId}`));
             if (invalidatedAt) {
                 const invalidatedTs = parseInt(invalidatedAt, 10);
                 if (!tokenIat || tokenIat < invalidatedTs) {

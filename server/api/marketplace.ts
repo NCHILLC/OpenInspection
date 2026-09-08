@@ -1,6 +1,5 @@
-import { createRoute } from '@hono/zod-openapi';
+import { createRoute, z } from '@hono/zod-openapi';
 import { createApiRouter } from '../lib/openapi-router';
-import { z } from '@hono/zod-openapi';
 import { requireRole } from '../lib/middleware/rbac';
 import { requireCapability } from '../lib/middleware/require-capability';
 import { Errors, AppError } from '../lib/errors';
@@ -8,12 +7,14 @@ import { auditFromContext } from '../lib/audit';
 import { LibraryReplaceParamsSchema, LibraryReplaceBodySchema, LibraryReplacePreviewSchema } from '../lib/validations/library-replace.schema';
 import { ImportHistoryQuerySchema } from '../lib/validations/import-history.schema';
 import { MarketplaceBrowseQuerySchema } from '../lib/validations/marketplace-browse.schema';
+import { MARKETPLACE_KINDS } from '../lib/marketplace-kinds';
 import {
     paginationQuerySchema,
     PaginatedMetaSchema,
     buildMeta,
 } from '../lib/validations/pagination.schema';
 import { withMcpMetadata } from "../lib/route-metadata-standards";
+import marketplaceSubRoutes from './marketplace/sub-routes';
 
 const marketplaceRoutes = createApiRouter()
 // GET /api/templates/marketplace
@@ -99,7 +100,7 @@ const marketplaceRoutes = createApiRouter()
     summary: 'List marketplace catalogue entries (comment packs, templates)',
     middleware: [requireRole('owner', 'manager', 'inspector')] as const,
     request: {
-        query: z.object({ kind: z.enum(['comments', 'templates']).optional().describe('TODO describe kind field for the OpenInspection MCP integration') }).describe('TODO describe query field for the OpenInspection MCP integration'),
+        query: z.object({ kind: z.enum(MARKETPLACE_KINDS).optional().describe('TODO describe kind field for the OpenInspection MCP integration') }).describe('TODO describe query field for the OpenInspection MCP integration'),
     },
     responses: {
         200: { content: { 'application/json': { schema: z.object({ success: z.boolean().describe('TODO describe success field for the OpenInspection MCP integration'), data: z.array(z.any()).describe('TODO describe data field for the OpenInspection MCP integration') }).describe('TODO describe schema field for the OpenInspection MCP integration') } }, description: 'OK' },
@@ -182,7 +183,7 @@ const marketplaceRoutes = createApiRouter()
     middleware: [requireRole('owner', 'manager'), requireCapability('templateImport')] as const,
     request: { params: z.object({ id: z.string().describe('TODO describe id field for the OpenInspection MCP integration') }).describe('TODO describe params field for the OpenInspection MCP integration') },
     responses: {
-        201: { content: { 'application/json': { schema: z.object({ success: z.boolean().describe('TODO describe success field for the OpenInspection MCP integration'), data: z.object({ kind: z.enum(['comments', 'templates']).describe('Which shape the import produced'), rowCount: z.number().describe('Rows created for a 1:N kind; 0 for a 1:1 kind'), localEntityId: z.string().nullable().describe('Local row id for a 1:1 kind; null for a 1:N kind') }).describe('TODO describe data field for the OpenInspection MCP integration') }) } }, description: 'Imported' },
+        201: { content: { 'application/json': { schema: z.object({ success: z.boolean().describe('TODO describe success field for the OpenInspection MCP integration'), data: z.object({ kind: z.enum(['comments', 'templates', 'statutory']).describe('Which shape the import produced'), rowCount: z.number().describe('Rows created for a 1:N kind; 0 for a 1:1 kind'), localEntityId: z.string().nullable().describe('Local row id for a 1:1 kind; null for a 1:N kind') }).describe('TODO describe data field for the OpenInspection MCP integration') }) } }, description: 'Imported' },
         403: { description: "Missing the 'templateImport' capability" },
         404: { description: 'Not found' },
     },
@@ -391,7 +392,8 @@ const marketplaceRoutes = createApiRouter()
         ...(q.pageSize   !== undefined ? { pageSize:   q.pageSize   } : {}),
     });
     return c.json({ success: true, data: result }, 200);
-});
+})
+    .route('/', marketplaceSubRoutes);
 
 export type MarketplaceApi = typeof marketplaceRoutes;
 export default marketplaceRoutes;
