@@ -1,31 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import {
-  serializeAnnotations, deserializeAnnotations,
-  serializeMeasureDoc, deserializeMeasureDoc,
-  type Annotation,
-} from '~/components/media-studio/annotations';
+import { serializeAnnotations, deserializeAnnotations } from '~/components/media-studio/annotations';
 
-describe('measure annotation variant', () => {
-  it('round-trips a measure shape (two points + unit)', () => {
-    const anns: Annotation[] = [
-      { kind: 'measure', x: 10, y: 10, x2: 110, y2: 10, unit: 'in' },
-    ];
+/**
+ * The measure tool is gone (2026-09-08), but docs it saved are not: it wrapped
+ * the array in `{ annotations, calibration }`. Those must keep deserializing
+ * to their non-measure marks so an already-annotated photo reopens intact.
+ */
+describe('legacy measure envelope', () => {
+  it('reads the annotations out of a { annotations, calibration } document', () => {
+    const json = JSON.stringify({
+      annotations: [
+        { kind: 'circle', x: 1, y: 2, r: 3 },
+        { kind: 'measure', x: 0, y: 0, x2: 50, y2: 0, unit: 'cm' },
+      ],
+      calibration: { pxPerUnit: 12.5, calibUnit: 'cm' },
+    });
+    expect(deserializeAnnotations(json)).toHaveLength(2);
+    expect(deserializeAnnotations(json)[0]).toEqual({ kind: 'circle', x: 1, y: 2, r: 3 });
+  });
+
+  it('round-trips a plain array unchanged', () => {
+    const anns = [{ kind: 'circle' as const, x: 1, y: 2, r: 3 }];
     expect(deserializeAnnotations(serializeAnnotations(anns))).toEqual(anns);
-  });
-});
-
-describe('measure calibration persistence', () => {
-  it('serializes annotations + calibration (pxPerUnit/calibUnit) and round-trips both', () => {
-    const anns: Annotation[] = [{ kind: 'measure', x: 0, y: 0, x2: 50, y2: 0, unit: 'cm' }];
-    const json = serializeMeasureDoc(anns, { pxPerUnit: 12.5, calibUnit: 'cm' });
-    const out = deserializeMeasureDoc(json);
-    expect(out.annotations).toEqual(anns);
-    expect(out.calibration).toEqual({ pxPerUnit: 12.5, calibUnit: 'cm' });
-  });
-  it('a plain annotations array (no calibration envelope) deserializes with null calibration', () => {
-    const json = serializeAnnotations([{ kind: 'circle', x: 1, y: 2, r: 3 }]);
-    const out = deserializeMeasureDoc(json);
-    expect(out.annotations).toEqual([{ kind: 'circle', x: 1, y: 2, r: 3 }]);
-    expect(out.calibration).toBeNull();
   });
 });

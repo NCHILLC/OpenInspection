@@ -148,6 +148,7 @@ deliberate departure rather than work upstream simply has not done yet.
 | Area | What | Why it diverges |
 |---|---|---|
 | `editor` (20 commits) | Field capture on a phone: camera, offline defect photos, shutter gesture handling, mobile layouts | Upstream's field surface is responsive web; this fork treats crawlspace capture as a core requirement — see the capture-first decision in `architecture.md` |
+| `media` (2026-09-08 field eval) | Camera holds its stream across parent re-renders; the in-camera edit badge opens the defect annotator for a defect session; annotator marks scale with the photo, freehand and arrow take touch (arrow is drag-to-draw), Pan and Measure tools removed, toolbar text is literal white | Upstream has none of these (`git log main..upstream/main -- app/components/media-studio app/components/editor/FieldCamera.tsx` is empty). Measure is a deliberate removal, not a fix: its first-use calibration dialog read as a broken tool mid-inspection |
 | `ratings` (4) | "Not inspected" reasons, Safety-Major level | — |
 | `intake` (3) | Graded defects filed by position, severity preserved on import | — |
 | CI | `verify` also runs on pushes to `main` | Fork commits directly to `main`; upstream works through PRs |

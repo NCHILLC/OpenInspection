@@ -19,11 +19,7 @@ export interface FieldCameraProps {
    * inspector standing in front of a defect always gets a camera.
    */
   onUnavailable: () => void;
-  /**
-   * Field eval P1 — mark the newest shot without leaving the camera. Omit to
-   * hide the affordance (e.g. a defect-targeted session, where the annotator
-   * has nowhere in that array to save into yet).
-   */
+  /** Field eval P1 — mark the newest shot without leaving the camera. */
   onAnnotateNewest?: () => void;
 }
 
@@ -61,6 +57,16 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
 
+  // Read through refs, NOT effect dependencies. The route passes both as
+  // inline arrows, and every shot re-renders the route (the pending photo
+  // lands in the doc), so a `startCamera` that depended on them was rebuilt per
+  // frame and the effect below tore the stream down and re-negotiated it —
+  // the black flash and the lag between photos.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const onUnavailableRef = useRef(onUnavailable);
+  onUnavailableRef.current = onUnavailable;
+
   const startCamera = useCallback(async (facingMode: string) => {
     try {
       // Ask for the sensor's full resolution. Without these constraints browsers
@@ -79,10 +85,10 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
       const s = stream.getVideoTracks()[0]?.getSettings();
       setDims(s?.width && s?.height ? { w: s.width, h: s.height } : null);
     } catch {
-      onUnavailable();
-      onClose();
+      onUnavailableRef.current();
+      onCloseRef.current();
     }
-  }, [onClose, onUnavailable]);
+  }, []);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());

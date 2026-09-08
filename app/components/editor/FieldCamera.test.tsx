@@ -110,6 +110,25 @@ describe("FieldCamera — the screen stays open until the inspector closes it", 
     });
 });
 
+describe("FieldCamera — the stream survives a parent re-render", () => {
+    // The route passes onClose/onUnavailable as inline arrows and re-renders
+    // after every shot, so the camera used to stop and re-open the stream per
+    // photo — a black flash between frames (2026-09-08 field eval).
+    it("does not re-acquire the camera when the callbacks change identity", async () => {
+        const onCapture = vi.fn();
+        let view!: ReturnType<typeof render>;
+        await act(async () => {
+            view = render(<FieldCamera open onClose={() => {}} onCapture={onCapture} onUnavailable={() => {}} />);
+        });
+        expect(getUserMedia).toHaveBeenCalledTimes(1);
+        await act(async () => {
+            view.rerender(<FieldCamera open onClose={() => {}} onCapture={onCapture} onUnavailable={() => {}} />);
+        });
+        expect(getUserMedia).toHaveBeenCalledTimes(1);
+        expect(track.stop).not.toHaveBeenCalled();
+    });
+});
+
 describe("FieldCamera — shoot-to-annotate (field eval P1)", () => {
     it("shows the mark button only on the newest thumbnail, once onAnnotateNewest is given", async () => {
         const onAnnotateNewest = vi.fn();

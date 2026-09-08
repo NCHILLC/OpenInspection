@@ -1,20 +1,16 @@
-import { useState, useEffect, useCallback, useRef, Fragment } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Icon } from "@core/shared-ui";
 import { Stage, Layer, Image as KonvaImage, Circle, Arrow, Line, Label, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import {
   ANNOTATION_COLOR,
-  deserializeMeasureDoc,
-  serializeMeasureDoc,
+  deserializeAnnotations,
+  serializeAnnotations,
   type Annotation,
   type Point,
 } from "./annotations";
 import { AnnotationToolbar, type ToolId } from "./AnnotationToolbar";
-import { MeasureCalibration } from "./MeasureCalibration";
 import { m } from "~/paraglide/messages";
-
-const STROKE = 4; // logical px (natural-resolution); divided by scale when rendered
-const CIRCLE_R = 40; // default circle radius in natural px
 
 interface PhotoAnnotatorProps {
   open: boolean;
@@ -61,9 +57,9 @@ export function PhotoAnnotator({
   const [natural, setNatural] = useState<{ w: number; h: number }>({ w: 600, h: 400 });
   const [fitScale, setFitScale] = useState(1);
 
-  // Two-click arrow / measure state (in natural px).
+  // Drag-to-draw arrow (natural px): press sets the tail, release sets the head.
   const [arrowStart, setArrowStart] = useState<Point | null>(null);
-  const [measureStart, setMeasureStart] = useState<Point | null>(null);
+  const [dragPos, setDragPos] = useState<Point | null>(null);
 
   // Field eval P2 — damage stamps. A stamp is a preset label word armed via
   // AnnotationToolbar; when set, the Label tool's next tap commits it
@@ -81,50 +77,33 @@ export function PhotoAnnotator({
   const [labelText, setLabelText] = useState("");
   const labelInputRef = useRef<HTMLInputElement>(null);
 
-  // Measure calibration. `pxPerUnit` null => uncalibrated (show raw px distance).
-  const [showCalibration, setShowCalibration] = useState(false);
-  const [pxPerUnit, setPxPerUnit] = useState<number | null>(null);
-  const [calibLine, setCalibLine] = useState<{ a: Point; b: Point } | null>(null);
-  const [calibKnown, setCalibKnown] = useState("");
-  const [calibUnit, setCalibUnit] = useState("in");
-  // Committed measurements (kept in component state, not serialized — not part of Annotation).
-  const [measures, setMeasures] = useState<Array<{ a: Point; b: Point }>>([]);
-
   const stageRef = useRef<Konva.Stage>(null);
 
   /* The display scale combines fit-to-viewport and the zoom multiplier. */
   const scale = fitScale * zoom;
+
+  /* Every mark is sized off the photo, not in fixed natural pixels. A 4px
+   * stroke and a 40px circle were hairlines on a 4K frame from the in-app
+   * camera — tap Circle, see nothing. 1% of the long edge is the unit. */
+  const mark = Math.max(natural.w, natural.h) / 100;
+  const sw = mark * 0.3;
 
   /* -------------------------------------------------------------- */
   /* Reset on open + seed annotations                                */
   /* -------------------------------------------------------------- */
   useEffect(() => {
     if (!open) return;
-    // P6 — seed annotations AND restore measure shapes + calibration so a
-    // measurement survives reopen. `measure` annotations rebuild the visual
-    // measure lines; the calibration restores px-per-unit.
-    const doc = deserializeMeasureDoc(initialAnnotationsJson);
-    setAnnotations(doc.annotations.filter((a) => a.kind !== "measure"));
-    setMeasures(
-      doc.annotations
-        .filter((a): a is Extract<Annotation, { kind: "measure" }> => a.kind === "measure")
-        .map((seg) => ({ a: { x: seg.x, y: seg.y }, b: { x: seg.x2, y: seg.y2 } })),
-    );
+    setAnnotations(deserializeAnnotations(initialAnnotationsJson));
     setCaption(sectionName || "");
     setZoom(1);
     setTool("circle");
     setArrowStart(null);
-    setMeasureStart(null);
+    setDragPos(null);
     setStampText(null);
     setFreehandPoints([]);
     setIsDrawingFreehand(false);
     setLabelInput(null);
     setLabelText("");
-    setShowCalibration(false);
-    setPxPerUnit(doc.calibration?.pxPerUnit ?? null);
-    setCalibLine(null);
-    setCalibKnown("");
-    setCalibUnit(doc.calibration?.calibUnit ?? "in");
   }, [open, sectionName, initialAnnotationsJson]);
 
   /* -------------------------------------------------------------- */
@@ -194,7 +173,7 @@ export function PhotoAnnotator({
   }, [scale]);
 
   /* -------------------------------------------------------------- */
-  /* Stage click (circle / arrow / label / measure)                 */
+  /* Tap (circle / label)                                            */
   /* -------------------------------------------------------------- */
   const handleStageClick = useCallback(() => {
     if (labelInput) return;
@@ -202,7 +181,7 @@ export function PhotoAnnotator({
     if (!pos) return;
 
     if (tool === "circle") {
-      setAnnotations((prev) => [...prev, { kind: "circle", x: pos.x, y: pos.y, r: CIRCLE_R }]);
+      setAnnotations((prev) => [...prev, { kind: "circle", x: pos.x, y: pos.y, r: mark * 4 }]);
     } else if (tool === "text") {
       // A stamp commits straight to an annotation — that IS the one-tap
       // (field eval P2); typing still opens the inline input as before.
@@ -212,62 +191,56 @@ export function PhotoAnnotator({
         setLabelInput(pos);
         setLabelText("");
       }
-    } else if (tool === "arrow") {
-      if (!arrowStart) {
-        setArrowStart(pos);
-      } else {
-        setAnnotations((prev) => [
-          ...prev,
-          { kind: "arrow", x: arrowStart.x, y: arrowStart.y, x2: pos.x, y2: pos.y },
-        ]);
-        setArrowStart(null);
-      }
-    } else if (tool === "measure") {
-      if (!measureStart) {
-        setMeasureStart(pos);
-      } else {
-        const line = { a: measureStart, b: pos };
-        setMeasureStart(null);
-        if (pxPerUnit == null) {
-          // First measurement defines the calibration reference.
-          setCalibLine(line);
-          setShowCalibration(true);
-        } else {
-          setMeasures((prev) => [...prev, line]);
-        }
-      }
     }
-  }, [tool, arrowStart, measureStart, pxPerUnit, naturalPointer, labelInput, stampText]);
+  }, [tool, mark, naturalPointer, labelInput, stampText]);
 
   /* -------------------------------------------------------------- */
-  /* Freehand: mousedown / move / up                                */
+  /* Press / drag / release (freehand + arrow) — mouse AND touch.    */
+  /* The old handlers were mouse-only, so on a phone Freehand did     */
+  /* nothing at all and Arrow needed two separate taps.              */
   /* -------------------------------------------------------------- */
-  const handleMouseDown = useCallback(() => {
-    if (tool !== "free" || labelInput) return;
+  const handlePointerDown = useCallback(() => {
+    if (labelInput) return;
     const pos = naturalPointer();
     if (!pos) return;
-    setFreehandPoints([pos]);
-    setIsDrawingFreehand(true);
+    if (tool === "free") {
+      setFreehandPoints([pos]);
+      setIsDrawingFreehand(true);
+    } else if (tool === "arrow") {
+      setArrowStart(pos);
+      setDragPos(pos);
+    }
   }, [tool, labelInput, naturalPointer]);
 
-  const handleMouseMove = useCallback(() => {
-    if (!isDrawingFreehand || tool !== "free") return;
+  const handlePointerMove = useCallback(() => {
     const pos = naturalPointer();
     if (!pos) return;
-    setFreehandPoints((prev) => [...prev, pos]);
-  }, [isDrawingFreehand, tool, naturalPointer]);
+    if (isDrawingFreehand) setFreehandPoints((prev) => [...prev, pos]);
+    else if (arrowStart) setDragPos(pos);
+  }, [isDrawingFreehand, arrowStart, naturalPointer]);
 
-  const handleMouseUp = useCallback(() => {
-    if (!isDrawingFreehand || tool !== "free") return;
-    if (freehandPoints.length > 1) {
-      setAnnotations((prev) => [
-        ...prev,
-        { kind: "freehand", x: freehandPoints[0].x, y: freehandPoints[0].y, points: freehandPoints },
-      ]);
+  const handlePointerUp = useCallback(() => {
+    if (isDrawingFreehand) {
+      if (freehandPoints.length > 1) {
+        setAnnotations((prev) => [
+          ...prev,
+          { kind: "freehand", x: freehandPoints[0].x, y: freehandPoints[0].y, points: freehandPoints },
+        ]);
+      }
+      setFreehandPoints([]);
+      setIsDrawingFreehand(false);
+    } else if (arrowStart && dragPos) {
+      // A press without a drag is a tap, not an arrow.
+      if (Math.hypot(dragPos.x - arrowStart.x, dragPos.y - arrowStart.y) > mark) {
+        setAnnotations((prev) => [
+          ...prev,
+          { kind: "arrow", x: arrowStart.x, y: arrowStart.y, x2: dragPos.x, y2: dragPos.y },
+        ]);
+      }
+      setArrowStart(null);
+      setDragPos(null);
     }
-    setFreehandPoints([]);
-    setIsDrawingFreehand(false);
-  }, [isDrawingFreehand, tool, freehandPoints]);
+  }, [isDrawingFreehand, freehandPoints, arrowStart, dragPos, mark]);
 
   /* -------------------------------------------------------------- */
   /* Label commit                                                    */
@@ -286,25 +259,6 @@ export function PhotoAnnotator({
     }
     cancelLabel();
   }, [labelInput, labelText, cancelLabel]);
-
-  /* -------------------------------------------------------------- */
-  /* Calibration commit                                              */
-  /* -------------------------------------------------------------- */
-  const commitCalibration = useCallback(() => {
-    const known = parseFloat(calibKnown);
-    if (calibLine && known > 0) {
-      const dx = calibLine.b.x - calibLine.a.x;
-      const dy = calibLine.b.y - calibLine.a.y;
-      const px = Math.sqrt(dx * dx + dy * dy);
-      if (px > 0) {
-        setPxPerUnit(px / known);
-        setMeasures((prev) => [...prev, calibLine]);
-      }
-    }
-    setShowCalibration(false);
-    setCalibLine(null);
-    setCalibKnown("");
-  }, [calibLine, calibKnown]);
 
   /* -------------------------------------------------------------- */
   /* Undo / zoom                                                     */
@@ -333,14 +287,8 @@ export function PhotoAnnotator({
       );
     }
     if (!blob) return;
-    // P6 — derive `measure` annotations from the committed measure lines and
-    // serialize them together with the calibration so measurements persist.
-    const measureAnns: Annotation[] = measures.map((seg) => ({
-      kind: "measure", x: seg.a.x, y: seg.a.y, x2: seg.b.x, y2: seg.b.y, unit: calibUnit,
-    }));
-    const calibration = pxPerUnit != null ? { pxPerUnit, calibUnit } : null;
-    onSave({ blob, nodesJson: serializeMeasureDoc([...annotations, ...measureAnns], calibration), caption });
-  }, [annotations, measures, calibUnit, pxPerUnit, caption, scale, onSave]);
+    onSave({ blob, nodesJson: serializeAnnotations(annotations), caption });
+  }, [annotations, caption, scale, onSave]);
 
   /* -------------------------------------------------------------- */
   /* Render                                                          */
@@ -349,15 +297,7 @@ export function PhotoAnnotator({
 
   const stageW = natural.w * scale;
   const stageH = natural.h * scale;
-  const sw = STROKE / scale; // stroke width in natural px so it looks constant on screen
-
-  const fmtDistance = (a: Point, b: Point) => {
-    const px = Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
-    if (pxPerUnit && pxPerUnit > 0) {
-      return `${(px / pxPerUnit).toFixed(1)} ${calibUnit}`;
-    }
-    return `${Math.round(px)} px`;
-  };
+  const dragging = tool === "free" || tool === "arrow";
 
   return (
     /* ds-allow: fixed-dark photo-studio chrome (white/* neutrals + amber-400 hints stay dark in both themes) */
@@ -384,11 +324,8 @@ export function PhotoAnnotator({
               ? m.media_annotate_photo_of({ index: photoIndex, total: totalPhotos })
               : m.media_annotate_title()}
           </span>
-          {arrowStart && (
-            <span className="block text-[11px] text-amber-400 font-medium">{m.media_annotate_arrow_hint()}</span>
-          )}
-          {measureStart && (
-            <span className="block text-[11px] text-amber-400 font-medium">{m.media_annotate_measure_hint()}</span>
+          {tool === "arrow" && !arrowStart && (
+            <span className="block text-[11px] text-white/50">{m.media_annotate_arrow_hint()}</span>
           )}
           {tool === "free" && !isDrawingFreehand && (
             <span className="block text-[11px] text-white/50">{m.media_annotate_draw_hint()}</span>
@@ -456,17 +393,22 @@ export function PhotoAnnotator({
       <div className="flex-1 relative overflow-auto">
         <div className="absolute inset-0 flex items-center justify-center">
           {photoUrl && image ? (
-            <div className="relative" style={{ width: stageW, height: stageH }}>
+            /* touch-action none while a drag tool is armed, or the browser
+               scrolls the zoomed canvas instead of drawing on it. */
+            <div className="relative" style={{ width: stageW, height: stageH, touchAction: dragging ? "none" : "auto" }}>
               <Stage
                 ref={stageRef}
                 width={stageW}
                 height={stageH}
                 onClick={handleStageClick}
                 onTap={handleStageClick}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                style={{ cursor: tool === "pan" ? "move" : "crosshair" }}
+                onMouseDown={handlePointerDown}
+                onMouseMove={handlePointerMove}
+                onMouseUp={handlePointerUp}
+                onTouchStart={handlePointerDown}
+                onTouchMove={handlePointerMove}
+                onTouchEnd={handlePointerUp}
+                style={{ cursor: "crosshair" }}
               >
                 {/* Background image layer */}
                 <Layer listening={false}>
@@ -496,8 +438,8 @@ export function PhotoAnnotator({
                           stroke={ANNOTATION_COLOR}
                           fill={ANNOTATION_COLOR}
                           strokeWidth={sw}
-                          pointerLength={12 / scale}
-                          pointerWidth={12 / scale}
+                          pointerLength={mark * 1.2}
+                          pointerWidth={mark * 1.2}
                         />
                       );
                     }
@@ -517,13 +459,13 @@ export function PhotoAnnotator({
                     if (ann.kind === "label") {
                       return (
                         <Label key={i} x={ann.x} y={ann.y}>
-                          <Tag fill="#000000" opacity={0.85} cornerRadius={3 / scale} />
+                          <Tag fill="#000000" opacity={0.85} cornerRadius={mark * 0.3} />
                           <Text
                             text={ann.text}
                             fill={ANNOTATION_COLOR}
                             fontStyle="bold"
-                            fontSize={16 / scale}
-                            padding={4 / scale}
+                            fontSize={mark * 1.6}
+                            padding={mark * 0.4}
                           />
                         </Label>
                       );
@@ -531,11 +473,18 @@ export function PhotoAnnotator({
                     return null;
                   })}
 
-                  {/* Active arrow start marker */}
-                  {arrowStart && <Circle x={arrowStart.x} y={arrowStart.y} radius={5 / scale} fill={ANNOTATION_COLOR} />}
-
-                  {/* Active measure start marker */}
-                  {measureStart && <Circle x={measureStart.x} y={measureStart.y} radius={5 / scale} fill="#fbbf24" />}
+                  {/* Arrow being dragged */}
+                  {arrowStart && dragPos && (
+                    <Arrow
+                      points={[arrowStart.x, arrowStart.y, dragPos.x, dragPos.y]}
+                      stroke={ANNOTATION_COLOR}
+                      fill={ANNOTATION_COLOR}
+                      strokeWidth={sw}
+                      pointerLength={mark * 1.2}
+                      pointerWidth={mark * 1.2}
+                      opacity={0.6}
+                    />
+                  )}
 
                   {/* Active freehand preview */}
                   {isDrawingFreehand && freehandPoints.length > 1 && (
@@ -548,31 +497,6 @@ export function PhotoAnnotator({
                       opacity={0.6}
                     />
                   )}
-
-                  {/* Committed measurements: line + distance text */}
-                  {measures.map((seg, i) => (
-                    <Fragment key={`m-${i}`}>
-                      <Arrow
-                        points={[seg.a.x, seg.a.y, seg.b.x, seg.b.y]}
-                        stroke="#fbbf24"
-                        fill="#fbbf24"
-                        strokeWidth={sw}
-                        pointerAtBeginning
-                        pointerLength={10 / scale}
-                        pointerWidth={10 / scale}
-                      />
-                      <Label x={(seg.a.x + seg.b.x) / 2} y={(seg.a.y + seg.b.y) / 2}>
-                        <Tag fill="#000000" opacity={0.85} cornerRadius={3 / scale} />
-                        <Text
-                          text={fmtDistance(seg.a, seg.b)}
-                          fill="#fbbf24"
-                          fontStyle="bold"
-                          fontSize={14 / scale}
-                          padding={4 / scale}
-                        />
-                      </Label>
-                    </Fragment>
-                  ))}
                 </Layer>
               </Stage>
 
@@ -643,25 +567,25 @@ export function PhotoAnnotator({
           )}
         </div>
 
-        {/* Zoom controls (right side) */}
+        {/* Zoom controls (right side) — w-11 h-11 is the 44px touch floor. */}
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-1">
           <button
             onClick={zoomIn}
-            className="w-9 h-9 rounded-md bg-white/10 text-white/70 hover:bg-white/20 flex items-center justify-center text-[16px] font-bold transition-colors"
+            className="w-11 h-11 rounded-md bg-white/10 text-white/70 hover:bg-white/20 flex items-center justify-center text-[16px] font-bold transition-colors"
             title={m.media_annotate_zoom_in()}
           >
             +
           </button>
           <button
             onClick={zoomReset}
-            className="w-9 h-9 rounded-md bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center text-[10px] font-bold transition-colors"
+            className="w-11 h-11 rounded-md bg-white/10 text-white/60 hover:bg-white/20 flex items-center justify-center text-[10px] font-bold transition-colors"
             title={m.media_annotate_zoom_reset()}
           >
             {Math.round(zoom * 100)}%
           </button>
           <button
             onClick={zoomOut}
-            className="w-9 h-9 rounded-md bg-white/10 text-white/70 hover:bg-white/20 flex items-center justify-center text-[16px] font-bold transition-colors"
+            className="w-11 h-11 rounded-md bg-white/10 text-white/70 hover:bg-white/20 flex items-center justify-center text-[16px] font-bold transition-colors"
             title={m.media_annotate_zoom_out()}
           >
             -
@@ -679,22 +603,6 @@ export function PhotoAnnotator({
             </span>
           </div>
         )}
-
-        {/* Calibration overlay (measure tool) */}
-        {showCalibration && (
-          <MeasureCalibration
-            calibKnown={calibKnown}
-            calibUnit={calibUnit}
-            onCalibKnownChange={setCalibKnown}
-            onCalibUnitChange={setCalibUnit}
-            onCommit={commitCalibration}
-            onCancel={() => {
-              setShowCalibration(false);
-              setCalibLine(null);
-              setCalibKnown("");
-            }}
-          />
-        )}
       </div>
 
       {/* -------------------------------------------------------- */}
@@ -706,19 +614,15 @@ export function PhotoAnnotator({
         onSelectTool={(id) => {
           setTool(id);
           setArrowStart(null);
-          setMeasureStart(null);
+          setDragPos(null);
           setStampText(null);
-          if (id !== "measure") {
-            setShowCalibration(false);
-            setCalibLine(null);
-          }
         }}
         onCaptionChange={setCaption}
         activeStamp={stampText}
         onSelectStamp={(text) => {
           setTool("text");
           setArrowStart(null);
-          setMeasureStart(null);
+          setDragPos(null);
           setStampText(text);
         }}
       />

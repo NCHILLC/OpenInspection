@@ -11,6 +11,7 @@ import { originalQualityEnabled } from "./original-quality";
 import type { useInspectionState } from "~/hooks/useInspection";
 import type { useFindings } from "~/hooks/useFindings";
 import type { GalleryPhoto } from "~/lib/inspection-media";
+import type { useDefectPhotoOps } from "~/hooks/useDefectPhotoOps";
 
 type InspectionState = ReturnType<typeof useInspectionState>;
 type Findings = ReturnType<typeof useFindings>;
@@ -45,6 +46,8 @@ export interface EditorPhotoUploadDeps {
     itemGalleryPhotos: (itemId: string) => GalleryPhoto[];
     /** Field eval P1 (shoot-to-annotate) — the PhotoAnnotator's one entry point. */
     openPhotoStudio: (next: { url: string | null; key: string | null; index: number; total: number }) => void;
+    /** The defect-scoped counterpart — a session opened from a chip shoots into that defect's array. */
+    defectPhotoOps: Pick<ReturnType<typeof useDefectPhotoOps>, "galleryPhotos" | "setStudio">;
 }
 
 export interface EditorPhotoUpload {
@@ -70,9 +73,7 @@ export interface EditorPhotoUpload {
     openPickerForDefect: (target: NonNullable<PendingPhotoTarget>) => void;
     /** The inspector backed out of the chooser — drop any armed target. */
     clearPhotoTarget: () => void;
-    /** Field eval P1 — mark the just-taken photo without leaving the camera.
-     *  No-ops for a defect target (wrong array) or a still-uploading shot
-     *  (nothing on the server yet to bake the annotation onto). */
+    /** Field eval P1 — mark the just-taken photo without leaving the camera (toasts while it is still uploading). */
     handleAnnotateNewest: () => void;
 }
 
@@ -109,6 +110,7 @@ export function useEditorPhotoUpload({
     drain,
     itemGalleryPhotos,
     openPhotoStudio,
+    defectPhotoOps,
 }: EditorPhotoUploadDeps): EditorPhotoUpload {
     const pendingPhotoTargetRef = useRef<PendingPhotoTarget>(null);
 
@@ -377,24 +379,22 @@ export function useEditorPhotoUpload({
         pendingPhotoTargetRef.current = null;
     }, []);
 
+    // The camera's edit badge. It used to return silently for a defect session — a
+    // visible button that did nothing — because only the item annotator was wired.
     const handleAnnotateNewest = useCallback(() => {
         const itemId = state.cameraItemId;
-        if (!itemId || pendingPhotoTargetRef.current != null) return;
-        const gallery = itemGalleryPhotos(itemId);
-        const photo = gallery[gallery.length - 1];
+        if (!itemId) return;
+        const target = pendingPhotoTargetRef.current;
+        const gallery = target ? defectPhotoOps.galleryPhotos(itemId, target) : itemGalleryPhotos(itemId);
+        const photo = gallery.at(-1);
         if (!photo) return;
-        if (photo.pending) {
-            pushToast({ message: m.editor_camera_annotate_still_uploading(), variant: "warning", durationMs: 2500 });
-            return;
-        }
-        const annotateBaseKey = photo.croppedKey || photo.originalKey || photo.key;
-        openPhotoStudio({
-            url: `/api/inspections/${state.inspection.id}/photo?key=${encodeURIComponent(annotateBaseKey)}`,
-            key: annotateBaseKey,
-            index: photo.photoIndex ?? gallery.length - 1,
-            total: gallery.length,
-        });
-    }, [state.cameraItemId, state.inspection.id, itemGalleryPhotos, openPhotoStudio]);
+        if (photo.pending) return pushToast({ message: m.editor_camera_annotate_still_uploading(), variant: "warning", durationMs: 2500 });
+        const key = photo.croppedKey || photo.originalKey || photo.key;
+        const url = `/api/inspections/${state.inspection.id}/photo?key=${encodeURIComponent(key)}`;
+        const index = photo.photoIndex ?? gallery.length - 1;
+        if (target) defectPhotoOps.setStudio({ itemId, target, photoIndex: index, url, sectionId: state.currentSection?.id });
+        else openPhotoStudio({ url, key, index, total: gallery.length });
+    }, [state.cameraItemId, state.inspection.id, state.currentSection, itemGalleryPhotos, openPhotoStudio, defectPhotoOps]);
 
     return {
         handlePhotoUpload,

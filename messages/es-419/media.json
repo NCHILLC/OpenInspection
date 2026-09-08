@@ -10,7 +10,7 @@
   "media_annotate_caption_placeholder": "Agregue una leyenda...",
   "media_annotate_title": "Estudio de fotos",
   "media_annotate_photo_of": "Foto {index} de {total}",
-  "media_annotate_arrow_hint": "Haga clic para fijar el extremo de la flecha",
+  "media_annotate_arrow_hint": "Arrastre para dibujar la flecha",
   "media_annotate_measure_hint": "Haga clic para fijar el extremo de la medición",
   "media_annotate_draw_hint": "Haga clic y arrastre para dibujar",
   "media_annotate_stamp_hint": "Toque la foto para colocar \"{label}\"",

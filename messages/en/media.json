@@ -10,7 +10,7 @@
   "media_annotate_caption_placeholder": "Add a caption...",
   "media_annotate_title": "Photo Studio",
   "media_annotate_photo_of": "Photo {index} of {total}",
-  "media_annotate_arrow_hint": "Click to set arrow endpoint",
+  "media_annotate_arrow_hint": "Drag to draw the arrow",
   "media_annotate_measure_hint": "Click to set measurement endpoint",
   "media_annotate_draw_hint": "Click and drag to draw",
   "media_annotate_stamp_hint": "Tap the photo to place \"{label}\"",

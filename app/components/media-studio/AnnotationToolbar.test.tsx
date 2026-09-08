@@ -29,6 +29,19 @@ function renderToolbar(props: Partial<Parameters<typeof AnnotationToolbar>[0]> =
   return { onSelectTool, onSelectStamp, onCaptionChange };
 }
 
+// The bar is dark in both themes, so a theme-flipping text token turned every
+// unselected tool near-black on a phone in dark mode (2026-09-08 field eval).
+describe("AnnotationToolbar — tool legibility", () => {
+  it("paints unselected tools in literal white, never a theme-flipping token", () => {
+    renderToolbar({ tool: "circle" });
+    for (const id of ["arrow", "free", "text"]) {
+      const cls = screen.getByTestId(`tool-${id}`).className;
+      expect(cls).toMatch(/text-white/);
+      expect(cls).not.toMatch(/fg-inverse/);
+    }
+  });
+});
+
 describe("AnnotationToolbar — damage stamps", () => {
   it("hides the stamp row under any tool other than Label", () => {
     renderToolbar({ tool: "circle" });

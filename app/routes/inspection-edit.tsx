@@ -1080,7 +1080,7 @@ export default function InspectionEditPage() {
  setAddMediaChooser,
  drain: mediaDrain,
  itemGalleryPhotos,
- openPhotoStudio,
+ openPhotoStudio, defectPhotoOps,
  });
 
  /* ---------------------------------------------------------------- */

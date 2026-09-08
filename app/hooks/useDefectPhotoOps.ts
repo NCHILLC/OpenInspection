@@ -80,6 +80,9 @@ export function useDefectPhotoOps(ctx: {
           annotated: !!p.annotatedKey,
           originalKey: p.key,
           croppedKey: p.croppedKey,
+          // Read by the camera's edit badge: nothing to annotate until the
+          // drain has swapped the real key in.
+          pending: !!p.pendingUpload,
         };
       }),
     [getDefectPhotos, state.inspection.id],

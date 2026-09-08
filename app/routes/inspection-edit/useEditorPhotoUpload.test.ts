@@ -39,6 +39,7 @@ const drain = vi.fn();
 const uploadFetcher = { state: "idle", data: undefined, submit };
 const openPhotoStudio = vi.fn();
 const itemGalleryPhotos = vi.fn((_itemId: string): unknown[] => []);
+const defectPhotoOps = { galleryPhotos: vi.fn((): unknown[] => []), setStudio: vi.fn() };
 
 function makeState() {
     return {
@@ -72,6 +73,7 @@ function setup(collabDoc: unknown = null) {
             drain,
             itemGalleryPhotos: itemGalleryPhotos as never,
             openPhotoStudio,
+            defectPhotoOps: defectPhotoOps as never,
         }),
     );
     const settle = async () => {
@@ -121,6 +123,8 @@ beforeEach(() => {
     openPhotoStudio.mockClear();
     pushToast.mockClear();
     itemGalleryPhotos.mockReset().mockReturnValue([]);
+    defectPhotoOps.galleryPhotos.mockReset().mockReturnValue([]);
+    defectPhotoOps.setStudio.mockClear();
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
 });
 
@@ -279,6 +283,7 @@ describe("useEditorPhotoUpload — every item photo rides the queue", () => {
                 drain,
                 itemGalleryPhotos: itemGalleryPhotos as never,
                 openPhotoStudio,
+                defectPhotoOps: defectPhotoOps as never,
             }),
         );
         await shootAFrame(result.current.handleCameraFrame);
@@ -331,10 +336,10 @@ describe("useEditorPhotoUpload — every item photo rides the queue", () => {
 });
 
 /**
- * Field eval P1 — shoot-to-annotate. `handleAnnotateNewest` addresses the
- * item's photos[] by index, so it must refuse the two cases where that index
- * points at the wrong thing (a defect session) or nothing yet (a pending
- * upload), and otherwise open the annotator on exactly the last photo.
+ * Field eval P1 — shoot-to-annotate. `handleAnnotateNewest` opens the
+ * annotator on exactly the last photo of whichever array the session shoots
+ * into — the item's, or the defect's when the camera was opened from a chip —
+ * and refuses only a shot that has nothing on the server yet.
  */
 describe("useEditorPhotoUpload — shoot-to-annotate", () => {
     it("opens the annotator on the newest uploaded photo", async () => {
@@ -357,13 +362,22 @@ describe("useEditorPhotoUpload — shoot-to-annotate", () => {
         expect(pushToast).toHaveBeenCalledTimes(1);
     });
 
-    it("no-ops for a defect-targeted session — that shot is in the defect's array, not the item's", async () => {
-        itemGalleryPhotos.mockReturnValue([{ key: "k0", photoIndex: 0, pending: false }]);
+    // Used to no-op here — a visible edit badge that did nothing for every
+    // photo shot from a defect chip (2026-09-08 field eval).
+    it("opens the DEFECT annotator for a defect-targeted session", async () => {
+        itemGalleryPhotos.mockReturnValue([{ key: "item-k0", photoIndex: 0, pending: false }]);
+        defectPhotoOps.galleryPhotos.mockReturnValue([
+            { key: "d-k0", photoIndex: 0, pending: false },
+            { key: "d-k1", photoIndex: 1, pending: false },
+        ]);
         const { result } = setup();
         act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
         act(() => result.current.handleAnnotateNewest());
+        expect(defectPhotoOps.galleryPhotos).toHaveBeenCalledWith("item-1", { kind: "canned", id: "d1" });
+        expect(defectPhotoOps.setStudio).toHaveBeenCalledWith(
+            expect.objectContaining({ target: { kind: "canned", id: "d1" }, photoIndex: 1, url: expect.stringContaining("d-k1") }),
+        );
         expect(openPhotoStudio).not.toHaveBeenCalled();
-        expect(pushToast).not.toHaveBeenCalled();
     });
 
     it("no-ops when the item has no photos yet", async () => {
