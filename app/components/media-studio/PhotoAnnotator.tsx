@@ -65,6 +65,13 @@ export function PhotoAnnotator({
   const [arrowStart, setArrowStart] = useState<Point | null>(null);
   const [measureStart, setMeasureStart] = useState<Point | null>(null);
 
+  // Field eval P2 — damage stamps. A stamp is a preset label word armed via
+  // AnnotationToolbar; when set, the Label tool's next tap commits it
+  // directly instead of opening the free-text input. Stays armed across
+  // multiple taps (same convention as circle/arrow staying selected), so
+  // marking three cracks is three taps, not three tool re-selections.
+  const [stampText, setStampText] = useState<string | null>(null);
+
   // Freehand drawing (natural px).
   const [freehandPoints, setFreehandPoints] = useState<Point[]>([]);
   const [isDrawingFreehand, setIsDrawingFreehand] = useState(false);
@@ -108,6 +115,7 @@ export function PhotoAnnotator({
     setTool("circle");
     setArrowStart(null);
     setMeasureStart(null);
+    setStampText(null);
     setFreehandPoints([]);
     setIsDrawingFreehand(false);
     setLabelInput(null);
@@ -196,8 +204,14 @@ export function PhotoAnnotator({
     if (tool === "circle") {
       setAnnotations((prev) => [...prev, { kind: "circle", x: pos.x, y: pos.y, r: CIRCLE_R }]);
     } else if (tool === "text") {
-      setLabelInput(pos);
-      setLabelText("");
+      // A stamp commits straight to an annotation — that IS the one-tap
+      // (field eval P2); typing still opens the inline input as before.
+      if (stampText) {
+        setAnnotations((prev) => [...prev, { kind: "label", x: pos.x, y: pos.y, text: stampText }]);
+      } else {
+        setLabelInput(pos);
+        setLabelText("");
+      }
     } else if (tool === "arrow") {
       if (!arrowStart) {
         setArrowStart(pos);
@@ -223,7 +237,7 @@ export function PhotoAnnotator({
         }
       }
     }
-  }, [tool, arrowStart, measureStart, pxPerUnit, naturalPointer, labelInput]);
+  }, [tool, arrowStart, measureStart, pxPerUnit, naturalPointer, labelInput, stampText]);
 
   /* -------------------------------------------------------------- */
   /* Freehand: mousedown / move / up                                */
@@ -365,7 +379,7 @@ export function PhotoAnnotator({
         </button>
 
         <div className="flex-1 min-w-0 text-center">
-          <span className="text-[14px] font-bold text-white/90">
+          <span className="block truncate text-[14px] font-bold text-white/90">
             {photoIndex != null && totalPhotos != null && totalPhotos > 0
               ? m.media_annotate_photo_of({ index: photoIndex, total: totalPhotos })
               : m.media_annotate_title()}
@@ -379,47 +393,60 @@ export function PhotoAnnotator({
           {tool === "free" && !isDrawingFreehand && (
             <span className="block text-[11px] text-white/50">{m.media_annotate_draw_hint()}</span>
           )}
+          {tool === "text" && stampText && (
+            <span className="block text-[11px] text-amber-400 font-medium">
+              {m.media_annotate_stamp_hint({ label: stampText })}
+            </span>
+          )}
         </div>
 
-        {/* set the open photo as the report cover */}
+        {/* set the open photo as the report cover.
+            Text collapses to icon-only below `sm`: close+cover+undo+save's
+            labelled widths cannot fit one 375px row even with a zero-width
+            title (field eval P2). Mobile-first, matching AnnotationToolbar's
+            own `hidden sm:inline` right below; aria-label keeps the
+            accessible name once the visible text is display:none. */}
         {onSetCover && photoUrl && (
           <button
             type="button"
             onClick={onSetCover}
-            className={`h-11 px-3 rounded-md text-[12px] font-bold border transition-colors flex items-center gap-1.5 ${
+            aria-label={isCover ? m.media_annotate_cover_current() : m.media_annotate_cover_set_title()}
+            className={`h-11 w-11 sm:w-auto px-0 sm:px-3 justify-center rounded-md text-[12px] font-bold border transition-colors flex items-center gap-1.5 ${
               isCover
                 ? "text-amber-300 bg-amber-400/15 border-amber-400/40"
                 : "text-white/60 bg-white/5 border-white/10 hover:bg-white/10"
             }`}
             title={isCover ? m.media_annotate_cover_current() : m.media_annotate_cover_set_title()}
           >
-            <svg className="w-3.5 h-3.5" fill={isCover ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 shrink-0" fill={isCover ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.48 3.5a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
             </svg>
-            {isCover ? m.media_annotate_cover_badge() : m.media_annotate_cover_set()}
+            <span className="hidden sm:inline">{isCover ? m.media_annotate_cover_badge() : m.media_annotate_cover_set()}</span>
           </button>
         )}
 
         <button
           onClick={undoLast}
           disabled={annotations.length === 0}
-          className="h-11 px-3 rounded-md text-[12px] font-bold text-white/60 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+          aria-label={m.media_annotate_undo_title()}
+          className="h-11 w-11 sm:w-auto px-0 sm:px-3 justify-center rounded-md text-[12px] font-bold text-white/60 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
           title={m.media_annotate_undo_title()}
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
           </svg>
-          {m.common_undo()}
+          <span className="hidden sm:inline">{m.common_undo()}</span>
         </button>
 
         <button
           onClick={handleSave}
-          className="h-11 px-4 rounded-md bg-ih-primary text-ih-fg-inverse text-[12px] font-bold hover:bg-ih-primary-600 transition-colors flex items-center gap-1.5"
+          aria-label={m.common_save()}
+          className="h-11 w-11 sm:w-auto px-0 sm:px-4 justify-center rounded-md bg-ih-primary text-ih-fg-inverse text-[12px] font-bold hover:bg-ih-primary-600 transition-colors flex items-center gap-1.5"
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
-          {m.common_save()}
+          <span className="hidden sm:inline">{m.common_save()}</span>
         </button>
       </div>
 
@@ -680,12 +707,20 @@ export function PhotoAnnotator({
           setTool(id);
           setArrowStart(null);
           setMeasureStart(null);
+          setStampText(null);
           if (id !== "measure") {
             setShowCalibration(false);
             setCalibLine(null);
           }
         }}
         onCaptionChange={setCaption}
+        activeStamp={stampText}
+        onSelectStamp={(text) => {
+          setTool("text");
+          setArrowStart(null);
+          setMeasureStart(null);
+          setStampText(text);
+        }}
       />
     </div>
   );

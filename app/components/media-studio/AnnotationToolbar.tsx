@@ -28,18 +28,36 @@ function toolLabel(id: ToolId): string {
   }
 }
 
+/* Field eval P2 — one-tap damage stamps. Presets for the Label tool: picking
+ * one arms its exact word as the next placed label, skipping the type-then-
+ * confirm round trip. Not a new annotation kind — a stamp IS a label, so it
+ * needs no new Konva rendering, no new server-side shape. */
+const STAMP_IDS = ["crack", "moisture", "missing", "damaged"] as const;
+type StampId = (typeof STAMP_IDS)[number];
+function stampLabel(id: StampId): string {
+  switch (id) {
+    case "crack": return m.media_annotate_stamp_crack();
+    case "moisture": return m.media_annotate_stamp_moisture();
+    case "missing": return m.media_annotate_stamp_missing();
+    case "damaged": return m.media_annotate_stamp_damaged();
+  }
+}
+
 interface AnnotationToolbarProps {
   tool: ToolId;
   caption: string;
   onSelectTool: (id: ToolId) => void;
   onCaptionChange: (caption: string) => void;
+  /** The stamp text armed for the next tap, when one was picked over typing. */
+  activeStamp: string | null;
+  onSelectStamp: (text: string) => void;
 }
 
 /* ------------------------------------------------------------------ */
 /* Bottom tool palette                                                 */
 /* ------------------------------------------------------------------ */
 
-export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange }: AnnotationToolbarProps) {
+export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange, activeStamp, onSelectStamp }: AnnotationToolbarProps) {
   return (
     /* ds-allow: fixed-dark photo-studio chrome (white/* neutrals stay dark in both themes) */
     // Wraps to two rows below sm, and is not height-locked: six tools plus a
@@ -67,6 +85,35 @@ export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange
           </button>
         ))}
       </div>
+
+      {/* Field eval P2 — damage stamps. Only shown once Label is picked
+          (progressive disclosure — four more always-on buttons would crowd
+          a bar that already wraps at 375px). */}
+      {tool === "text" && (
+        <div className="flex items-center gap-1.5 flex-wrap basis-full sm:basis-auto" data-testid="stamp-row">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-white/40">
+            {m.media_annotate_stamp_row_label()}
+          </span>
+          {STAMP_IDS.map((id) => {
+            const label = stampLabel(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                data-testid={`stamp-${id}`}
+                onClick={() => onSelectStamp(label)}
+                className={`h-11 px-3 rounded-md text-[12px] font-bold border transition-colors ${
+                  activeStamp === label
+                    ? "bg-ih-primary text-ih-fg-inverse border-transparent"
+                    : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="hidden sm:block w-px h-6 bg-white/10" />
 
