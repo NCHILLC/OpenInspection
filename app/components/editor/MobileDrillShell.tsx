@@ -102,19 +102,24 @@ export function MobileDrillShell({
                 backLabel={backLabel}
                 syncPill={<MobileSyncPill inspectionId={inspectionId} />}
             />
-            <main className="p-4 pb-24">{children}</main>
+            {/* Item screens reserve extra clearance: a rich item pins its
+                rating strip (ItemEditor) in the same fixed band as the
+                camera FAB below, both above the bottom nav. */}
+            <main className={`p-4 ${level === "item" ? "pb-40" : "pb-24"}`}>{children}</main>
 
             {/* The most-used control on the screen, in the one place a thumb
                 reaches without a regrip — and at a FIXED position, unlike the
                 add tile in the photo strip, which sits behind a scroll and used
-                to move every fourth photo. */}
+                to move every fourth photo. Shares the rating strip's `bottom-14`
+                band (to its right) rather than floating above it — see
+                ItemEditor's rating-row wrapper. */}
             {level === "item" && onCapture && (
                 <button
                     type="button"
                     onClick={onCapture}
                     data-testid="mobile-capture-fab"
                     aria-label={m.media_strip_add_photo_aria()}
-                    className="fixed right-4 bottom-[72px] z-40 w-14 h-14 rounded-full bg-ih-primary text-ih-primary-fg shadow-ih-popover flex items-center justify-center active:scale-95 transition-transform"
+                    className="fixed right-4 bottom-14 z-40 w-14 h-14 rounded-full bg-ih-primary text-ih-primary-fg shadow-ih-popover flex items-center justify-center active:scale-95 transition-transform"
                 >
                     <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />

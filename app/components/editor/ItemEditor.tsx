@@ -375,10 +375,10 @@ export function ItemEditor({
  </div>
  )}
 
- {/* Rating buttons — driven by the rating system's levels (C-14a):
- full words on ≥sm, abbreviation on narrow, always-on semantic colour. */}
+ {/* Rating buttons (C-14a). Below `md`, pinned above MobileDrillShell's nav
+ (field eval P1 — top-third forced a regrip); `mb-0` cancels a `space-y-6` margin that still applies once `fixed`. */}
  {item.type === "rich" && (
- <div className="flex items-start gap-3">
+ <div className="flex items-start gap-3 max-md:fixed max-md:inset-x-0 max-md:bottom-14 max-md:z-30 max-md:h-14 max-md:items-center max-md:gap-2 max-md:bg-ih-bg-card max-md:border-t max-md:border-ih-border max-md:px-3 max-md:pr-20 max-md:mb-0">
  <div className="flex-1 min-w-0">
   <RatingButtonRow levels={levels} activeLevel={activeLevel} onRating={onRating} />
  </div>
