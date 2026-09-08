@@ -59,7 +59,11 @@ const TONE_FILLED: Record<RatingTone, string> = {
 };
 
 const TONE_IDLE: Record<RatingTone, string> = {
-  ok: "bg-ih-ok-bg text-ih-ok-fg border border-ih-ok/30 hover:bg-ih-ok/20",
+  // No resting tint: an unselected "good" tile (e.g. Inspected) must not read
+  // as already answered (field eval FE — idle IN tile looked rated in Light
+  // and Field). The other tones keep their idle tint — they're category
+  // pickers (defect severity) with no "nothing happened yet" state to fake.
+  ok: "bg-transparent text-ih-fg-3 border border-ih-border hover:bg-ih-ok-bg hover:text-ih-ok-fg",
   warn: "bg-ih-watch-bg text-ih-watch-fg border border-ih-watch/30 hover:bg-ih-watch/20",
   bad: "bg-ih-bad-bg text-ih-bad-fg border border-ih-bad/30 hover:bg-ih-bad/20",
   info: "bg-ih-info-bg text-ih-info-fg border border-ih-info/30 hover:bg-ih-info/20",

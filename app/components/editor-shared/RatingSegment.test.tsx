@@ -30,7 +30,16 @@ describe("RatingSegment", () => {
     const idle = screen.getByRole("radio", { name: "Serviceable" });
     expect(idle.getAttribute("aria-checked")).toBe("false");
     expect(idle.className).not.toContain("bg-ih-ok text-ih-fg-inverse");
-    expect(idle.className).toContain("bg-ih-ok-bg");
+    expect(idle.className).toContain("bg-transparent");
+  });
+
+  it("idle ok tile has no resting tint (would misread as already answered)", () => {
+    render(<RatingSegment ratings={ratings} value="bad" onChange={() => {}} />);
+    const classes = screen.getByRole("radio", { name: "Serviceable" }).className.split(/\s+/);
+    expect(classes).not.toContain("bg-ih-ok-bg");
+    expect(classes).not.toContain("text-ih-ok-fg");
+    // Still previews the tone on hover, just not at rest.
+    expect(classes).toContain("hover:bg-ih-ok-bg");
   });
 
   it("maps the warn tone to the ih-watch token (no ih-warn token exists)", () => {
