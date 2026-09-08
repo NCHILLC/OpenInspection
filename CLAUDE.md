@@ -217,10 +217,10 @@ OpenInspection runs as ONE Cloudflare Worker (cloudflare/react-router-hono-fulls
 - **Rendering**: Full SSR — RR v8 server renders on the edge, hydrates on the client.
 - **Styling**: Tailwind CSS v4 with Design System 0523 tokens (`app/styles/tailwind.css`). Tailwind is v4-only (via `@tailwindcss/vite`); no separate server-side CSS build.
 - **API calls**: `hono/client` with end-to-end type safety via `packages/api-types/`. RR v8 loader/action functions call the in-process API through the injected `API_WORKER` binding (`createApi(context)` in `app/lib/api-client.server.ts`) — no network hop.
-- **State management**: React hooks — `useInspection` (~900 LOC), `useFindings`, `useKeyboard`, `useCannedComments`, `useOfflineQueue`, `usePresence`, `useTheme`, `useUnsavedChanges`.
+- **State management**: React hooks — `useInspection` (~900 LOC), `useFindings`, `useKeyboard`, `useCannedComments`, `usePresence`, `useTheme`, `useUnsavedChanges`.
 - **Component library**: `packages/shared-ui/` provides 25 design-system components consumed by the frontend — Button, Pill, StatCard, Icon, Eyebrow, PageHeader, TabStrip, Input, Select, Textarea, Checkbox, Radio, RadioGroup, EmptyState, Skeleton, Card, Banner, Modal, Drawer, Popover, Pagination, FileDropzone, Table, SegmentedControl, Avatar. See `docs/develop/design-system.md`.
 - **Dark mode**: `data-color-scheme` attribute on `<html>`, managed by `useTheme` hook (auto/light/dark).
-- **Offline**: Service Worker + `useOfflineQueue` hook for photo upload queue and field sync.
+- **Offline**: Service Worker caches the shell; field data is a Yjs doc buffered in IndexedDB (`y-indexeddb`) and photo bytes queue in `app/lib/collab/media-pending-store.ts` until they drain to R2. `useOfflineQueue` was retired in InspectorHub/OpenInspection#181 — see `docs/concepts/collab-editing.md`.
 
 ## Environment Variables
 
