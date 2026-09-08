@@ -355,9 +355,10 @@ export function PhotoAnnotator({
         className="flex items-center gap-3 px-4 h-14 flex-shrink-0"
         style={{ background: "rgba(15,23,42,0.8)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
+        {/* w-11 h-11 is the 44px touch floor (field eval P1). */}
         <button
           onClick={onClose}
-          className="w-9 h-9 rounded-md flex items-center justify-center text-white/70 hover:bg-white/10 transition-colors"
+          className="w-11 h-11 rounded-md flex items-center justify-center text-white/70 hover:bg-white/10 transition-colors"
           aria-label={m.media_annotate_close_aria()}
         >
           <Icon name="x" className="w-5 h-5" />
@@ -385,7 +386,7 @@ export function PhotoAnnotator({
           <button
             type="button"
             onClick={onSetCover}
-            className={`h-8 px-3 rounded-md text-[12px] font-bold border transition-colors flex items-center gap-1.5 ${
+            className={`h-11 px-3 rounded-md text-[12px] font-bold border transition-colors flex items-center gap-1.5 ${
               isCover
                 ? "text-amber-300 bg-amber-400/15 border-amber-400/40"
                 : "text-white/60 bg-white/5 border-white/10 hover:bg-white/10"
@@ -402,7 +403,7 @@ export function PhotoAnnotator({
         <button
           onClick={undoLast}
           disabled={annotations.length === 0}
-          className="h-8 px-3 rounded-md text-[12px] font-bold text-white/60 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+          className="h-11 px-3 rounded-md text-[12px] font-bold text-white/60 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
           title={m.media_annotate_undo_title()}
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -413,7 +414,7 @@ export function PhotoAnnotator({
 
         <button
           onClick={handleSave}
-          className="h-8 px-4 rounded-md bg-ih-primary text-ih-fg-inverse text-[12px] font-bold hover:bg-ih-primary-600 transition-colors flex items-center gap-1.5"
+          className="h-11 px-4 rounded-md bg-ih-primary text-ih-fg-inverse text-[12px] font-bold hover:bg-ih-primary-600 transition-colors flex items-center gap-1.5"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

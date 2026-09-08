@@ -252,7 +252,7 @@ export function CannedCommentTabs({
                           <Icon name="edit" size={13} /><span className="text-[12px] font-medium">{m.common_edit()}</span>
                         </button>
                         {isDefectIncluded && defectPhotoChip({ kind: "canned", id: entry.id }, cannedDefectPhotos(entry.id))}
-                        <button type="button" onClick={stop(() => onFlagChange?.(activeTab, entry.id, !isFlagged))} aria-label={isFlagged ? m.editor_canned_unflag_aria() : m.editor_canned_flag_aria()} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border ${isFlagged ? "border-ih-bad-fg text-ih-bad-fg" : "border-ih-border-strong text-ih-fg-3 hover:border-ih-primary hover:text-ih-primary-text"}`}>
+                        <button type="button" onClick={stop(() => onFlagChange?.(activeTab, entry.id, !isFlagged))} aria-label={isFlagged ? m.editor_canned_unflag_aria() : m.editor_canned_flag_aria()} className={`inline-flex items-center gap-1 px-2 h-11 rounded-md border ${isFlagged ? "border-ih-bad-fg text-ih-bad-fg" : "border-ih-border-strong text-ih-fg-3 hover:border-ih-primary hover:text-ih-primary-text"}`}>
                           <Icon name="flag" size={13} /><span className="text-[12px] font-medium">{m.editor_canned_flag_label()}</span>
                         </button>
                       </span>

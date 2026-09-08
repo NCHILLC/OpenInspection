@@ -11,9 +11,10 @@ const photoIcon = (
     </svg>
 );
 
-/** Matches the bordered Edit/Flag buttons this chip sits beside (CannedCommentTabs). */
+/** Matches the bordered Edit/Flag buttons this chip sits beside (CannedCommentTabs).
+ *  h-11 is the 44px touch floor (field eval P1 — these measured 24-28px). */
 export const defectRowButtonClass =
-    "inline-flex items-center gap-1 px-2 py-1 rounded-md border border-ih-border-strong text-ih-fg-3 hover:border-ih-primary hover:text-ih-primary-text";
+    "inline-flex items-center gap-1 px-2 h-11 rounded-md border border-ih-border-strong text-ih-fg-3 hover:border-ih-primary hover:text-ih-primary-text";
 
 type DefectChipPhoto = { key: string; annotatedKey?: string; croppedKey?: string };
 
@@ -68,23 +69,32 @@ export function makeDefectPhotoChip(
         }
         return (
             <span className={defectRowButtonClass}>
+                {/* h-full stretches this to the chip's now-44px height (field
+                    eval P1) — the label button is the PRIMARY way into a
+                    defect's photos, so it gets the full touch floor. */}
                 <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenDefectPhoto?.(target, 0); }}
-                    className="inline-flex items-center gap-1"
+                    className="inline-flex items-center gap-1 h-full"
                 >
                     {photoIcon}
                     <span className="text-[12px] font-medium">
                         {count === 1 ? m.editor_item_defect_photo_count_one({ count }) : m.editor_item_defect_photo_count_other({ count })}
                     </span>
                 </button>
+                {/* ponytail: per-thumbnail targets stop at 32px (24px measured
+                    in the eval), not the full 44px floor — several side by
+                    side in this inline chip would spread a multi-photo defect
+                    row well past 375px. Upgrade path if that turns out to
+                    matter more than density: wrap this strip onto its own row
+                    below the label instead of packing it inline. */}
                 <span className="inline-flex items-center gap-1 ml-1">
                     {photos.map((p, i) => (
                         <button
                             key={p.key}
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenDefectPhoto?.(target, i); }}
-                            className="w-6 h-6 rounded overflow-hidden border border-ih-border-strong flex-shrink-0"
+                            className="w-8 h-8 rounded overflow-hidden border border-ih-border-strong flex-shrink-0"
                         >
                             <img src={photoUrl(resolvePhotoDisplayKey(p))} alt="" className="w-full h-full object-cover" loading="lazy" />
                         </button>
@@ -94,9 +104,9 @@ export function makeDefectPhotoChip(
                         disabled={photoUploading}
                         aria-label={m.editor_item_add_defect_photo_aria()}
                         onClick={add}
-                        className="w-6 h-6 rounded border border-dashed border-ih-border flex items-center justify-center text-ih-fg-4 hover:border-ih-primary hover:text-ih-primary-text flex-shrink-0"
+                        className="w-8 h-8 rounded border border-dashed border-ih-border flex items-center justify-center text-ih-fg-4 hover:border-ih-primary hover:text-ih-primary-text flex-shrink-0"
                     >
-                        <Icon name="plus" size={12} />
+                        <Icon name="plus" size={14} />
                     </button>
                 </span>
                 <Icon name="chevR" size={14} className="text-ih-fg-4 ml-0.5 flex-shrink-0" />

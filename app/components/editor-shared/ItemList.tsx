@@ -328,13 +328,14 @@ export function ItemList({
                 </button>
               )}
 
-              {/* Reserved ⋯ slot — own column, never overlaps the rating dot. */}
+              {/* Reserved ⋯ slot — own column, never overlaps the rating dot;
+                  size="lg" is the 44px touch floor (field eval P1). */}
               {structuralEditing && !batchMode && (
-                <div className={`shrink-0 w-6 flex items-center justify-center ${REVEAL}`}>
+                <div className={`shrink-0 w-11 flex items-center justify-center ${REVEAL}`}>
                   <IconButton
                     onClick={(e) => { e.stopPropagation(); openItemMenu(item.id, e.currentTarget); }}
-                    size="sm"
-                    className="w-6 h-6 text-ih-fg-4 hover:text-ih-fg-2"
+                    size="lg"
+                    className="text-ih-fg-4 hover:text-ih-fg-2"
                     aria-label={m.editor_shared_edit_label({ label: item.label })}
                     aria-haspopup="true"
                     aria-expanded={menuItemId === item.id}

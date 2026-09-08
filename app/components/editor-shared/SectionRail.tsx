@@ -257,13 +257,15 @@ export function SectionRail({
    </button>
   )}
 
-  {/* Reserved ⋯ slot — its own column, never overlaps the donut. */}
+  {/* Reserved ⋯ slot — its own column, never overlaps the donut.
+      size="lg" (44px) is the touch floor (field eval P1 — this measured
+      24x24); the slot widens to match so the button isn't clipped. */}
   {hasStructuralOps && (
-  <div className={`shrink-0 w-6 flex items-center justify-center ${REVEAL}`}>
+  <div className={`shrink-0 w-11 flex items-center justify-center ${REVEAL}`}>
    <IconButton
    onClick={(e) => { e.stopPropagation(); openSectionMenu(section.id, e.currentTarget); }}
-   size="sm"
-   className="w-6 h-6 text-ih-fg-4 hover:text-ih-fg-2"
+   size="lg"
+   className="text-ih-fg-4 hover:text-ih-fg-2"
    aria-label={m.editor_shared_section_options({ title: section.title })}
    aria-haspopup="true"
    aria-expanded={menuOpen}

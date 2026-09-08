@@ -247,11 +247,13 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
           <span className="text-slate-700 text-[13px] font-bold tracking-widest uppercase">{m.editor_camera_shoot()}</span>
         </button>
 
+        {/* size="lg" is the 44px touch floor (field eval P1 — this measured 36px). */}
         <Button
           type="button"
           variant="primary"
+          size="lg"
           onClick={onClose}
-          className="w-24 rounded-full px-5 py-3 shadow-ih-popover"
+          className="w-24 rounded-full shadow-ih-popover"
           data-testid="camera-done"
         >
           {m.common_done()}
