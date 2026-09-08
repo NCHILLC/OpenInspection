@@ -109,3 +109,21 @@ describe("FieldCamera — the screen stays open until the inspector closes it", 
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 });
+
+describe("FieldCamera — shoot-to-annotate (field eval P1)", () => {
+    it("shows the mark button only on the newest thumbnail, once onAnnotateNewest is given", async () => {
+        const onAnnotateNewest = vi.fn();
+        await open({ onAnnotateNewest });
+        await shutter();
+        await shutter();
+        expect(screen.getAllByTestId("camera-annotate-newest")).toHaveLength(1);
+        screen.getByTestId("camera-annotate-newest").click();
+        expect(onAnnotateNewest).toHaveBeenCalledTimes(1);
+    });
+
+    it("hides the mark button entirely when onAnnotateNewest is omitted", async () => {
+        await open();
+        await shutter();
+        expect(screen.queryByTestId("camera-annotate-newest")).toBeNull();
+    });
+});

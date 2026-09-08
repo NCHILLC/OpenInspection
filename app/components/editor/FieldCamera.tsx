@@ -19,6 +19,12 @@ export interface FieldCameraProps {
    * inspector standing in front of a defect always gets a camera.
    */
   onUnavailable: () => void;
+  /**
+   * Field eval P1 — mark the newest shot without leaving the camera. Omit to
+   * hide the affordance (e.g. a defect-targeted session, where the annotator
+   * has nowhere in that array to save into yet).
+   */
+  onAnnotateNewest?: () => void;
 }
 
 /** Below this the frame cannot carry a shingle nail head; say so rather than
@@ -46,7 +52,7 @@ const MIN_USABLE_LONG_EDGE = 1280;
  * queue and the doc. Deleting from the item's photo strip (which has undo)
  * covers a bad frame; revisit if that turns out to be a common move.
  */
-export function FieldCamera({ open, onClose, onCapture, onUnavailable }: FieldCameraProps) {
+export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotateNewest }: FieldCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -192,13 +198,29 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable }: FieldCa
         <div className="relative z-10 mb-3 px-4">
           {/* ds-allow: fixed-dark camera overlay thumbnails (light-on-dark border) */}
           <div className="flex gap-2 overflow-x-auto pb-1" data-testid="camera-thumbnails">
-            {shots.map((s) => (
-              <img
-                key={s.id}
-                src={s.url}
-                className="w-16 h-16 shrink-0 object-cover rounded-md border-2 border-white/30"
-                alt={m.editor_camera_frame_alt()}
-              />
+            {shots.map((s, i) => (
+              <div key={s.id} className="relative shrink-0">
+                <img
+                  src={s.url}
+                  className="w-16 h-16 object-cover rounded-md border-2 border-white/30"
+                  alt={m.editor_camera_frame_alt()}
+                />
+                {/* Field eval P1 — shoot-to-annotate. Only the newest frame: an
+                    older one is one you have already moved past.
+                    ds-allow: badge over the fixed-dark camera overlay — the
+                    dark border is legible against any thumbnail content. */}
+                {i === shots.length - 1 && onAnnotateNewest && (
+                  <button
+                    type="button"
+                    onClick={onAnnotateNewest}
+                    data-testid="camera-annotate-newest"
+                    aria-label={m.editor_camera_annotate_aria()}
+                    className="absolute -top-1.5 -right-1.5 w-8 h-8 rounded-full bg-ih-primary text-white flex items-center justify-center shadow-ih-popover border-2 border-black/40"
+                  >
+                    <Icon name="edit" className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>

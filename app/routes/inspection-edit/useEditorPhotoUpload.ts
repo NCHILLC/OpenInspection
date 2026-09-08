@@ -10,6 +10,7 @@ import { m } from "~/paraglide/messages";
 import { originalQualityEnabled } from "./original-quality";
 import type { useInspectionState } from "~/hooks/useInspection";
 import type { useFindings } from "~/hooks/useFindings";
+import type { GalleryPhoto } from "~/lib/inspection-media";
 
 type InspectionState = ReturnType<typeof useInspectionState>;
 type Findings = ReturnType<typeof useFindings>;
@@ -40,6 +41,10 @@ export interface EditorPhotoUploadDeps {
     /** #181 PR-G — kick the media queue. Every item photo now rides the queue,
      *  so this fires on the online path too, not just on reconnect. */
     drain: () => void;
+    /** Field eval P1 (shoot-to-annotate) — reads back the item's own photos[]. */
+    itemGalleryPhotos: (itemId: string) => GalleryPhoto[];
+    /** Field eval P1 (shoot-to-annotate) — the PhotoAnnotator's one entry point. */
+    openPhotoStudio: (next: { url: string | null; key: string | null; index: number; total: number }) => void;
 }
 
 export interface EditorPhotoUpload {
@@ -65,6 +70,10 @@ export interface EditorPhotoUpload {
     openPickerForDefect: (target: NonNullable<PendingPhotoTarget>) => void;
     /** The inspector backed out of the chooser — drop any armed target. */
     clearPhotoTarget: () => void;
+    /** Field eval P1 — mark the just-taken photo without leaving the camera.
+     *  No-ops for a defect target (wrong array) or a still-uploading shot
+     *  (nothing on the server yet to bake the annotation onto). */
+    handleAnnotateNewest: () => void;
 }
 
 // Task 16 — Worker subrequest safety: a single submission fans out one
@@ -98,6 +107,8 @@ export function useEditorPhotoUpload({
     isMobile,
     setAddMediaChooser,
     drain,
+    itemGalleryPhotos,
+    openPhotoStudio,
 }: EditorPhotoUploadDeps): EditorPhotoUpload {
     const pendingPhotoTargetRef = useRef<PendingPhotoTarget>(null);
 
@@ -366,5 +377,31 @@ export function useEditorPhotoUpload({
         pendingPhotoTargetRef.current = null;
     }, []);
 
-    return { handlePhotoUpload, handleCameraFrame, openPickerForItem, openPickerForDefect, clearPhotoTarget };
+    const handleAnnotateNewest = useCallback(() => {
+        const itemId = state.cameraItemId;
+        if (!itemId || pendingPhotoTargetRef.current != null) return;
+        const gallery = itemGalleryPhotos(itemId);
+        const photo = gallery[gallery.length - 1];
+        if (!photo) return;
+        if (photo.pending) {
+            pushToast({ message: m.editor_camera_annotate_still_uploading(), variant: "warning", durationMs: 2500 });
+            return;
+        }
+        const annotateBaseKey = photo.croppedKey || photo.originalKey || photo.key;
+        openPhotoStudio({
+            url: `/api/inspections/${state.inspection.id}/photo?key=${encodeURIComponent(annotateBaseKey)}`,
+            key: annotateBaseKey,
+            index: photo.photoIndex ?? gallery.length - 1,
+            total: gallery.length,
+        });
+    }, [state.cameraItemId, state.inspection.id, itemGalleryPhotos, openPhotoStudio]);
+
+    return {
+        handlePhotoUpload,
+        handleCameraFrame,
+        openPickerForItem,
+        openPickerForDefect,
+        clearPhotoTarget,
+        handleAnnotateNewest,
+    };
 }

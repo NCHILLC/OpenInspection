@@ -7,7 +7,8 @@ import { useEditorPhotoUpload } from "./useEditorPhotoUpload";
 vi.mock("~/components/media-studio/preprocessImage", () => ({
     preprocessImage: (f: File) => Promise.resolve(f),
 }));
-vi.mock("~/hooks/useToast", () => ({ pushToast: vi.fn() }));
+const pushToast = vi.fn();
+vi.mock("~/hooks/useToast", () => ({ pushToast: (...a: unknown[]) => pushToast(...a) }));
 
 const enqueueMedia = vi.fn((_rec: unknown) => Promise.resolve("id"));
 const appendPendingPhoto = vi.fn((..._args: unknown[]) => {});
@@ -36,6 +37,8 @@ vi.mock("~/lib/collab/defect-photo-binding", () => ({
 const submit = vi.fn();
 const drain = vi.fn();
 const uploadFetcher = { state: "idle", data: undefined, submit };
+const openPhotoStudio = vi.fn();
+const itemGalleryPhotos = vi.fn((_itemId: string): unknown[] => []);
 
 function makeState() {
     return {
@@ -67,6 +70,8 @@ function setup(collabDoc: unknown = null) {
             isMobile: false,
             setAddMediaChooser: vi.fn(),
             drain,
+            itemGalleryPhotos: itemGalleryPhotos as never,
+            openPhotoStudio,
         }),
     );
     const settle = async () => {
@@ -113,6 +118,9 @@ beforeEach(() => {
     enqueueMedia.mockClear();
     appendPendingPhoto.mockClear();
     appendPendingPhotoToDefect.mockClear();
+    openPhotoStudio.mockClear();
+    pushToast.mockClear();
+    itemGalleryPhotos.mockReset().mockReturnValue([]);
     Object.defineProperty(navigator, "onLine", { value: true, configurable: true });
 });
 
@@ -269,6 +277,8 @@ describe("useEditorPhotoUpload — every item photo rides the queue", () => {
                 isMobile: false,
                 setAddMediaChooser: vi.fn(),
                 drain,
+                itemGalleryPhotos: itemGalleryPhotos as never,
+                openPhotoStudio,
             }),
         );
         await shootAFrame(result.current.handleCameraFrame);
@@ -317,5 +327,48 @@ describe("useEditorPhotoUpload — every item photo rides the queue", () => {
         await pickAPhoto(result.current.handlePhotoUpload);
         expect(enqueueMedia).not.toHaveBeenCalled();
         expect(lastTarget()).toEqual({ targetType: "defect", customId: "d1" });
+    });
+});
+
+/**
+ * Field eval P1 — shoot-to-annotate. `handleAnnotateNewest` addresses the
+ * item's photos[] by index, so it must refuse the two cases where that index
+ * points at the wrong thing (a defect session) or nothing yet (a pending
+ * upload), and otherwise open the annotator on exactly the last photo.
+ */
+describe("useEditorPhotoUpload — shoot-to-annotate", () => {
+    it("opens the annotator on the newest uploaded photo", async () => {
+        itemGalleryPhotos.mockReturnValue([
+            { key: "k0", photoIndex: 0, pending: false },
+            { key: "k1", photoIndex: 1, pending: false, croppedKey: "k1-crop" },
+        ]);
+        const { result } = setup();
+        act(() => result.current.handleAnnotateNewest());
+        expect(openPhotoStudio).toHaveBeenCalledWith(
+            expect.objectContaining({ key: "k1-crop", index: 1, total: 2 }),
+        );
+    });
+
+    it("toasts instead of opening while the newest photo is still uploading", async () => {
+        itemGalleryPhotos.mockReturnValue([{ key: "", photoIndex: 0, pending: true }]);
+        const { result } = setup();
+        act(() => result.current.handleAnnotateNewest());
+        expect(openPhotoStudio).not.toHaveBeenCalled();
+        expect(pushToast).toHaveBeenCalledTimes(1);
+    });
+
+    it("no-ops for a defect-targeted session — that shot is in the defect's array, not the item's", async () => {
+        itemGalleryPhotos.mockReturnValue([{ key: "k0", photoIndex: 0, pending: false }]);
+        const { result } = setup();
+        act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
+        act(() => result.current.handleAnnotateNewest());
+        expect(openPhotoStudio).not.toHaveBeenCalled();
+        expect(pushToast).not.toHaveBeenCalled();
+    });
+
+    it("no-ops when the item has no photos yet", async () => {
+        const { result } = setup();
+        act(() => result.current.handleAnnotateNewest());
+        expect(openPhotoStudio).not.toHaveBeenCalled();
     });
 });
