@@ -114,3 +114,38 @@ describe("DefectFieldsRow retired controls", () => {
     expect(document.querySelector('input[type="text"]')).toBeTruthy();
   });
 });
+
+// Field eval P1 — the eight-way chip row above the free-text location field.
+describe("DefectFieldsRow location chips", () => {
+  it("offers all eight standard locations", () => {
+    renderRow({ category: "cat-minor" });
+    for (const id of ["front", "rear", "left", "right", "attic", "crawlspace", "garage", "other"]) {
+      expect(screen.getByTestId(`defect-location-chip-${id}`)).toBeTruthy();
+    }
+  });
+
+  it("writes the chip's label into location, from inside the row's label", () => {
+    const onChange = renderRow({ category: "cat-minor" });
+    onChange.mockClear();
+    const chip = screen.getByTestId("defect-location-chip-attic");
+    const evt = new MouseEvent("click", { bubbles: true, cancelable: true });
+    chip.dispatchEvent(evt);
+    expect(onChange).toHaveBeenCalledWith("d1", { location: "Attic" });
+    // Same label-forwarding hazard as the severity tiles — must not also
+    // toggle the row's inclusion checkbox.
+    expect(evt.defaultPrevented).toBe(true);
+  });
+
+  it("marks the chip matching the stored location as selected", () => {
+    renderRow({ category: "cat-minor", location: "Attic" });
+    expect(screen.getByTestId("defect-location-chip-attic").className).toMatch(/border-ih-primary/);
+    expect(screen.getByTestId("defect-location-chip-garage").className).not.toMatch(/border-ih-primary/);
+  });
+
+  it("a typed location that matches no chip leaves every chip unselected", () => {
+    renderRow({ category: "cat-minor", location: "NE corner of basement" });
+    for (const id of ["front", "rear", "left", "right", "attic", "crawlspace", "garage", "other"]) {
+      expect(screen.getByTestId(`defect-location-chip-${id}`).className).not.toMatch(/border-ih-primary/);
+    }
+  });
+});
