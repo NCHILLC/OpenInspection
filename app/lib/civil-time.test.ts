@@ -12,7 +12,7 @@
  * gap and the autumn overlap are here by name.
  */
 import { describe, it, expect } from 'vitest';
-import { civilToInstantISO } from './civil-time';
+import { civilToInstantISO, todayInZone } from './civil-time';
 
 describe('civilToInstantISO', () => {
     it('reads the typed time as a wall clock in the given zone', () => {
@@ -59,5 +59,30 @@ describe('civilToInstantISO', () => {
     it('returns empty for an incomplete pair, so a half-filled form submits nothing', () => {
         expect(civilToInstantISO('', '09:00', 'UTC')).toBe('');
         expect(civilToInstantISO('2026-07-15', '', 'UTC')).toBe('');
+    });
+});
+
+describe('todayInZone', () => {
+    // 2026-09-11T01:29Z is still Sep 10 in New York and already Sep 11 in UTC.
+    // Seeding a form from the DEVICE clock returns the New York day whatever the
+    // workspace is set to, and civilToInstantISO then reads that day in the
+    // WORKSPACE zone — so a UTC workspace opened the wizard on a date that had
+    // already passed. The zone the date is read in has to be the zone it is
+    // stated in.
+    const evening = new Date('2026-09-11T01:29:00.000Z');
+
+    it('reads the date in the given zone, not the runtime default', () => {
+        expect(todayInZone('UTC', evening)).toBe('2026-09-11');
+        expect(todayInZone('America/New_York', evening)).toBe('2026-09-10');
+    });
+
+    it('crosses forward as well as back', () => {
+        // Same instant is already the 11th in Tokyo (UTC+9).
+        expect(todayInZone('Asia/Tokyo', evening)).toBe('2026-09-11');
+    });
+
+    it('falls back to UTC when the zone is blank or unknown rather than throwing', () => {
+        expect(todayInZone('', evening)).toBe('2026-09-11');
+        expect(todayInZone('Not/AZone', evening)).toBe('2026-09-11');
     });
 });

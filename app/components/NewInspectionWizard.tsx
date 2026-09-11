@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useFetcher } from "react-router";
 import { useContactSearch } from "~/hooks/useContactSearch";
 import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
-import { buildWizardSteps, stepBlockedReason, todayLocalISO, type WizardStepId } from "~/lib/wizard-steps";
+import { buildWizardSteps, stepBlockedReason, type WizardStepId } from "~/lib/wizard-steps";
 import { summariseNewInspection } from "~/lib/wizard-review";
-import { buildWizardCreatePayload } from "~/lib/wizard-submit";
+import { buildWizardCreatePayload, wizardRefusalMessage, type WizardCreateResult } from "~/lib/wizard-submit";
 import { PropertyStep } from "./new-inspection/PropertyStep";
 import { PeopleStep } from "./new-inspection/PeopleStep";
 import { ServicesStep } from "./new-inspection/ServicesStep";
@@ -13,7 +13,7 @@ import { ReviewPanel } from "./new-inspection/ReviewPanel";
 import { WizardLayout } from "./new-inspection/WizardLayout";
 import { Breadcrumb } from "./Breadcrumb";
 import { PageHeader } from "@core/shared-ui";
-import { civilToInstantISO } from "~/lib/civil-time";
+import { civilToInstantISO, todayInZone } from "~/lib/civil-time";
 import { useDisplayTimeZone, useSessionContext } from "~/hooks/useSessionContext";
 import { QuotaExceededPanel } from "./new-inspection/QuotaExceededPanel";
 import type { AddressSelection } from "~/routes/resources/places";
@@ -151,8 +151,9 @@ export function NewInspectionWizard({
   // P-4: per-service price overrides (serviceId → cents). Only populated when
   // the inspector edits the price input for a selected service.
   const [priceOverrides, setPriceOverrides] = useState<Map<string, number>>(new Map());
-  // B-21: on-site creation is overwhelmingly same-day — default to today.
-  const [date, setDate] = useState(() => todayLocalISO());
+  // B-21: on-site creation is overwhelmingly same-day — default to today, read
+  // in the WORKSPACE zone rather than the device's (see todayInZone).
+  const [date, setDate] = useState(() => todayInZone(displayTz));
   const [time, setTime] = useState("09:00");
   const [soloMode, setSoloMode] = useState(true);
   const [inspectorId, setInspectorId] = useState("");
@@ -223,7 +224,7 @@ export function NewInspectionWizard({
       setTemplateId("");
       setServices(new Set());
       setPriceOverrides(new Map());
-      setDate(todayLocalISO());
+      setDate(todayInZone(displayTz));
       setTime("09:00");
       setSoloMode(true);
       setInspectorId("");
@@ -251,25 +252,17 @@ export function NewInspectionWizard({
     setQuotaExceeded(quotaExceededAtOpen);
   }, [open]);
 
-  // Watch the create-submit fetcher for a QUOTA_EXHAUSTED (402) rejection.
-  // A successful create returns a redirect from the action, which React
-  // Router follows directly — fetcher.data never populates on that path, so
-  // this effect only ever fires for a completed (non-redirect) response:
-  // either the free-tier cap panel below, or the pre-existing close-on-any-
-  // other-outcome behavior (unchanged from before this quota feature).
+  // A successful create redirects, and React Router follows it without ever
+  // populating fetcher.data — so every response reaching here is a REFUSAL, and
+  // none of them may close the wizard. See wizardRefusalMessage for what closing
+  // on them used to cost.
   useEffect(() => {
     if (fetcher.state !== "idle" || !fetcher.data) return;
-    const data = fetcher.data as {
-      intent?: string;
-      ok?: boolean;
-      error?: { code?: string; details?: { billingPortalUrl?: string | null } };
-    };
+    const data = fetcher.data as WizardCreateResult;
     if (data.intent !== "create") return;
-    if (data.ok === false && data.error?.code === "QUOTA_EXHAUSTED") {
-      setQuotaExceeded(data.error.details?.billingPortalUrl ?? null);
-      return;
-    }
-    onClose();
+    // Only a non-refusal closes; submitError below reads the rest off the fetcher.
+    if (data.ok !== false) { onClose(); return; }
+    if (data.error?.code === "QUOTA_EXHAUSTED") setQuotaExceeded(data.error.details?.billingPortalUrl ?? null);
   // onClose is re-created every render (inline arrow at the call site) but is
   // always functionally equivalent (`() => setWizardOpen(false)`, and setState
   // setters are referentially stable) — intentionally omitted to avoid
@@ -399,6 +392,11 @@ export function NewInspectionWizard({
     holidayBlocked: holidayFetcher.data?.effect === "block",
   });
 
+  // Derived, not mirrored: a copy would need clearing on submit AND on reset.
+  const submitError = wizardRefusalMessage(
+    fetcher.state === "idle" ? (fetcher.data as WizardCreateResult | undefined) : undefined,
+  );
+
   function handleSubmit() {
     // Returns false and does nothing if a create is already in flight — the
     // button below is disabled too, but that only takes effect on the NEXT
@@ -448,6 +446,7 @@ export function NewInspectionWizard({
       stepIdx={stepIdx}
       stepLabel={stepLabel}
       blockedReason={blockedReason}
+      submitError={submitError}
       busy={creating}
       isLastStep={stepIdx === steps.length - 1}
       onBack={() => (stepIdx > 0 ? setStepIdx(stepIdx - 1) : onClose())}

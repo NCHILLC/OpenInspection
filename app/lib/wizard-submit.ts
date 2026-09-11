@@ -1,4 +1,5 @@
 import type { AddressSelection } from "~/routes/resources/places";
+import { m } from "~/paraglide/messages";
 
 /**
  * The form body the New Inspection wizard posts.
@@ -73,4 +74,32 @@ export function buildWizardCreatePayload(s: WizardCreateState): Record<string, s
         newAgentName: s.selectedAgentId ? "" : s.newAgentName,
         newAgentEmail: s.selectedAgentId ? "" : s.newAgentEmail,
     };
+}
+
+/** What the `/inspections` action returns when it does NOT redirect. */
+export interface WizardCreateResult {
+    intent?: string;
+    ok?: boolean;
+    error?: { code?: string; message?: string; details?: { billingPortalUrl?: string | null } };
+}
+
+/**
+ * The line to show the inspector when a create was refused, or null when it was
+ * not refused at all.
+ *
+ * The counterpart to buildWizardCreatePayload above, and here for the same
+ * reason it is: a refusal the wizard fails to read is a wizard that throws away
+ * everything the inspector typed. It used to, for every code except
+ * QUOTA_EXHAUSTED — the submit effect closed the wizard, which navigates to
+ * /inspections, so one mistyped client email silently cost the address,
+ * template, client, services and schedule.
+ *
+ * QUOTA_EXHAUSTED is excluded because it has its own panel with an upgrade CTA;
+ * a banner would say less and duplicate it.
+ */
+export function wizardRefusalMessage(data: WizardCreateResult | undefined): string | null {
+    if (data?.ok !== false || data.error?.code === "QUOTA_EXHAUSTED") return null;
+    // The API names the field and the reason ("client.email: Invalid email
+    // address") — the only thing that tells the inspector what to go and fix.
+    return data.error?.message || m.new_inspection_create_failed();
 }

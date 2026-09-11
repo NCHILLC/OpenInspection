@@ -84,3 +84,21 @@ export function civilToInstantISO(date: string, time: string, timeZone: string):
     const chosen = matches.length === 2 ? Math.min(first, second) : Math.max(first, second);
     return new Date(chosen).toISOString();
 }
+
+/**
+ * Today's civil date in a zone, as `YYYY-MM-DD`.
+ *
+ * The counterpart to civilToInstantISO, and here for the same reason. A form
+ * that seeds "today" from the device clock (`new Date().getDate()`) and then
+ * hands that civil date back to civilToInstantISO has mixed two frames: the day
+ * comes from the viewer's zone, the time is read in the workspace's. Wherever
+ * the two zones are on different calendar days — every evening for a workspace
+ * east of the viewer — the seeded day is the wrong one, and the booking lands
+ * in the past without anything looking wrong on screen.
+ *
+ * @param timeZone IANA zone to read the date in; blank or unknown → UTC
+ */
+export function todayInZone(timeZone: string, now: Date = new Date()): string {
+    const ms = isUsableZone(timeZone) ? civilFieldsAsUtcMs(now.getTime(), timeZone) : now.getTime();
+    return new Date(ms).toISOString().slice(0, 10);
+}

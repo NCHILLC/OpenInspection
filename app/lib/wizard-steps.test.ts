@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stepBlockedReason, type StepGateState, buildWizardSteps, todayLocalISO, formatPriceCents } from '~/lib/wizard-steps';
+import { stepBlockedReason, type StepGateState, buildWizardSteps, formatPriceCents } from '~/lib/wizard-steps';
 
 /**
  * FE-7 — services.price is stored in CENTS (schema comment, and every other
@@ -50,20 +50,6 @@ describe('buildWizardSteps', () => {
   it('skips Services when the tenant has no service catalog', () => {
     expect(buildWizardSteps({ hasServiceCatalog: false }))
       .toEqual(['property', 'people', 'confirm']);
-  });
-});
-
-describe('todayLocalISO', () => {
-  it('formats a date as local YYYY-MM-DD', () => {
-    expect(todayLocalISO(new Date(2026, 5, 4, 9, 30))).toBe('2026-06-04');
-  });
-
-  it('pads single-digit month/day', () => {
-    expect(todayLocalISO(new Date(2026, 0, 7))).toBe('2026-01-07');
-  });
-
-  it('uses local time, not UTC (23:30 local on the 4th stays the 4th)', () => {
-    expect(todayLocalISO(new Date(2026, 5, 4, 23, 30))).toBe('2026-06-04');
   });
 });
 

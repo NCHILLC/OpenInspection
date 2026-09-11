@@ -1,5 +1,5 @@
 import type React from "react";
-import { PageHeader } from "@core/shared-ui";
+import { Banner, PageHeader } from "@core/shared-ui";
 import { Breadcrumb } from "../Breadcrumb";
 import type { WizardStepId } from "~/lib/wizard-steps";
 import { m } from "~/paraglide/messages";
@@ -23,6 +23,7 @@ export function WizardLayout({
     stepIdx,
     stepLabel,
     blockedReason,
+    submitError = null,
     busy = false,
     isLastStep,
     onBack,
@@ -35,6 +36,12 @@ export function WizardLayout({
     stepLabel: (step: WizardStepId) => string;
     /** Why Next is disabled, or null when it is not. */
     blockedReason: string | null;
+    /**
+     * Why the last submit was refused, or null. Distinct from blockedReason:
+     * that one disables the button, this one must NOT — the way out of a
+     * refusal is to change something and press it again.
+     */
+    submitError?: string | null;
     /**
      * A submit is in flight (portal #105). The button goes dead and spins rather
      * than sitting there looking untouched while nothing visibly happens — that
@@ -87,6 +94,15 @@ export function WizardLayout({
                             </div>
                         ))}
                     </div>
+
+                    {/* Above the step, not beside the button: the field the
+                        server rejected is often on a step the user has already
+                        left, so the message has to survive going back to it. */}
+                    {submitError && (
+                        <div className="px-6 pt-5">
+                            <Banner tone="danger">{submitError}</Banner>
+                        </div>
+                    )}
 
                     {/* No inner scroll: the page scrolls, so a portaled dropdown has
                         no overflow ancestor to be clipped by. */}

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { buildWizardCreatePayload, type WizardCreateState } from "~/lib/wizard-submit";
+import { buildWizardCreatePayload, wizardRefusalMessage, type WizardCreateState } from "~/lib/wizard-submit";
 
 const base: WizardCreateState = {
     propertyType: "single_family",
@@ -120,5 +120,30 @@ describe("buildWizardCreatePayload", () => {
         });
         expect(payload.addressLat).toBe("0");
         expect(payload.addressLng).toBe("0");
+    });
+});
+
+describe("wizardRefusalMessage", () => {
+    it("states the field the API rejected, so the inspector knows what to fix", () => {
+        expect(wizardRefusalMessage({ intent: "create", ok: false, error: { code: "VALIDATION_ERROR", message: "client.email: Invalid email address" } }))
+            .toBe("client.email: Invalid email address");
+    });
+
+    it("falls back to a generic line when the API sends no message", () => {
+        expect(wizardRefusalMessage({ intent: "create", ok: false, error: { code: "VALIDATION_ERROR" } }))
+            .toBeTruthy();
+    });
+
+    it("stays silent for QUOTA_EXHAUSTED, which has its own panel", () => {
+        expect(wizardRefusalMessage({ intent: "create", ok: false, error: { code: "QUOTA_EXHAUSTED" } })).toBeNull();
+    });
+
+    it("stays silent when there is no refusal to report", () => {
+        // The regression this whole function exists for: a create refused for
+        // any reason but quota used to close the wizard — which navigates away —
+        // discarding every field the inspector had filled in, with no message.
+        // Null here must mean "nothing went wrong", never "nothing to say".
+        expect(wizardRefusalMessage(undefined)).toBeNull();
+        expect(wizardRefusalMessage({ intent: "create", ok: true })).toBeNull();
     });
 });
