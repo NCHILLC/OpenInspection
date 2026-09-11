@@ -224,6 +224,40 @@ describe('NewInspectionWizard — client + buyer-agent payload', () => {
      * nothing between them, which is what a real double click looks like and
      * why a `fetcher.state` check cannot see the second one.
      */
+    /**
+     * QA sweep: `type="email"` never runs its own constraint check because
+     * Next is a button, not a form submit — `dana@@notvalid` used to reach
+     * the Review panel and only the server refused it.
+     */
+    it('blocks Next on a malformed client email, and clears once it is fixed', () => {
+        const { getByPlaceholderText, getByLabelText, getByText, getAllByRole } = render(
+            <NewInspectionWizard
+                open
+                onClose={vi.fn()}
+                templates={[{ id: 'tpl-1', name: 'Standard Inspection' }]}
+            />,
+        );
+        fireEvent.change(getByPlaceholderText(/123 Main|St.*City/i), {
+            target: { value: '123 Main Street' },
+        });
+        fireEvent.change(getByLabelText('Template'), { target: { value: 'Standard' } });
+        fireEvent.mouseDown(getByText('Standard Inspection'));
+        const next = () => (getAllByRole('button') as HTMLButtonElement[])
+            .find((b) => b.textContent?.includes('Next'))!;
+        expect(next().hasAttribute('disabled')).toBe(false);
+        fireEvent.click(next());
+
+        // People step: a name plus a malformed email.
+        const inputs = getAllByRole('textbox') as HTMLInputElement[];
+        fireEvent.change(inputs[0], { target: { value: 'Dana Client' } });
+        fireEvent.change(inputs[1], { target: { value: 'dana@@notvalid' } });
+        expect(next().hasAttribute('disabled')).toBe(true);
+        expect(getByText(/valid email/i)).toBeTruthy();
+
+        fireEvent.change(inputs[1], { target: { value: 'dana@example.com' } });
+        expect(next().hasAttribute('disabled')).toBe(false);
+    });
+
     it('creates one inspection when Create is clicked twice in the same tick (portal #105)', () => {
         const { getAllByRole } = walkToConfirm();
         const createBtn = (getAllByRole('button') as HTMLButtonElement[])
@@ -238,5 +272,38 @@ describe('NewInspectionWizard — client + buyer-agent payload', () => {
         const createCalls = fetcherMocks.submit.mock.calls
             .filter((c) => (c[0] as { intent?: string })?.intent === 'create');
         expect(createCalls.length).toBe(1);
+    });
+});
+
+/**
+ * QA sweep: the "Scheduled" review-panel row is visible from the moment the
+ * wizard opens (date/time default to today), so its chip could jump straight
+ * to the confirm step while Property was still empty — landing on a panel
+ * where Create read as enabled. `confirm`'s own gate only knows about
+ * date/holiday; it never saw the missing address because the wizard read
+ * `stepBlockedReason` for the step on screen instead of every step up to it.
+ */
+describe('NewInspectionWizard — a review-panel chip cannot skip the gate', () => {
+    it('keeps Create disabled after jumping to Confirm via the Scheduled chip with no address', () => {
+        const { getByText, getAllByRole } = render(
+            <NewInspectionWizard
+                open
+                onClose={vi.fn()}
+                templates={[{ id: 'tpl-1', name: 'Standard Inspection' }]}
+            />,
+        );
+        // Step 1, untouched: Next is disabled for lack of an address.
+        const findByLabel = (label: string) => (getAllByRole('button') as HTMLButtonElement[])
+            .find((b) => b.textContent?.includes(label))!;
+        expect(findByLabel('Next').hasAttribute('disabled')).toBe(true);
+
+        // The Scheduled chip is live before anything else is filled in.
+        fireEvent.click(getByText('Scheduled').closest('button')!);
+
+        // Landed on Confirm — the button now reads "Create Inspection", and it
+        // must still be disabled: the property step it skipped is still empty.
+        const createBtn = findByLabel('Create Inspection');
+        expect(createBtn.hasAttribute('disabled')).toBe(true);
+        expect(getByText(/address/i)).toBeTruthy();
     });
 });

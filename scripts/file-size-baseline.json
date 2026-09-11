@@ -37,7 +37,7 @@
   "scripts/check-erasure-manifest.mjs": 572,
   "server/services/agent/referral.ts": 566,
   "server/api/inspections/media-studio.ts": 546,
-  "app/components/NewInspectionWizard.tsx": 543,
+  "app/components/NewInspectionWizard.tsx": 545,
   "scripts/check-i18n-glossary.mjs": 540,
   "app/routes/settings-profile.tsx": 534,
   "scripts/check-converter-literals.mjs": 528,

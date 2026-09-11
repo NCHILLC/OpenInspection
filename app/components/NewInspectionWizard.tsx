@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useFetcher } from "react-router";
 import { useContactSearch } from "~/hooks/useContactSearch";
 import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
-import { buildWizardSteps, stepBlockedReason, type WizardStepId } from "~/lib/wizard-steps";
+import { buildWizardSteps, wizardBlockedReason, looksLikeEmail, type WizardStepId } from "~/lib/wizard-steps";
 import { summariseNewInspection } from "~/lib/wizard-review";
 import { buildWizardCreatePayload, wizardRefusalMessage, type WizardCreateResult } from "~/lib/wizard-submit";
 import { PropertyStep } from "./new-inspection/PropertyStep";
@@ -377,16 +377,16 @@ export function NewInspectionWizard({
     }
   }
 
-  // IA-1 — People step: block Next when email or phone is filled without a name.
-  const clientHasContact = clientEmail.trim().length > 0 || clientPhone.trim().length > 0;
-  const clientNameMissing = clientHasContact && clientName.trim().length === 0;
-
-  // A single source for both "may we advance" and "why not" — the button was
-  // disabled with no explanation, twice in one wizard.
-  const blockedReason = stepBlockedReason(step, {
+  // IA-1 — a contact detail with no name is not a person; and neither email field gets the browser's own check, Next being a button.
+  const clientNameMissing = (clientEmail.trim().length > 0 || clientPhone.trim().length > 0) && clientName.trim().length === 0;
+  const clientEmailInvalid = clientEmail.trim().length > 0 && !looksLikeEmail(clientEmail);
+  const agentEmailInvalid  = newAgentEmail.trim().length > 0 && !looksLikeEmail(newAgentEmail);
+  const blockedReason = wizardBlockedReason(steps, step, {
     address,
     templateId,
     clientNameMissing,
+    clientEmailInvalid,
+    agentEmailInvalid,
     serviceCount: services.size,
     date,
     holidayBlocked: holidayFetcher.data?.effect === "block",
@@ -494,6 +494,8 @@ export function NewInspectionWizard({
               clientPhone={clientPhone}
               setClientPhone={setClientPhone}
               clientNameMissing={clientNameMissing}
+              clientEmailInvalid={clientEmailInvalid}
+              agentEmailInvalid={agentEmailInvalid}
               selectedAgent={selectedAgent}
               newAgentMode={newAgentMode}
               setNewAgentMode={setNewAgentMode}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stepBlockedReason, type StepGateState, buildWizardSteps, formatPriceCents } from '~/lib/wizard-steps';
+import { stepBlockedReason, wizardBlockedReason, type StepGateState, type WizardStepId, buildWizardSteps, formatPriceCents } from '~/lib/wizard-steps';
 
 /**
  * FE-7 — services.price is stored in CENTS (schema comment, and every other
@@ -63,6 +63,8 @@ describe("stepBlockedReason", () => {
         address: "412 Alder Court, Springfield, IL",
         templateId: "tpl-1",
         clientNameMissing: false,
+        clientEmailInvalid: false,
+        agentEmailInvalid: false,
         serviceCount: 1,
         date: "2026-07-25",
         holidayBlocked: false,
@@ -90,6 +92,21 @@ describe("stepBlockedReason", () => {
         expect(stepBlockedReason("people", { ...ok, clientNameMissing: true })).toMatch(/name/i);
     });
 
+    it("blocks a malformed client email — Next is a button, not a submit, so the browser's own type=\"email\" constraint never runs", () => {
+        expect(stepBlockedReason("people", { ...ok, clientEmailInvalid: true })).toMatch(/email/i);
+    });
+
+    it("gates the AGENT email too — same field shape, same missing constraint check", () => {
+        // The reported defect named the client field. The agent field on the same
+        // step is the same `type="email"` behind the same non-submit button, so a
+        // fix that covered only the reported one would leave the bug in place.
+        expect(stepBlockedReason("people", { ...ok, agentEmailInvalid: true })).toMatch(/email/i);
+    });
+
+    it("names the missing name before a malformed email — the first thing to fix, reading down", () => {
+        expect(stepBlockedReason("people", { ...ok, clientNameMissing: true, clientEmailInvalid: true })).toMatch(/name/i);
+    });
+
     it("asks for a service, and for a date", () => {
         expect(stepBlockedReason("services", { ...ok, serviceCount: 0 })).toMatch(/service/i);
         expect(stepBlockedReason("confirm", { ...ok, date: "" })).toMatch(/date/i);
@@ -99,5 +116,48 @@ describe("stepBlockedReason", () => {
         const blocked = stepBlockedReason("confirm", { ...ok, holidayBlocked: true });
         expect(blocked).toBeTruthy();
         expect(blocked).not.toBe(stepBlockedReason("confirm", { ...ok, date: "" }));
+    });
+});
+
+/**
+ * ReviewPanel's "Scheduled" row is visible from the moment the wizard opens
+ * (the date/time default to today), so its chip can jump straight to `confirm`
+ * before Property or People are ever filled in. `confirm`'s own gate only
+ * knows about date/holiday, so reading `stepBlockedReason` for the landed-on
+ * step alone left Create enabled over an empty address. `wizardBlockedReason`
+ * is the one function both the Next/Create button AND a chip jump must read —
+ * it walks every step up to and including the one on screen, not just that one.
+ */
+describe("wizardBlockedReason", () => {
+    const steps: WizardStepId[] = ["property", "people", "services", "confirm"];
+    const ok: StepGateState = {
+        address: "412 Alder Court, Springfield, IL",
+        templateId: "tpl-1",
+        clientNameMissing: false,
+        clientEmailInvalid: false,
+        agentEmailInvalid: false,
+        serviceCount: 1,
+        date: "2026-07-25",
+        holidayBlocked: false,
+    };
+
+    it("is silent on confirm when every earlier step is complete", () => {
+        expect(wizardBlockedReason(steps, "confirm", ok)).toBeNull();
+    });
+
+    it("catches an empty address from confirm — the chip-jump bug", () => {
+        const reason = wizardBlockedReason(steps, "confirm", { ...ok, address: "" });
+        expect(reason).toMatch(/address/i);
+    });
+
+    it("only checks steps up to and including the current one", () => {
+        // An unticked service wouldn't block Property on its own — it isn't
+        // reachable yet from there.
+        expect(wizardBlockedReason(steps, "property", { ...ok, serviceCount: 0 })).toBeNull();
+    });
+
+    it("skips a step absent from the plan (Services hidden — no catalog)", () => {
+        const noServices: WizardStepId[] = ["property", "people", "confirm"];
+        expect(wizardBlockedReason(noServices, "confirm", { ...ok, serviceCount: 0 })).toBeNull();
     });
 });

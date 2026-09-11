@@ -18,6 +18,8 @@ export function PeopleStep({
   clientPhone,
   setClientPhone,
   clientNameMissing,
+  clientEmailInvalid,
+  agentEmailInvalid,
   clientIsExistingContact,
   clientSearch,
   selectClient,
@@ -40,6 +42,9 @@ export function PeopleStep({
   clientPhone: string;
   setClientPhone: (v: string) => void;
   clientNameMissing: boolean;
+  /** Non-empty and not shaped like an email. */
+  clientEmailInvalid: boolean;
+  agentEmailInvalid: boolean;
   /** The three client fields came from a Contacts hit, not from typing. */
   clientIsExistingContact: boolean;
   clientSearch: ClientSearch;
@@ -62,6 +67,10 @@ export function PeopleStep({
   // the very spot it lands in. What it says is worth saying; it just cannot say
   // it while the name is still being typed.
   const [nameTouched, setNameTouched] = useState(false);
+  // Same reasoning as nameTouched: an error on the first keystroke of a typo
+  // in progress is noise, not help.
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [agentEmailTouched, setAgentEmailTouched] = useState(false);
   return (
     <div className="space-y-5">
       {/* CLIENT section */}
@@ -121,9 +130,13 @@ export function PeopleStep({
             type="email"
             value={clientEmail}
             onChange={(e) => setClientEmail(e.target.value)}
+            onBlur={() => setEmailTouched(true)}
             placeholder={m.newinsp_people_client_email_ph()}
             className="w-full h-9 px-3 rounded-md border border-ih-border bg-ih-bg-card text-[13px] focus:shadow-ih-focus outline-none placeholder:text-ih-fg-4"
           />
+          {emailTouched && clientEmailInvalid && (
+            <p className="text-[12px] text-ih-bad-fg mt-1">{m.newinsp_people_email_invalid()}</p>
+          )}
         </div>
         <div>
           <label className="block text-[12px] font-bold text-ih-fg-3 mb-1.5">{m.newinsp_people_phone_label()}</label>
@@ -181,9 +194,13 @@ export function PeopleStep({
                 type="email"
                 value={newAgentEmail}
                 onChange={(e) => setNewAgentEmail(e.target.value)}
+                onBlur={() => setAgentEmailTouched(true)}
                 placeholder={m.newinsp_people_agent_email_ph()}
                 className="w-full h-9 px-3 rounded-md border border-ih-border bg-ih-bg-card text-[13px] focus:shadow-ih-focus outline-none placeholder:text-ih-fg-4"
               />
+              {agentEmailTouched && agentEmailInvalid && (
+                <p className="text-[12px] text-ih-bad-fg mt-1">{m.newinsp_people_email_invalid()}</p>
+              )}
             </div>
           </div>
         ) : (

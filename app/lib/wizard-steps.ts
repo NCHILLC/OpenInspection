@@ -23,6 +23,11 @@ export interface StepGateState {
   address: string;
   templateId: string;
   clientNameMissing: boolean;
+  /** Non-empty and not shaped like an email. `type="email"` never runs its
+   *  own constraint check because Next is a button, not a form submit — which
+   *  is true of BOTH email fields on this step, so both are gated. */
+  clientEmailInvalid: boolean;
+  agentEmailInvalid: boolean;
   serviceCount: number;
   date: string;
   holidayBlocked: boolean;
@@ -49,8 +54,11 @@ export function stepBlockedReason(step: WizardStepId, s: StepGateState): string 
       return null;
     case 'people':
       // People is optional as a whole, but a contact detail with no name is not
-      // a person.
-      return s.clientNameMissing ? m.newinsp_gate_client_name() : null;
+      // a person, and a malformed email is not an email.
+      if (s.clientNameMissing) return m.newinsp_gate_client_name();
+      // One sentence serves both fields: it names the fix, not the field.
+      if (s.clientEmailInvalid || s.agentEmailInvalid) return m.newinsp_gate_client_email();
+      return null;
     case 'services':
       return s.serviceCount === 0 ? m.newinsp_gate_service() : null;
     case 'confirm':
@@ -58,6 +66,31 @@ export function stepBlockedReason(step: WizardStepId, s: StepGateState): string 
       if (s.holidayBlocked) return m.newinsp_gate_holiday();
       return null;
   }
+}
+
+/**
+ * Whether Next/Create may fire while looking at `atStep` — every step up to
+ * and including it must be clear, not just the one on screen. A ReviewPanel
+ * row can jump straight to `confirm`, whose own gate only knows about date
+ * and holiday; reading `stepBlockedReason` for just the landed-on step is
+ * what let Create go live over an address that was never entered. This is
+ * the one function both the Next/Create button and a review-panel jump read.
+ */
+export function wizardBlockedReason(steps: WizardStepId[], atStep: WizardStepId, s: StepGateState): string | null {
+  for (const step of steps) {
+    const reason = stepBlockedReason(step, s);
+    if (reason) return reason;
+    if (step === atStep) break;
+  }
+  return null;
+}
+
+/** A minimal local@domain.tld shape — what `type="email"` would enforce if
+ *  Next were a form submit. Not the server's authoritative check, which
+ *  still runs; this only stops an obvious typo from reaching it. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export function looksLikeEmail(value: string): boolean {
+  return EMAIL_SHAPE.test(value.trim());
 }
 
 export function buildWizardSteps(opts: {
