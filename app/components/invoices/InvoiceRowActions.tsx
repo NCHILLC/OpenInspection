@@ -97,7 +97,10 @@ export function InvoiceRowActions({
     </button>
   );
 
-  if (isPaid) {
+  // A void invoice takes no more payments (see markPaid's guard in
+  // invoice-payments.service.ts) — it shares the paid branch's render so
+  // "Mark paid" never appears for it.
+  if (isPaid || invoice.status === "void") {
     return (
       <div className="inline-flex items-center justify-end gap-1.5">
         {viewInspection}

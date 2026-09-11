@@ -15,7 +15,8 @@ import { capabilitiesFor } from '../lib/middleware/require-capability';
 import { MetricsQuerySchema, MetricsApiResponseSchema } from '../lib/validations/metrics.schema';
 import { inspections, inspectionServices, contacts } from '../lib/db/schema';
 import { perInspectorMetrics } from '../services/metrics/inspector-metrics';
-import { eq, and, gte, lte, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, ne, sql } from 'drizzle-orm';
+import { INSPECTION_STATUS } from '../lib/status/inspection-status';
 import { withMcpMetadata } from "../lib/route-metadata-standards";
 import { sumEffectivePriceCentsSql } from '../lib/effective-price.sql';
 import { inclusiveUpperBound, resolveMetricsWindow } from '../lib/metrics-window';
@@ -40,8 +41,14 @@ const metricsRoutes = createApiRouter()
 
     // Both bounds are inclusive. `inspections.date` may hold a bare civil date
     // or a full ISO instant, so the upper bound carries a sentinel that sorts
-    // after every time-of-day on that day — see inclusiveUpperBound.
-    const inWindow = and(gte(inspections.date, from), lte(inspections.date, inclusiveUpperBound(to)));
+    // after every time-of-day on that day — see inclusiveUpperBound. A
+    // cancelled inspection is not volume or revenue, so it is excluded here
+    // once rather than in each of the five aggregates below.
+    const inWindow = and(
+        gte(inspections.date, from),
+        lte(inspections.date, inclusiveUpperBound(to)),
+        ne(inspections.status, INSPECTION_STATUS.CANCELLED),
+    );
 
     // Monthly revenue + count
     const monthly = await db.select({

@@ -43,13 +43,14 @@
  * scoped only by `inspection_id`, which under an order with several reports
  * picks an arbitrary one's v1.
  */
-import { and, eq, gte, lte, isNotNull, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, ne, isNotNull, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import {
     inspections, inspectionServices, inspectionInspectors, inspectionServicePaySplits,
     inspectionEvents, reports, users, serviceInspectors,
 } from '../../lib/db/schema';
 import { inclusiveUpperBound } from '../../lib/metrics-window';
+import { INSPECTION_STATUS } from '../../lib/status/inspection-status';
 
 type TurnaroundBasis = 'field_complete_to_report_published' | 'no_data';
 
@@ -98,10 +99,13 @@ export async function perInspectorMetrics(
     tenantId: string,
     window: { from: string; to: string },
 ): Promise<InspectorMetricsRow[]> {
+    // A cancelled inspection is not volume, pay, or revenue — excluded here
+    // once, since every query below scopes inspections through this.
     const inWindow = and(
         eq(inspections.tenantId, tenantId),
         gte(inspections.date, window.from),
         lte(inspections.date, inclusiveUpperBound(window.to)),
+        ne(inspections.status, INSPECTION_STATUS.CANCELLED),
     );
 
     const [roster, lines, quals, pay, published, fieldDone] = await Promise.all([

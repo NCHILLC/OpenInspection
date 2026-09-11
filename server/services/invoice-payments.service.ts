@@ -71,6 +71,7 @@ export async function markPaid(
 ): Promise<AppendedPayment | null> {
     const existing = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId))).get();
     if (!existing) throw Errors.NotFound('Invoice not found');
+    if (existing.voidedAt) throw Errors.Conflict('This invoice is void; it cannot take a payment.');
     // Idempotency: webhooks redeliver. A paid invoice stays paid with its
     // ORIGINAL timestamp — no double accounting, no date drift. Returning
     // null here is also what keeps a redelivery out of QuickBooks entirely,

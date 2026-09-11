@@ -1,4 +1,5 @@
 import { drizzle } from 'drizzle-orm/d1';
+import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { users, tenantInvites, tenants } from '../lib/db/schema';
 import { eq, and, isNull, ne } from 'drizzle-orm';
 import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
@@ -180,6 +181,18 @@ export class TeamService {
         return row ?? null;
     }
 
+    /** True when some OTHER owner besides `userId` is still active in the tenant. */
+    private static async hasOtherOwner(db: DrizzleD1Database, tenantId: string, userId: string): Promise<boolean> {
+        const otherOwners = await db.select({ id: users.id }).from(users)
+            .where(and(
+                eq(users.tenantId, tenantId),
+                eq(users.role, 'owner'),
+                ne(users.id, userId),
+                isNull(users.deletedAt),
+            )).limit(1);
+        return otherOwners.length > 0;
+    }
+
     /**
      * Reduce a requested override map to only the capabilities whose value
      * differs from the role's template default. Returns null when nothing
@@ -253,15 +266,8 @@ export class TeamService {
 
             // A workspace with no owner cannot be administered by anyone — no
             // remaining member could restore one.
-            if (user.role === 'owner') {
-                const otherOwners = await db.select({ id: users.id }).from(users)
-                    .where(and(
-                        eq(users.tenantId, tenantId),
-                        eq(users.role, 'owner'),
-                        ne(users.id, userId),
-                        isNull(users.deletedAt),
-                    )).limit(1);
-                if (otherOwners.length === 0) throw Errors.BadRequest('Cannot change the role of the last owner');
+            if (user.role === 'owner' && !(await TeamService.hasOtherOwner(db, tenantId, userId))) {
+                throw Errors.BadRequest('Cannot change the role of the last owner');
             }
         }
 
@@ -302,6 +308,13 @@ export class TeamService {
             .where(and(eq(users.id, userId), eq(users.tenantId, tenantId), isNull(users.deletedAt)))
             .get();
         if (!user) throw Errors.NotFound('Member not found');
+
+        // A workspace with no owner cannot be administered by anyone — no
+        // remaining member could restore one. Same guard as updateMember's
+        // last-owner check, reused rather than duplicated.
+        if (user.role === 'owner' && !(await TeamService.hasOtherOwner(db, tenantId, userId))) {
+            throw Errors.BadRequest('Cannot remove the last owner');
+        }
 
         // Soft-delete rather than hard-delete: `inspections.inspector_id`
         // FK-references `users.id`, so a member with inspections can't be
