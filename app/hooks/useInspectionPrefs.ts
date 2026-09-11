@@ -39,31 +39,33 @@ const DEFAULTS: InspectionPrefs = {
 /**
  * Workflow shortcuts PR — tenant inspection-editor preferences.
  * Track H (C-12): rides the BFF resource route `/resources/inspection-prefs`
- * via useFetcher (Token-Relay) instead of raw client fetches against
+ * (Token-Relay) instead of raw client fetches against
  * /api/tenant/inspection-prefs. Falls back to hard-coded defaults if the
  * load fails (offline, 401, etc).
  */
 export function useInspectionPrefs() {
     const [prefs, setPrefs]   = useState<InspectionPrefs>(DEFAULTS);
     const [loaded, setLoaded] = useState(false);
-    const loadFetcher  = useFetcher<{ prefs: InspectionPrefs | null }>();
     const patchFetcher = useFetcher<{ ok: boolean; prefs: InspectionPrefs | null }>();
     const requested = useRef(false);
 
+    // A plain fetch, not a fetcher, for two reasons that each cost a session.
+    // A fetcher re-runs after every action, and the editor submits one per
+    // interaction: ~1,000 loads of this route per session once took the
+    // Worker down. And a fetcher whose request FAILS hands the error to the
+    // route's ErrorBoundary — so an offline reload of the editor, the one
+    // state it promises to survive, rendered "Something went wrong" over an
+    // inspection sitting intact in IndexedDB. A refused load here is the
+    // documented fallback: DEFAULTS, and `loaded`, so callers stop waiting.
     useEffect(() => {
         if (requested.current) return;
         requested.current = true;
-        loadFetcher.load('/resources/inspection-prefs');
-        }, []);
-
-    useEffect(() => {
-        if (loadFetcher.state !== 'idle') return;
-        if (!requested.current) return;
-        if (loadFetcher.data !== undefined) {
-            if (loadFetcher.data?.prefs) setPrefs(loadFetcher.data.prefs);
-            setLoaded(true);
-        }
-    }, [loadFetcher.state, loadFetcher.data]);
+        void fetch('/resources/inspection-prefs', { credentials: 'include' })
+            .then(r => (r.ok ? (r.json() as Promise<{ prefs: InspectionPrefs | null }>) : null))
+            .then(d => { if (d?.prefs) setPrefs(d.prefs); })
+            .catch(() => { /* offline: defaults */ })
+            .finally(() => setLoaded(true));
+    }, []);
 
     // B-17 lesson: re-submitting a shared fetcher CANCELS the in-flight
     // request. Two quick patches touching different fields would lose the
