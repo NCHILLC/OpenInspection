@@ -329,11 +329,13 @@ describe('MigrationApplyService — template rows', () => {
                 { name: 'Bad', schema: SCHEMA_B },
             ]),
         });
-        // Corrupt the second row's payload so its WRITE cannot succeed — while
-        // leaving it something `describeRowProblem` has no objection to. The
-        // apply path now refuses a problem row before it tries, so a payload
-        // with no sections would be failed by that gate instead and this spec
-        // would stop exercising the per-row catch it exists for.
+        // Corrupt the second row's payload with a schema version the writer
+        // refuses. `describeRowProblem` now runs the writer's own
+        // `TemplateSchemaV2Schema` (see row-problems.spec.ts and
+        // report-commit-agreement.spec.ts for that guarantee), so this row is
+        // failed by the per-row gate in `applyRow` before it ever reaches
+        // `TemplateService` — which is exactly the point: whichever layer
+        // catches it, the one bad row must not take the good one down with it.
         const rows = await db.select().from(schema.migrationRows)
             .where(eq(schema.migrationRows.batchId, staged.batchId)).all();
         const second = rows.find((r) => r.position === 1)!;

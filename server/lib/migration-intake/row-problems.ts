@@ -1,4 +1,5 @@
 import { ROLE } from '../auth/roles';
+import { TemplateSchemaV2Schema } from '../validations/template.schema';
 import {
     BUNDLE_CONTACT_TYPES,
     BUNDLE_MEMBER_ROLES,
@@ -116,6 +117,22 @@ function templateProblem(row: Record<string, unknown>): RowProblem | null {
         return {
             field: 'schema',
             reason: 'This template has no sections, so importing it would create an inspection form with nothing on it.',
+        };
+    }
+    // The SAME schema the writer runs (`TemplateService.validateSchema`, via
+    // `applyTemplateRow` in row-writers.ts) — not a hand-maintained approximation
+    // of it. Two definitions of "writable" let a row read as ready here and get
+    // refused at commit; running one lets this screen promise only what commit
+    // will actually accept. `safeParse` never throws, so a malformed row is
+    // reported rather than crashing the screen.
+    const result = TemplateSchemaV2Schema.safeParse(row.schema);
+    if (!result.success) {
+        const [first] = result.error.issues;
+        const path = first.path.length > 0 ? first.path.join('.') : null;
+        return {
+            field: path ? `schema.${path}` : 'schema',
+            reason: `This template's schema is not valid${path ? ` at ${path}` : ''}: ${first.message}. `
+                + 'Repair it in the wizard before importing.',
         };
     }
     return null;
