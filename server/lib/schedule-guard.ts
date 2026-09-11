@@ -33,8 +33,11 @@ export interface ScheduleRefusal {
 export interface ScheduleGuardInput {
     /** Tenant-civil day the move lands on (YYYY-MM-DD). */
     civilDate: string;
-    /** Tenant wall-clock HH:MM on that day; the hour-bucket fallback reads it. */
-    hm: string;
+    /** Tenant wall-clock HH:MM on that day, or NULL when the appointment names
+     *  no time. Null is not midnight: `sameDayHour` treats a bare `YYYY-MM-DD`
+     *  as colliding with anything that day, which is what a timeless job means,
+     *  while `…T00:00` is an hour bucket that misses every timed job on it. */
+    hm: string | null;
     /** The proposed interval. A null start degrades conflict detection to the
      *  hour bucket, exactly as it already does for a row without an instant. */
     startMs: number | null;
@@ -72,7 +75,7 @@ export async function findScheduleRefusal(
             db,
             tenantId,
             inspectorId,
-            `${input.civilDate}T${input.hm}`,
+            input.hm ? `${input.civilDate}T${input.hm}` : input.civilDate,
             input.excludeId,
             { startMs: input.startMs, endMs: input.endMs },
         );

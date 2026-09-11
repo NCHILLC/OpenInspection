@@ -38,7 +38,11 @@ export async function loadPinnedSnapshot(
     reportId?: string,
 ): Promise<Snapshot | null> {
     try {
-        const target = reportId ?? await resolvePrimaryReportId(db, tenantId, inspectionId);
+        // A legacy row carries no reportId and belongs to the PRIMARY; folding it
+        // into an ancillary's scope would serve the primary's frozen snapshot
+        // under the ancillary's version number.
+        const primary = await resolvePrimaryReportId(db, tenantId, inspectionId);
+        const target = reportId ?? primary;
         const row = await db.select({ snapshotJson: reportVersions.snapshotJson })
             .from(reportVersions)
             .where(and(
@@ -46,7 +50,9 @@ export async function loadPinnedSnapshot(
                 eq(reportVersions.inspectionId, inspectionId),
                 eq(reportVersions.versionNumber, versionNumber),
                 target
-                    ? or(eq(reportVersions.reportId, target), isNull(reportVersions.reportId))
+                    ? (target === primary
+                        ? or(eq(reportVersions.reportId, target), isNull(reportVersions.reportId))
+                        : eq(reportVersions.reportId, target))
                     : undefined,
             )).get();
         if (!row?.snapshotJson) return null;

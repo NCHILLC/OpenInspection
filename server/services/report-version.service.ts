@@ -328,22 +328,24 @@ export class ReportVersionService {
      * report's v2 outrank the standard report's v1 under
      * `ORDER BY version_number DESC`.
      *
-     * A row with NO reportId predates the reports entity, when an inspection had
-     * exactly one deliverable -- so it belongs to the primary and stays visible.
-     * Dropping it would empty the version list, and silently stop the public
-     * report pinning, for every install that published before that migration.
+     * A row with NO reportId predates the reports entity and belongs to the
+     * PRIMARY: dropping it empties the version list for every install that
+     * published before that migration, and lending it to an ancillary added
+     * later is the same bleed this function exists to stop.
      */
     private async reportScope(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         db: any, tenantId: string, inspectionId: string, reportId?: string,
     ) {
-        const target = await this.resolveReportId(db, tenantId, inspectionId, reportId);
+        const primary = await this.resolveReportId(db, tenantId, inspectionId);
+        const target = reportId ?? primary;
         return and(
             eq(reportVersions.tenantId, tenantId),
             eq(reportVersions.inspectionId, inspectionId),
-            target
-                ? or(eq(reportVersions.reportId, target), isNull(reportVersions.reportId))
-                : undefined,
+            !target ? undefined
+                : target === primary
+                    ? or(eq(reportVersions.reportId, target), isNull(reportVersions.reportId))
+                    : eq(reportVersions.reportId, target),
         );
     }
 

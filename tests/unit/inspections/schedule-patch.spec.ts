@@ -427,6 +427,38 @@ describe('PATCH /api/inspections/:id/schedule', () => {
         expect((await readRow(db))?.date).toBe('2026-05-20T09:00');
     });
 
+    it('refuses a TIMELESS drag onto a day that already holds a timed job', async () => {
+        // A legacy or hand-made inspection carries a bare `YYYY-MM-DD` and no
+        // instant: it names a day, not an hour. Sending it to the guard as
+        // `…T00:00` would turn "all day" into "the midnight bucket", which
+        // misses every timed job on that day — the double-booking this shared
+        // guard exists to refuse. `sameDayHour` already treats a day-only string
+        // as colliding with anything that day; the guard has to let it.
+        await db.update(schema.tenantConfigs)
+            .set({ bookingConflictPolicy: 'block' })
+            .where(eq(schema.tenantConfigs.tenantId, TENANT));
+        await seedInspection(db, { date: '2026-05-20' });
+        await db.insert(schema.inspectionInspectors).values({
+            inspectionId: INSP_ID, userId: LEAD_A, tenantId: TENANT, role: 'lead', createdAt: new Date(),
+        });
+        // The job already on the target day, at a real hour — NOT day-only, so
+        // only the candidate's own shape decides whether the two are compared.
+        await db.insert(schema.inspections).values({
+            id: OTHER_INSP, tenantId: TENANT, propertyAddress: '2 Other St',
+            date: '2026-06-01T09:00', status: INSPECTION_STATUS.SCHEDULED,
+            reportStatus: REPORT_STATUS.IN_PROGRESS, paymentStatus: 'unpaid',
+            price: 0, paymentRequired: false, agreementRequired: false, createdAt: new Date(),
+            scheduledStartMs: new Date(START_MS), scheduledEndMs: new Date(START_MS + 60 * 60_000),
+        } as never);
+        await db.insert(schema.inspectionInspectors).values({
+            inspectionId: OTHER_INSP, userId: LEAD_A, tenantId: TENANT, role: 'lead', createdAt: new Date(),
+        });
+
+        const res = await patchGeneric(buildApp(db, 'owner'), { date: '2026-06-01' });
+        expect(res.status).toBe(409);
+        expect((await readRow(db))?.date).toBe('2026-05-20');
+    });
+
     it('a drag onto an overlapping slot under block policy → 409 and nothing is written', async () => {
         await db.update(schema.tenantConfigs)
             .set({ bookingConflictPolicy: 'block' })

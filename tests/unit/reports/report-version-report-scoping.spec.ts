@@ -117,6 +117,10 @@ describe('pre-reports-entity versions stay readable', () => {
         await testDb.insert(schema.reports).values([
             { id: PRIMARY, tenantId: TENANT, inspectionId: INSPECTION, kind: 'primary',
               title: 'Inspection Report', status: 'in_progress', createdAt: new Date() },
+            // Added later, as report generation does for a service line sold after
+            // the primary already exists. Its own chain starts at 1.
+            { id: ANCILLARY, tenantId: TENANT, inspectionId: INSPECTION, kind: 'ancillary',
+              title: 'Radon Report', status: 'in_progress', createdAt: new Date() },
         ] as never);
         // A row as it was written before reports existed: no reportId at all.
         await testDb.insert(schema.reportVersions).values({
@@ -127,6 +131,17 @@ describe('pre-reports-entity versions stay readable', () => {
             createdAt: new Date(), reportId: null,
         } as never);
         svc = new ReportVersionService({} as D1Database, 'test-encryption-secret-key');
+    });
+
+    it('does NOT lend the legacy rows to an ancillary added later', async () => {
+        // The legacy row belongs to the deliverable that existed when it was
+        // written — the primary. An inspection that later gains a second report
+        // must not serve the primary's v3 under the ancillary's chain, which
+        // starts at 1: that is the same cross-report bleed this file exists to
+        // stop, just wearing legacy data.
+        expect(await svc.getLatestPublished(TENANT, INSPECTION, ANCILLARY)).toBeNull();
+        expect(await svc.get(TENANT, INSPECTION, 3, ANCILLARY)).toBeNull();
+        expect(await loadPinnedSnapshot(testDb as never, TENANT, INSPECTION, 3, ANCILLARY)).toBeNull();
     });
 
     it('a NULL reportId row is still the primary report’s history', async () => {

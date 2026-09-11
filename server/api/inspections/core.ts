@@ -339,7 +339,7 @@ const coreRoutes = createApiRouter()
                 v instanceof Date ? v.getTime() : v == null ? null : Number(v);
             const { refusal } = await findScheduleRefusal(db, c.env.DB, tenantId, {
                 civilDate: written.slice(0, 10),
-                hm: written.length > 10 ? written.slice(11, 16) : '00:00',
+                hm: written.length > 10 ? written.slice(11, 16) : null,
                 startMs: asMs(updateValues.scheduledStartMs),
                 endMs: asMs(updateValues.scheduledEndMs),
                 assignees: [
