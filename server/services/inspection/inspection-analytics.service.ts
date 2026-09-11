@@ -419,7 +419,8 @@ export class InspectionAnalyticsService extends InspectionSubService {
     /**
      * Returns bucketed inspection lists for the dashboard view.
      * All filtering is done in-process from a single tenant query.
-     * Note: uses the `date` column (TEXT "YYYY-MM-DD") for scheduling logic.
+     * Note: uses the `date` column — a civil day that MAY carry a wall-clock
+     * suffix, never an epoch. Both shapes, and why they agree: core.ts.
      */
     async getDashboardBuckets(tenantId: string) {
         const db  = this.getDrizzle();
@@ -439,7 +440,9 @@ export class InspectionAnalyticsService extends InspectionSubService {
         const invoiceOverdueH     = thresholds?.invoice_overdue_h    ?? 72;
 
         const now           = Date.now();
-        // Use UTC boundaries to match the `date` column which stores "YYYY-MM-DD" (UTC midnight when parsed).
+        // UTC day boundaries: `date` is a civil day, bare (parsing to UTC
+        // midnight) or with a naive-`Z` suffix naming that same day. Both land
+        // inside these bounds — swap in local hours and the two shapes diverge.
         const startOfToday  = new Date(); startOfToday.setUTCHours(0, 0, 0, 0);
         const endOfToday    = new Date(); endOfToday.setUTCHours(23, 59, 59, 999);
         const in48h         = new Date(now + 48 * 3600 * 1000);
@@ -470,7 +473,8 @@ export class InspectionAnalyticsService extends InspectionSubService {
                 .map(r => r.inspectionId as string)
         );
 
-        // Parse the text `date` column ("YYYY-MM-DD") to a Date at midnight UTC.
+        // A bare day parses to UTC midnight; a naive-`Z` day to that instant,
+        // on the same calendar day.
         const insDate = (i: typeof inspections.$inferSelect) =>
             i.date ? new Date(i.date) : null;
 

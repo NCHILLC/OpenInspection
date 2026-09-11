@@ -40,8 +40,11 @@ export const inspections = sqliteTable('inspections', {
     // clientName/clientEmail/clientPhone columns were DROPPED (superseded by
     // inspection_people) — do not reintroduce them here.
     templateId:          text('template_id').references(() => templates.id),
-    // Calendar-semantic YYYY-MM-DD (inspection date, no time component) — intentionally
-    // TEXT per the Schema Rules calendar-field exception, not an epoch timestamp.
+    // The tenant's CIVIL DAY — TEXT per the Schema Rules calendar-field
+    // exception, never an epoch. Stored in TWO live shapes: bare `YYYY-MM-DD`,
+    // or a day carrying the wall clock as `YYYY-MM-DDTHH:MM:SSZ` whose `Z` is
+    // NAIVE, so this is never a real instant. Why both bucket alike, and the
+    // ladder that reads them: inspection-date-shape-parity.spec.ts.
     date:                text('date').notNull(),
     status:              text('status', { enum: [...INSPECTION_STATUSES] }).notNull().default('requested'),
     // The report's lifecycle, tracked apart from `status` (the appointment). Every
@@ -229,8 +232,9 @@ export const inspections = sqliteTable('inspections', {
     // See server/lib/report-photos.ts derivePhotoMode.
     reportPhotoMode:     text('report_photo_mode', { enum: ['appendix', 'inline'] }),
     // A-polish 9b — precise scheduled instant (UTC epoch-ms), derived from the
-    // booked slot + tenant tz at fulfillment via wallClockToEpochMs. inspections.date
-    // remains the civil YYYY-MM-DD derived from this. NULL for legacy /
+    // booked slot + tenant tz at fulfillment via wallClockToEpochMs. AUTHORITATIVE
+    // for when, whenever set; `inspections.date` names the same civil day but may
+    // also carry a naive wall clock, which is the fallback. NULL for legacy /
     // manually-created rows. Drives interval-overlap conflict detection, Google
     // push (Task 10), and the schedule.ics feed.
     scheduledStartMs:    integer('scheduled_start_ms', { mode: 'timestamp_ms' }),
