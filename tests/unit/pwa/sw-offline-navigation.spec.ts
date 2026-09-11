@@ -15,6 +15,11 @@
  * There is no build step for the service worker and no other harness for it, so
  * this drives the real file: read the source, run it in a `vm` context with a
  * stub `self`/`caches`/`fetch`, and call the captured fetch handler.
+ *
+ * The second describe below covers the other half of that handler — which
+ * requests it declines. Declining is a behaviour, not an absence: a request the
+ * worker does not answer is one the browser makes itself, and that is the only
+ * thing keeping API reads honest.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -99,6 +104,21 @@ async function navigate(url: string): Promise<Response> {
     return answered;
 }
 
+/**
+ * Drive one NON-navigation GET through the worker.
+ *
+ * Returns the response when the worker answered, or `null` when it declined.
+ * Declining is the network-only path: sw.js returns without calling
+ * `respondWith`, leaving the browser to make the request itself. `null` here
+ * therefore means "the network will serve this", not "this failed".
+ */
+async function apiGet(url: string): Promise<Response | null> {
+    const request = { method: 'GET', url, mode: 'cors' } as unknown as Request;
+    let answered: Promise<Response> | undefined;
+    fetchHandler({ request, respondWith: (r) => { answered = r as Promise<Response>; } });
+    return answered ? await answered : null;
+}
+
 const EDITOR = 'https://app.test/inspections/42/edit';
 
 beforeEach(() => {
@@ -139,5 +159,77 @@ describe('sw.js — an offline reload must not end the inspection', () => {
         const res = await navigate('https://app.test/some/other/route');
         expect(res.status).toBe(503);
         expect(await res.text()).toContain('Offline');
+    });
+});
+
+/**
+ * The worker used to cache API reads as well as documents:
+ *
+ *   const isInspectionRead = /^\/api\/inspections\/[^/]+(\/results)?$/.test(url.pathname);
+ *
+ * Two things were wrong with it. `[^/]+` was meant to be an inspection id and
+ * matched `dashboard`, `templates`, `counts`, `inspectors` and
+ * `schedule-conflicts` just as readily, so every collection route under
+ * /api/inspections/ became a stale-while-revalidate read that answered with the
+ * PREVIOUS response — including the live double-booking check. And it never
+ * fired in the product anyway: this app is a Token Relay BFF, so React Router
+ * loaders call the API in-process through the API_WORKER binding and the
+ * browser issues no /api/inspections/:id request for a worker to intercept. A
+ * real editor boot put one navigation document and 38 assets in the cache, and
+ * no /api/ entry at all.
+ *
+ * So the branch went. These assertions are what stops it coming back, and they
+ * are about the DECLINE: every /api/ read but photos must reach the network,
+ * because a cached answer to any of them is a stale one.
+ */
+describe('sw.js — API reads reach the network, never the cache', () => {
+    const UUID = '7501aaa7-4e02-408c-85b5-34325b20b3fb';
+
+    it('declines a single inspection read', async () => {
+        expect(await apiGet(`https://app.test/api/inspections/${UUID}`)).toBeNull();
+    });
+
+    it('declines an inspection results read', async () => {
+        expect(await apiGet(`https://app.test/api/inspections/${UUID}/results`)).toBeNull();
+    });
+
+    // The over-match, one case per route that was silently being stale-served.
+    for (const route of ['dashboard', 'templates', 'counts', 'inspectors', 'schedule-conflicts']) {
+        it(`declines the /${route} collection route`, async () => {
+            expect(await apiGet(`https://app.test/api/inspections/${route}`)).toBeNull();
+        });
+    }
+
+    it('declines a collection route carrying a query string', async () => {
+        // Cache keys include the query, so this would have been a separate
+        // stale entry per date rather than one obvious wrong answer.
+        expect(await apiGet('https://app.test/api/inspections/schedule-conflicts?date=2026-09-11'))
+            .toBeNull();
+    });
+
+    /**
+     * The one /api/ branch that must survive: photos are <img src> from the
+     * browser, their keys are immutable UUIDs, and caching them is what makes
+     * an inspection's images available offline.
+     */
+    it('still answers photo file reads from the cache layer', async () => {
+        const res = await apiGet('https://app.test/api/inspections/files/abc123');
+        expect(res).not.toBeNull();
+        expect(res?.status).toBe(200);
+    });
+
+    /**
+     * The reason deleting the branch is safe: the offline reload never depended
+     * on it. The document is what the inspector gets back, and field state comes
+     * from IndexedDB — no API read is involved on either path.
+     */
+    it('reloads the editor offline with no API response cached anywhere', async () => {
+        await navigate(EDITOR);
+        expect(await cache.match(`https://app.test/api/inspections/42`)).toBeUndefined();
+
+        online = false;
+        const res = await navigate(`${EDITOR}?section=roof&item=flashing`);
+        expect(res.status).toBe(200);
+        expect(await res.text()).toContain('editor');
     });
 });

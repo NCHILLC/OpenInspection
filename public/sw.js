@@ -3,7 +3,9 @@
 //   - Static assets (CSS/JS/images/manifest): cache-first, update in background
 //   - CDN assets (fonts): cache-first on first fetch
 //   - HTML navigation: network-first, fall back to cache for offline shell
-//   - /api/* requests: network-only (offline handled by IndexedDB in the app)
+//   - /api/inspections/files/* (photo bytes, immutable keys): cache-first
+//   - every other /api/* request: network-only (offline is IndexedDB + the
+//     photo queue, never an HTTP cache)
 
 const SW_VERSION  = 'v3-a2';
 const CACHE_NAME  = `openinspection-${SW_VERSION}`;
@@ -58,15 +60,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // All other API calls: network-only; offline handled by IndexedDB / photo queue
-  if (url.pathname.startsWith('/api/')) {
-    const isInspectionRead = /^\/api\/inspections\/[^/]+(\/results)?$/.test(url.pathname);
-    if (isInspectionRead && request.method === 'GET') {
-      event.respondWith(cacheFirstWithRefresh(request));
-      return;
-    }
-    return; // all other API calls: network-only
-  }
+  // Every other API call: network-only. Offline is served by IndexedDB (field
+  // data is a Yjs doc) and the photo queue, never from an HTTP cache — a cached
+  // API read is a stale answer presented as a current one.
+  //
+  // A cache-first branch for `/api/inspections/:id` and `/:id/results` used to
+  // live here. It never fired: loaders reach the API in-process over the
+  // API_WORKER binding, so the browser issues no such request. What it did do
+  // was match `dashboard`, `templates`, `counts`, `inspectors` and
+  // `schedule-conflicts` too — `[^/]+` does not know an id from a route name.
+  // See tests/unit/pwa/sw-offline-navigation.spec.ts.
+  if (url.pathname.startsWith('/api/')) return;
 
   // Static assets on our origin: stale-while-revalidate
   const isStaticAsset =
