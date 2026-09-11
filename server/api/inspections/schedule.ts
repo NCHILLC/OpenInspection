@@ -22,8 +22,7 @@ import { Errors } from '../../lib/errors';
 import { inspections as inspectionTable, tenantConfigs, users } from '../../lib/db/schema';
 import { getInspectionRoster } from '../../lib/inspection/roster';
 import { syncAssignmentsAndSplits } from '../../services/pay-split.service';
-import { findScheduleConflicts } from '../../lib/schedule-conflicts';
-import { resolveInternalHolidayEffect } from '../../lib/holidays/load-tenant-holidays';
+import { findScheduleRefusal } from '../../lib/schedule-guard';
 import { epochMsToWallClockHm, epochMsToWallClockYmd, resolveTenantTimeZone } from '../../lib/tz';
 import { pushInspectionAfterResponse } from '../../lib/calendar/push-hooks';
 import { withMcpMetadata } from '../../lib/route-metadata-standards';
@@ -105,23 +104,6 @@ const scheduleRoutes = createApiRouter()
         const civilDate = epochMsToWallClockYmd(startMs, tz);
         const hm = epochMsToWallClockHm(startMs, tz);
 
-        // Same closed-day rule the create path enforces. A reschedule ONTO a
-        // blocked company holiday is the same act as booking one, and a board
-        // that could sidestep the policy by dragging would make the setting a
-        // suggestion.
-        const holiday = await resolveInternalHolidayEffect(c.env.DB, tenantId, civilDate);
-        if (holiday.effect === 'block') {
-            return c.json({
-                success: false as const,
-                error: {
-                    code: 'HOLIDAY_BLOCKED',
-                    message: holiday.name
-                        ? `Cannot schedule on ${holiday.name} — company holidays are blocked.`
-                        : 'Cannot schedule on a company closed day.',
-                },
-            }, 400);
-        }
-
         // Assignment intent. Absent keys mean "leave it alone", so the current
         // roster supplies the other half — syncInspectionAssignments is a FULL
         // REPLACE, and passing only the lead would silently drop the helpers.
@@ -162,29 +144,20 @@ const scheduleRoutes = createApiRouter()
         const durationMin = body.durationMin ?? spanMin ?? row.durationMin ?? null;
         const endMs = durationMin != null ? startMs + durationMin * 60_000 : null;
 
-        const conflicts: Array<{ inspectionId: string; propertyAddress: string; date: string; inspectorId: string }> = [];
-        const assignees = [leadId, ...helperIds].filter((v): v is string => Boolean(v));
-        for (const inspectorId of assignees) {
-            const found = await findScheduleConflicts(
-                db,
-                tenantId,
-                inspectorId,
-                `${civilDate}T${hm}`,
-                id,
-                { startMs, endMs },
-            );
-            for (const hit of found) conflicts.push({ ...hit, inspectorId });
-        }
-
-        if (policy === 'block' && conflicts.length > 0) {
-            return c.json({
-                success: false as const,
-                error: {
-                    code: 'SCHEDULE_CONFLICT',
-                    message: 'That slot overlaps existing work and this company blocks double-booking.',
-                    conflicts,
-                },
-            }, 409);
+        // The closed-day and double-booking refusals the generic PATCH runs too.
+        // ../../lib/schedule-guard says why they cannot live on one door only.
+        const { refusal, conflicts } = await findScheduleRefusal(db, c.env.DB, tenantId, {
+            civilDate,
+            hm,
+            startMs,
+            endMs,
+            assignees: [leadId, ...helperIds].filter((v): v is string => Boolean(v)),
+            excludeId: id,
+            policy,
+        });
+        if (refusal) {
+            return c.json({ success: false as const, error: refusal },
+                refusal.code === 'HOLIDAY_BLOCKED' ? 400 : 409);
         }
 
         // Rows whose `date` carried a time suffix keep one — the HH:MM busy

@@ -31,6 +31,9 @@ import { readTenantTier } from '../../features/plan-quota/guard';
 import { noticeFor } from '../../features/plan-quota/notice';
 import { loadTenantEmailConfig, assembleTenantEmailService } from '../../lib/email/build-email-service';
 import { resolveInternalHolidayEffect } from '../../lib/holidays/load-tenant-holidays';
+import { findScheduleRefusal } from '../../lib/schedule-guard';
+import { capabilitiesFor } from '../../lib/middleware/require-capability';
+import { tenantConfigs } from '../../lib/db/schema';
 import { getDrizzle } from '../../lib/route-helpers';
 import { patchRevisionReport } from './patch-revision-report';
 
@@ -171,7 +174,8 @@ const updateInspectionRoute = createRoute(withMcpMetadata({
             },
             description: 'Success',
         },
-        400: { description: 'A refused patch: a dangling soft reference (DB-16); status:cancelled, which only POST /{id}/cancel may write (#78); or any status change on an already-cancelled inspection, which only POST /{id}/uncancel may make (#81)' },
+        400: { description: 'A refused patch: a dangling soft reference (DB-16); status:cancelled, which only POST /{id}/cancel may write (#78); any status change on an already-cancelled inspection, which only POST /{id}/uncancel may make (#81); or a move onto a blocked company holiday' },
+        409: { description: 'A date or inspector change whose resulting assignment overlaps existing work, when the tenant booking_conflict_policy is "block"' },
     },
     operationId: "patchInspection"
 }, { scopes: ['write'], tier: 'primary' }));
@@ -316,6 +320,40 @@ const coreRoutes = createApiRouter()
         const updateValues: Record<string, unknown> = typeof body.date === 'string'
             ? await datePatchValues(db, tenantId, id, body as Record<string, unknown> & { date: string })
             : { ...body };
+
+        // INVARIANT: every path that moves an appointment runs the same refusal.
+        // A calendar drag lands HERE rather than on /{id}/schedule, so deciding
+        // where work goes is gated by the same capability and measured against
+        // the same closed days and overlaps. ../../lib/schedule-guard.
+        if ('date' in body || 'inspectorId' in body) {
+            if (!(await capabilitiesFor(c)).scheduleOthers) {
+                throw Errors.Forbidden("Requires the 'scheduleOthers' capability");
+            }
+            // The civil day and wall-clock to test are the ones about to be
+            // written; `date` is a civil column, so no zone math is needed here.
+            const written = String(updateValues.date ?? inspection.date ?? '');
+            const roster = await getInspectionRoster(db, tenantId, id);
+            const cfg = await db.select({ bookingConflictPolicy: tenantConfigs.bookingConflictPolicy })
+                .from(tenantConfigs).where(eq(tenantConfigs.tenantId, tenantId)).get();
+            const asMs = (v: unknown): number | null =>
+                v instanceof Date ? v.getTime() : v == null ? null : Number(v);
+            const { refusal } = await findScheduleRefusal(db, c.env.DB, tenantId, {
+                civilDate: written.slice(0, 10),
+                hm: written.length > 10 ? written.slice(11, 16) : '00:00',
+                startMs: asMs(updateValues.scheduledStartMs),
+                endMs: asMs(updateValues.scheduledEndMs),
+                assignees: [
+                    'inspectorId' in body ? body.inspectorId ?? null : roster.lead?.id ?? null,
+                    ...roster.helpers.map((h) => h.id),
+                ].filter((v): v is string => Boolean(v)),
+                excludeId: id,
+                policy: cfg?.bookingConflictPolicy === 'block' ? 'block' : 'advisory',
+            });
+            if (refusal) {
+                return c.json({ success: false as const, error: refusal },
+                    refusal.code === 'HOLIDAY_BLOCKED' ? 400 : 409);
+            }
+        }
 
         // Deposit tier 3. The FLAG is the whole point: `deposit_required_cents`
         // alone cannot tell a computed snapshot from a figure an operator

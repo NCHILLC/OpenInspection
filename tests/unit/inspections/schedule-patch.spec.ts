@@ -68,7 +68,17 @@ function buildApp(
         c.set('sdb', {
             getById: async () => ({ permissionOverrides: overrides }),
         } as unknown as HonoConfig['Variables']['sdb']);
-        c.set('services', {} as unknown as HonoConfig['Variables']['services']);
+        // The generic PATCH resolves the row through the service facade; the
+        // schedule route reads the table directly. One stub serves both.
+        c.set('services', {
+            inspection: {
+                getInspection: async (id: string) => ({
+                    inspection: await db.select().from(schema.inspections)
+                        .where(eq(schema.inspections.id, id)).get(),
+                }),
+                isInspectionPhotoKey: async () => true,
+            },
+        } as unknown as HonoConfig['Variables']['services']);
         await next();
     });
 
@@ -82,6 +92,23 @@ function patch(
     id: string = INSP_ID,
 ) {
     return app.request(`/api/inspections/${id}/schedule`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    }, FAKE_ENV);
+}
+
+/**
+ * The calendar drag's write: PATCH /api/inspections/:id carrying a bare civil
+ * date. A different endpoint and a different payload shape, but the same
+ * real-world act — so it must meet the same refusals.
+ */
+function patchGeneric(
+    app: ReturnType<typeof buildApp>,
+    body: Record<string, unknown>,
+    id: string = INSP_ID,
+) {
+    return app.request(`/api/inspections/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -356,5 +383,65 @@ describe('PATCH /api/inspections/:id/schedule', () => {
         const row = await readRow(db);
         expect(row?.durationMin).toBe(240);
         expect(row?.scheduledEndMs?.getTime()).toBe(START_MS + 240 * 60_000);
+    });
+
+    // ── the same refusals through the generic PATCH ───────────────────────────
+    //
+    // INVARIANT: every path that moves an appointment runs the same refusal.
+    // The calendar drag posts a bare civil date to PATCH /:id, so a guard that
+    // lives only on /:id/schedule is a guard the board can walk around.
+
+    /** A moveable row: an instant to shift, and a lead to collide with. */
+    async function seedDraggable() {
+        await seedInspection(db, {
+            date: '2026-05-20T09:00',
+            scheduledStartMs: new Date(Date.UTC(2026, 4, 20, 9, 0, 0)),
+            scheduledEndMs: new Date(Date.UTC(2026, 4, 20, 10, 0, 0)),
+        });
+        await db.insert(schema.inspectionInspectors).values({
+            inspectionId: INSP_ID, userId: LEAD_A, tenantId: TENANT, role: 'lead', createdAt: new Date(),
+        });
+    }
+
+    it('inspector with no override → 403 on a date PATCH', async () => {
+        await seedDraggable();
+        const res = await patchGeneric(buildApp(db, 'inspector'), { date: '2026-06-01' });
+        expect(res.status).toBe(403);
+        expect((await readRow(db))?.date).toBe('2026-05-20T09:00');
+    });
+
+    it('a drag onto a blocked company holiday → 400 and nothing is written', async () => {
+        await db.update(schema.tenantConfigs)
+            .set({ holidayRegion: 'US', holidayInternalPolicy: 'block' })
+            .where(eq(schema.tenantConfigs.tenantId, TENANT));
+        await db.insert(schema.tenantCustomHolidays).values({
+            id: 'hol-1', tenantId: TENANT, date: '2026-06-01', name: 'Company retreat',
+            createdAt: new Date(), updatedAt: new Date(),
+        });
+        await seedDraggable();
+
+        const res = await patchGeneric(buildApp(db, 'owner'), { date: '2026-06-01' });
+        expect(res.status).toBe(400);
+        const body = await res.json() as { error: { code: string } };
+        expect(body.error.code).toBe('HOLIDAY_BLOCKED');
+        expect((await readRow(db))?.date).toBe('2026-05-20T09:00');
+    });
+
+    it('a drag onto an overlapping slot under block policy → 409 and nothing is written', async () => {
+        await db.update(schema.tenantConfigs)
+            .set({ bookingConflictPolicy: 'block' })
+            .where(eq(schema.tenantConfigs.tenantId, TENANT));
+        await seedDraggable();
+        await seedOverlap();
+
+        const res = await patchGeneric(buildApp(db, 'owner'), { date: '2026-06-01' });
+        expect(res.status).toBe(409);
+        const body = await res.json() as { error: { code: string; conflicts: unknown[] } };
+        expect(body.error.code).toBe('SCHEDULE_CONFLICT');
+        expect(body.error.conflicts).toHaveLength(1);
+
+        const row = await readRow(db);
+        expect(row?.date).toBe('2026-05-20T09:00');
+        expect(row?.scheduledStartMs?.getTime()).toBe(Date.UTC(2026, 4, 20, 9, 0, 0));
     });
 });
