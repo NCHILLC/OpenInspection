@@ -1,6 +1,7 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, or, isNull } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { reportVersions } from './db/schema';
+import { resolvePrimaryReportId } from './inspection/reports';
 import type { Snapshot } from './version-diff';
 
 /**
@@ -27,14 +28,26 @@ export async function loadPinnedSnapshot(
     tenantId: string,
     inspectionId: string,
     versionNumber: number,
+    /**
+     * WHICH deliverable's chain the version number names. Omitted means the
+     * primary report -- the same default `getReportData` renders -- because
+     * version numbers restart at 1 per report, so an inspection-wide lookup can
+     * serve the sibling deliverable's frozen row under the same number. A row
+     * with no reportId predates the reports entity and belongs to the primary.
+     */
+    reportId?: string,
 ): Promise<Snapshot | null> {
     try {
+        const target = reportId ?? await resolvePrimaryReportId(db, tenantId, inspectionId);
         const row = await db.select({ snapshotJson: reportVersions.snapshotJson })
             .from(reportVersions)
             .where(and(
                 eq(reportVersions.tenantId, tenantId),
                 eq(reportVersions.inspectionId, inspectionId),
                 eq(reportVersions.versionNumber, versionNumber),
+                target
+                    ? or(eq(reportVersions.reportId, target), isNull(reportVersions.reportId))
+                    : undefined,
             )).get();
         if (!row?.snapshotJson) return null;
         return JSON.parse(row.snapshotJson) as Snapshot;

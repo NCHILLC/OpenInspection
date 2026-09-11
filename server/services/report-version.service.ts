@@ -10,7 +10,7 @@
  * viewer page (task 8.1 — separate commit).
  */
 import { drizzle } from 'drizzle-orm/d1';
-import { and, eq, desc } from 'drizzle-orm';
+import { and, eq, desc, or, isNull } from 'drizzle-orm';
 import { reports, reportVersions, inspections, inspectionResults, inspectionUnits, users, inspectionInspectors, templates, tenantConfigs } from '../lib/db/schema';
 import { computeDiff, SNAPSHOT_SCHEMA_VERSION, type Snapshot, type SnapshotInspector, type DiffPayload } from '../lib/version-diff';
 import { CredentialService } from './credential.service';
@@ -321,11 +321,38 @@ export class ReportVersionService {
     }
 
     /**
+     * Which version rows belong to ONE deliverable.
+     *
+     * The chains are per report: two deliverables on one order each start at
+     * version 1, so a read filtered on the inspection alone lets the radon
+     * report's v2 outrank the standard report's v1 under
+     * `ORDER BY version_number DESC`.
+     *
+     * A row with NO reportId predates the reports entity, when an inspection had
+     * exactly one deliverable -- so it belongs to the primary and stays visible.
+     * Dropping it would empty the version list, and silently stop the public
+     * report pinning, for every install that published before that migration.
+     */
+    private async reportScope(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        db: any, tenantId: string, inspectionId: string, reportId?: string,
+    ) {
+        const target = await this.resolveReportId(db, tenantId, inspectionId, reportId);
+        return and(
+            eq(reportVersions.tenantId, tenantId),
+            eq(reportVersions.inspectionId, inspectionId),
+            target
+                ? or(eq(reportVersions.reportId, target), isNull(reportVersions.reportId))
+                : undefined,
+        );
+    }
+
+    /**
      * Layer-2 report page — surface the latest published version's verification
      * metadata without loading the full snapshot blob. Returns null when no
      * version row exists yet (draft) or when the row somehow has no token.
      */
-    async getLatestPublished(tenantId: string, inspectionId: string): Promise<{
+    async getLatestPublished(tenantId: string, inspectionId: string, reportId?: string): Promise<{
         versionNumber:     number;
         contentHash:       string | null;
         verificationToken: string | null;
@@ -338,7 +365,7 @@ export class ReportVersionService {
             verificationToken: reportVersions.verificationToken,
             publishedAt:       reportVersions.publishedAt,
         }).from(reportVersions)
-            .where(and(eq(reportVersions.tenantId, tenantId), eq(reportVersions.inspectionId, inspectionId)))
+            .where(await this.reportScope(db, tenantId, inspectionId, reportId))
             .orderBy(desc(reportVersions.versionNumber))
             .limit(1)
             .get();
@@ -352,7 +379,7 @@ export class ReportVersionService {
         };
     }
 
-    async list(tenantId: string, inspectionId: string) {
+    async list(tenantId: string, inspectionId: string, reportId?: string) {
         const db = this.getDrizzle();
         const rows = await db.select({
             versionNumber: reportVersions.versionNumber,
@@ -360,7 +387,7 @@ export class ReportVersionService {
             publishedBy:   reportVersions.publishedBy,
             summary:       reportVersions.summary,
         }).from(reportVersions)
-            .where(and(eq(reportVersions.tenantId, tenantId), eq(reportVersions.inspectionId, inspectionId)))
+            .where(await this.reportScope(db, tenantId, inspectionId, reportId))
             .orderBy(desc(reportVersions.versionNumber))
             .all();
         return rows.map((row) => ({
@@ -370,12 +397,11 @@ export class ReportVersionService {
         }));
     }
 
-    async get(tenantId: string, inspectionId: string, versionNumber: number): Promise<Snapshot | null> {
+    async get(tenantId: string, inspectionId: string, versionNumber: number, reportId?: string): Promise<Snapshot | null> {
         const db = this.getDrizzle();
         const row = await db.select().from(reportVersions)
             .where(and(
-                eq(reportVersions.tenantId, tenantId),
-                eq(reportVersions.inspectionId, inspectionId),
+                await this.reportScope(db, tenantId, inspectionId, reportId),
                 eq(reportVersions.versionNumber, versionNumber),
             ))
             .get();
@@ -388,10 +414,11 @@ export class ReportVersionService {
         inspectionId: string,
         fromVersion: number,
         toVersion: number,
+        reportId?: string,
     ): Promise<DiffPayload | null> {
         const [from, to] = await Promise.all([
-            this.get(tenantId, inspectionId, fromVersion),
-            this.get(tenantId, inspectionId, toVersion),
+            this.get(tenantId, inspectionId, fromVersion, reportId),
+            this.get(tenantId, inspectionId, toVersion, reportId),
         ]);
         if (!from || !to) return null;
         return computeDiff(from, to);
