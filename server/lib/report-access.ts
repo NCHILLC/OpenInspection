@@ -3,18 +3,28 @@ import { isReportPublished } from './status/report-status';
 
 /**
  * Decide whether a PUBLIC report-access request may proceed.
- * Client/token access is allowed only while the report is currently published.
- * Owner-preview and headless render-token access always bypass (they must be
- * able to load in-progress/unpublished reports for editing/preview/rendering).
+ * Client/token access is allowed only while the report is currently published
+ * AND the order's delivery gate is clear. Owner-preview and headless
+ * render-token access always bypass (they must be able to load
+ * in-progress/unpublished reports for editing/preview/rendering).
  * Reads CURRENT report_status — re-publishing restores access automatically.
+ *
+ * THE CONTENT IS GATED BY THE SAME RESOLVER THE HUB'S LOCK NOTICE SHOWS.
+ * `resolveGate` is InspectionService.getReportGate: non-null = an unsigned
+ * required agreement or an unpaid required invoice, which withholds the report
+ * itself and not only the banner explaining it. Passed as a thunk so it is
+ * consulted once, on the one path that can serve content — never on a bypass
+ * or an unpublished report, which are already refused.
  */
-export function publicReportAccessAllowed(opts: {
+export async function publicReportAccessAllowed(opts: {
   renderMode: boolean;
   ownerPreview: boolean;
   reportStatus: string | null | undefined;
-}): boolean {
+  resolveGate: () => Promise<unknown>;
+}): Promise<boolean> {
   if (opts.renderMode || opts.ownerPreview) return true;
-  return isReportPublished(opts.reportStatus);
+  if (!isReportPublished(opts.reportStatus)) return false;
+  return (await opts.resolveGate()) == null;
 }
 
 /**

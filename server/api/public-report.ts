@@ -325,14 +325,18 @@ const publicReportRoutes = createApiRouter()
             }
             return c.json({ success: false as const, error: { code: 'NOT_FOUND', message: 'Report not found' } }, 404);
         }
-        // Publish gate: client/token access is revoked while the report is not
-        // published (owner-preview + render-token bypass — they may view drafts).
+        // Publish + delivery gate: client/token access is revoked while the report
+        // is not published, and while the order's agreement/payment gate is
+        // outstanding (owner-preview + render-token bypass — they may view drafts).
         const gateRow = await getDrizzle(c)
             .select({ reportStatus: inspections.reportStatus })
             .from(inspections)
             .where(and(eq(inspections.id, id), eq(inspections.tenantId, tenantId)))
             .get();
-        if (!publicReportAccessAllowed({ renderMode, ownerPreview, reportStatus: gateRow?.reportStatus })) {
+        if (!await publicReportAccessAllowed({
+            renderMode, ownerPreview, reportStatus: gateRow?.reportStatus,
+            resolveGate: () => c.var.services.inspection.getReportGate(id, tenantId!, tenant),
+        })) {
             return c.json({ success: false as const, error: { code: 'NOT_PUBLISHED', message: 'This report is not published.' } }, 403);
         }
         // OI #271 — delivery confirmation, after the publish gate (a blocked
@@ -391,7 +395,7 @@ const publicReportRoutes = createApiRouter()
         return c.json({ success: true as const, data, courtesyTranslation }, 200);
     })
     .openapi(reportPhotoRoute, async (c) => {
-        const { id } = c.req.valid('param');
+        const { tenant, id } = c.req.valid('param');
         const { key, token, download, render, w } = c.req.valid('query');
         let tenantId = (await resolveClientTenant(c, token, id))?.tenantId ?? null;
         let renderMode = false;
@@ -415,7 +419,10 @@ const publicReportRoutes = createApiRouter()
             .from(inspections)
             .where(and(eq(inspections.id, id), eq(inspections.tenantId, tenantId)))
             .get();
-        if (!publicReportAccessAllowed({ renderMode, ownerPreview, reportStatus: photoGate?.reportStatus })) {
+        if (!await publicReportAccessAllowed({
+            renderMode, ownerPreview, reportStatus: photoGate?.reportStatus,
+            resolveGate: () => c.var.services.inspection.getReportGate(id, tenantId!, tenant),
+        })) {
             return c.notFound();
         }
         // Ownership: keys are `${tenantId}/inspections/${inspectionId}/...` — reject
@@ -450,9 +457,13 @@ const publicReportRoutes = createApiRouter()
             .where(and(eq(inspections.id, id), eq(inspections.tenantId, tenantId)))
             .get();
         if (!insp) return c.notFound();
-        // Publish gate: this is a pure client-facing endpoint (no owner-preview, no
-        // render token), so block whenever the report is not currently published.
-        if (!publicReportAccessAllowed({ renderMode: false, ownerPreview: false, reportStatus: insp.reportStatus })) {
+        // Publish + delivery gate: this is a pure client-facing endpoint (no
+        // owner-preview, no render token), so block whenever the report is not
+        // currently published or the order's agreement/payment gate is outstanding.
+        if (!await publicReportAccessAllowed({
+            renderMode: false, ownerPreview: false, reportStatus: insp.reportStatus,
+            resolveGate: () => c.var.services.inspection.getReportGate(id, tenantId, tenant),
+        })) {
             return c.json({ success: false as const, error: { code: 'NOT_PUBLISHED', message: 'This report is not published.' } }, 403);
         }
         // Everyday download always tracks current content (versionNumber: null →

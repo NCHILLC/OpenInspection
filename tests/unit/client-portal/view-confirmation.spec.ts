@@ -118,6 +118,9 @@ describe('OI #271 — report view confirmation', () => {
                 inspection: {
                     getReportData: vi.fn().mockResolvedValue({ inspectionId: INSP, sections: [] }),
                     resolveAgentViewToken: vi.fn().mockResolvedValue(null),
+                    // Ungated order — the access check asks the same resolver the
+                    // Hub's lock notice reads.
+                    getReportGate: vi.fn().mockResolvedValue(null),
                 },
                 reportVersion: { getLatestPublished: vi.fn().mockResolvedValue(null) },
             } as unknown as HonoConfig['Variables']['services']);

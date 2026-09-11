@@ -42,7 +42,9 @@ describe('GET /api/public/report/:tenant/:id — ③-A.1', () => {
             (c as unknown as { env: Record<string, unknown> }).env = { DB: {} };
             c.set('services', {
                 portalAccess: { resolveToken },
-                inspection: { getReportData, resolveAgentViewToken },
+                // Ungated order (no required agreement/payment) — the access check asks the
+                // same resolver the Hub's lock notice reads.
+                inspection: { getReportData, resolveAgentViewToken, getReportGate: vi.fn().mockResolvedValue(null) },
                 reportVersion: { getLatestPublished },
             } as unknown as HonoConfig['Variables']['services']);
             await next();
@@ -380,7 +382,7 @@ describe('GET /api/public/report/:tenant/:id/photo — prefix guard (r2-key-conv
             };
             c.set('services', {
                 portalAccess: { resolveToken },
-                inspection: { resolveAgentViewToken: vi.fn().mockResolvedValue(null) },
+                inspection: { resolveAgentViewToken: vi.fn().mockResolvedValue(null), getReportGate: vi.fn().mockResolvedValue(null) },
             } as unknown as HonoConfig['Variables']['services']);
             await next();
         });
