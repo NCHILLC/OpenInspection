@@ -381,6 +381,29 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
                 : new Response('snapshot not found', { status: 404 });
         }
 
+        // ── Flush ────────────────────────────────────────────────────────────
+        // Project the doc into D1 NOW, ahead of the debounce. The publish path
+        // reads `inspection_results.data` (the readiness gate) and freezes it
+        // into a signed `report_versions` row, and this object is the only
+        // writer of that column — on a 1 s debounce. An edit made a beat before
+        // Publish was therefore invisible to both: the gate answered about a
+        // report it had not seen, and the snapshot froze without the last edit.
+        //
+        // Identity comes from the forwarded headers exactly as /ws and
+        // /restructure take it; without it persist() skips the D1 write and the
+        // flush would silently do nothing.
+        if (url.pathname.endsWith('/flush')) {
+            if (req.method !== 'POST') return new Response('method not allowed', { status: 405 });
+            const headerTenantId     = req.headers.get('x-tenant-id');
+            const headerInspectionId = req.headers.get('x-inspection-id');
+            const headerReportId     = req.headers.get('x-report-id');
+            if (headerTenantId)     this.tenantId     = headerTenantId;
+            if (headerInspectionId) this.inspectionId = headerInspectionId;
+            if (headerReportId)     this.reportId     = headerReportId;
+            await this.persist();
+            return new Response(null, { status: 204 });
+        }
+
         if (url.pathname.endsWith('/restore') && req.method === 'POST') {
             let seq: unknown;
             try {

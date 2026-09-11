@@ -40,6 +40,7 @@ interface DOInternals {
     identityPersisted: boolean;
     persist(): Promise<void>;
     webSocketMessage(ws: WebSocket, data: ArrayBuffer): Promise<void>;
+    fetch(req: Request): Promise<Response>;
 }
 
 async function seedSchema(): Promise<void> {
@@ -133,5 +134,63 @@ describe('collab persistence with no pre-existing inspection_results row', () =>
         const row = await readRow(inspectionId);
         const data = JSON.parse(row!.data) as Record<string, { rating?: string }>;
         expect(data[FINDING_KEY]?.rating).toBe('Satisfactory');
+    });
+});
+
+/**
+ * The publish path reads `inspection_results.data` out of D1 — the readiness
+ * gate and the frozen report_versions snapshot both do. The DO only projects
+ * into D1 on a 1 s debounce (PERSIST_DEBOUNCE_MS) or on the last disconnect, so
+ * an edit made a moment before Publish was invisible to both: the gate passed a
+ * report it had not seen, and the signed snapshot froze without the last edit.
+ * `POST /flush` is the seam the publish route awaits so that cannot happen.
+ */
+describe('POST /flush', () => {
+    beforeAll(seedSchema);
+    beforeEach(clearResults);
+
+    it('projects the current doc into D1 without waiting for the debounce', async () => {
+        const inspectionId = 'insp-flush-' + crypto.randomUUID().slice(0, 8);
+        const stub = b.INSPECTION_DOC.get(b.INSPECTION_DOC.idFromName(`${TENANT}:${inspectionId}`));
+
+        await runInDurableObject(stub, async (instance: InspectionDocDO) => {
+            const io = instance as unknown as DOInternals;
+            io.tenantId = TENANT;
+            io.inspectionId = inspectionId;
+            io.identityPersisted = true;
+            seedResultsDoc(io.doc, [{ findingKey: FINDING_KEY }]);
+
+            const client = new Y.Doc();
+            Y.applyUpdate(client, Y.encodeStateAsUpdate(io.doc));
+            applyItemPatch(client, FINDING_KEY, 'rating', 'Defect');
+            // The edit arrives and schedules the debounced persist. NOTHING is
+            // awaited here on purpose: this is the state the doc is in when the
+            // inspector clicks Publish a beat after typing.
+            await io.webSocketMessage(
+                {} as WebSocket,
+                encodeUpdate(Y.encodeStateAsUpdate(client)).buffer as ArrayBuffer,
+            );
+
+            const res = await io.fetch(new Request('https://do/flush', { method: 'POST' }));
+            expect(res.status).toBe(204);
+        });
+
+        const row = await readRow(inspectionId);
+        expect(row, '/flush must write the projection D1 readers depend on').not.toBeNull();
+        const data = JSON.parse(row!.data) as Record<string, { rating?: string }>;
+        expect(data[FINDING_KEY]?.rating).toBe('Defect');
+    });
+
+    it('refuses a GET — flushing is a write', async () => {
+        const inspectionId = 'insp-flush-get-' + crypto.randomUUID().slice(0, 8);
+        const stub = b.INSPECTION_DOC.get(b.INSPECTION_DOC.idFromName(`${TENANT}:${inspectionId}`));
+        await runInDurableObject(stub, async (instance: InspectionDocDO) => {
+            const io = instance as unknown as DOInternals;
+            io.tenantId = TENANT;
+            io.inspectionId = inspectionId;
+            io.identityPersisted = true;
+            const res = await io.fetch(new Request('https://do/flush'));
+            expect(res.status).toBe(405);
+        });
     });
 });

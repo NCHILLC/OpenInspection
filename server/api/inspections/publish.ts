@@ -25,7 +25,54 @@ import { refuseLeaveCancelledViaStatusWrite } from './cancel-write-path';
 import { eq, and } from 'drizzle-orm';
 import { getTenantId, getDrizzle } from '../../lib/route-helpers';
 import { translateOnPublishForRequest } from '../../lib/translation/on-publish';
+import { collabDocName } from '../../lib/collab/doc-name';
+import { resolvePublishTargetReport } from '../../lib/inspection/report-notifications';
 import { withMcpMetadata } from '../../lib/route-metadata-standards';
+
+/**
+ * Project the collab document into D1 before the publish path reads it.
+ *
+ * The Durable Object is the only writer of `inspection_results.data`, and it
+ * writes on a 1 s debounce (PERSIST_DEBOUNCE_MS) or on the last disconnect.
+ * Publish reads that column twice — the readiness gate, and the frozen signed
+ * `report_versions` snapshot — so an edit made a beat before Publish was in
+ * neither: the gate answered about a report it had not seen, and the snapshot
+ * froze without the last edit.
+ *
+ * Addressed `${tenantId}:${reportId}` because that is what collab.ts keys the
+ * document by; the identity headers ride along because persist() skips its D1
+ * write when identity is unknown (a hibernation-reconstructed object).
+ *
+ * BEST-EFFORT. A flush that cannot be delivered leaves the pre-existing
+ * behaviour (D1 up to a second behind) rather than refusing a publish over a
+ * DO round trip, which is the same bargain every other side effect on this
+ * route strikes.
+ */
+export async function flushCollabDocForPublish(
+    ns: DurableObjectNamespace | undefined,
+    tenantId: string,
+    inspectionId: string,
+    reportId: string | null,
+): Promise<void> {
+    if (!ns || !reportId) return;
+    try {
+        await ns.get(ns.idFromName(collabDocName(tenantId, reportId)))
+            .fetch('https://do/flush', {
+                method: 'POST',
+                headers: {
+                    'x-tenant-id':     tenantId,
+                    'x-inspection-id': inspectionId,
+                    'x-report-id':     reportId,
+                },
+            });
+    } catch (err) {
+        logger.warn('collab flush before publish failed (non-fatal)', {
+            inspectionId,
+            reportId,
+            error: err instanceof Error ? err.message : String(err),
+        });
+    }
+}
 
 /**
  * POST /api/inspections/:id/complete
@@ -375,6 +422,19 @@ const publishRoutes = createApiRouter()
             ...(body.recipients ? { recipients: body.recipients } : {}),
             ...(body.reportId ? { reportId: body.reportId } : {}),
         };
+        // The collab document, into D1, BEFORE anything reads it. The readiness
+        // gate inside publishInspection and the snapshot below both read
+        // `inspection_results.data`, which the DO writes on a 1 s debounce.
+        // resolvePublishTargetReport is asked here as well as inside the service
+        // because the DO is addressed by report id: one indexed lookup, against
+        // a gate that would otherwise answer about a stale document.
+        await flushCollabDocForPublish(
+            c.env.INSPECTION_DOC,
+            tenantId,
+            id,
+            await resolvePublishTargetReport(getDrizzle(c), tenantId, id, body.reportId),
+        );
+
         const result = await service.publishInspection(id, tenantId, publishOptions);
 
         // #23 — the courtesy translation, when the publisher asked for one on

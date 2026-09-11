@@ -582,7 +582,27 @@ export class InspectionPublishService extends InspectionSubService {
             .get();
         if (!inspection) throw Errors.NotFound('Inspection not found');
         // The order lifecycle does not gate delivery — a report can ship while
-        // the order is still scheduled. Content completeness: publishReadiness.
+        // the order is still scheduled. Content completeness is this gate.
+        //
+        // ENFORCED HERE, not in the route, because three callers publish: the
+        // editor's modal, the inspector hub's publish action, and the MCP/API
+        // surface. Only the first asked — and it asks from the browser, so a
+        // flaky readiness fetch fell through to publishing anyway. An unresolved
+        // {{location}} is not a policy preference; it renders as a literal gap in
+        // the document a client reads, which is why computePublishReadiness
+        // treats it as blocking. The row is passed through so the gate does not
+        // re-read the statement we just ran.
+        const readiness = await this.computePublishReadiness(inspectionId, tenantId, inspection);
+        if (!readiness.ready) {
+            const first = readiness.blockingDefects[0];
+            const n = readiness.blockingDefects.length;
+            throw Errors.BadRequest(
+                `Publish blocked: ${n} defect${n === 1 ? '' : 's'} still ${n === 1 ? 'needs' : 'need'} attention`
+                + (first ? ` (${first.sectionTitle} › ${first.itemLabel} — ${first.cannedTitle})` : '')
+                + '. Fill in the missing fields, or exclude the defect, then publish again.',
+                { blockingDefects: readiness.blockingDefects },
+            );
+        }
 
         // Which deliverable — the standard report today, radon on Thursday.
         // Validation and tenant re-resolution live in resolvePublishTargetReport.
