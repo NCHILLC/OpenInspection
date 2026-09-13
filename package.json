@@ -1,6 +1,6 @@
 {
   "name": "openinspection",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": false,
   "type": "module",
   "repository": {
@@ -58,6 +58,7 @@
     "lint:loader-awaits": "node scripts/check-loader-awaits.mjs",
     "lint:middleware-budget": "node scripts/check-middleware-budget.mjs",
     "lint:migrefs": "node scripts/check-migration-refs.mjs",
+    "lint:lockreg": "node scripts/check-lockfile-registry.mjs",
     "lint:chrome-record": "node scripts/check-chrome-record.mjs --self-test",
     "lint:migchain": "node scripts/check-migration-chain.mjs",
     "lint:zero-tracking": "node scripts/check-zero-tracking.mjs",
@@ -166,6 +167,7 @@
     "lint:no-portal-routes": "node scripts/check-no-portal-routes.mjs",
     "docs:shots": "playwright test -c playwright.docs-shots.config.ts",
     "lint:unwired": "node scripts/check-unwired.mjs",
+    "lint:unread-fields": "node scripts/check-unread-fields.mjs",
     "lint:url-taxonomy": "node scripts/check-url-taxonomy.mjs",
     "lint:route-dispatch": "node scripts/check-route-dispatch-parity.mjs"
   },
@@ -268,7 +270,7 @@
     "uuid": "^11.1.1",
     "undici": "^7.29.0",
     "ws": "^8.21.0",
-    "sharp": ">=0.35.0",
+    "sharp": ">=0.35.4",
     "@hono/node-server": ">=2.0.5",
     "brace-expansion": "^5.0.9",
     "ip-address": ">=10.2.2",

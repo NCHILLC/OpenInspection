@@ -4,7 +4,7 @@ Every fork-only commit, sorted by what should happen to it now that this fork
 contributes to `InspectorHub/OpenInspection` instead of diverging from it
 (decided 2026-09-13; pitch posted in upstream Discussion #233).
 
-Sorted 2026-09-13 against `upstream/main` `feb4a344` (v2.2.0). "Upstream lacks
+Sorted 2026-09-13 against `upstream/main` `feb4a344` (v2.1.0 plus PRs #355–#356; v2.2.0 not yet released). "Upstream lacks
 it" was established from upstream's history on the same files since the last
 merge (`ac02ba3e`) plus a read of the specific code — **not** by running
 upstream. Re-check each one against a fresh `git fetch upstream` when it is

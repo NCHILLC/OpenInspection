@@ -23,6 +23,10 @@ export const SCRIPT_GATES = [
     { key: 'contrast', label: 'Small-text WCAG AA contrast', script: 'check-contrast.mjs', fix: 'npm run lint:contrast', rung: PRECOMMIT },
     { key: 'svg', label: 'SVG dimensions', script: 'check-svg-dimensions.mjs', fix: 'npm run lint:svg', rung: PRECOMMIT },
     { key: 'migrefs', label: 'Migration-reference hygiene', script: 'check-migration-refs.mjs', fix: 'npm run lint:migrefs', rung: PRECOMMIT },
+    // PRECOMMIT rather than PUSH: the drift is written by `npm install`, so the
+    // commit that carries a lockfile change is the last moment it is still one
+    // person's local edit rather than everyone's install source.
+    { key: 'lockreg', label: 'Lockfile registry host', script: 'check-lockfile-registry.mjs', fix: 'npm run lint:lockreg', rung: PRECOMMIT },
     // Not the chrome-record gate itself -- that one runs at the commit-msg rung,
     // which this ladder does not model, because the thing it reads (the commit
     // message) does not exist until after pre-commit has finished. What runs
@@ -179,6 +183,8 @@ export const SCRIPT_GATES = [
     // worse than none. The script itself prints what to do.
     { key: 'wranglerpatch', label: 'wrangler patch present (workers-sdk#15317)', script: 'check-wrangler-patch.mjs', fix: 'npm run lint:wrangler-patch', rung: PUSH },
     { key: 'unwired', label: 'lint:unwired', script: 'check-unwired.mjs', fix: 'npm run lint:unwired', rung: PUSH },
+    // `unwired` one level down: a field, not a module. See that script's header.
+    { key: 'unreadfields', label: 'lint:unread-fields', script: 'check-unread-fields.mjs', fix: 'npm run lint:unread-fields', rung: PUSH },
     { key: 'erasure', label: 'lint:erasure', script: 'check-erasure-manifest.mjs', fix: 'npm run lint:erasure', rung: PUSH },
     { key: 'retention', label: 'lint:retention', script: 'check-retention-manifest.mjs', fix: 'npm run lint:retention', rung: PUSH },
     { key: 'retentionpolicy', label: 'lint:retention-policy', script: 'check-retention-policy.mjs', fix: 'npm run lint:retention-policy', rung: PUSH },

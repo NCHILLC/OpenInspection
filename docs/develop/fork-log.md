@@ -63,6 +63,35 @@ that is waste.
 When an upstream scope in the table below is decided as **take**, this branch is
 what you merge from.
 
+## Merge — 2026-09-13, upstream `ac02ba3e..8ba7467b` (55 commits, through PR #352)
+
+The first of three pieces bringing the fork current (the rest: PR #353, then
+#354–#356). Pieces are cut at upstream merge commits so each one lands, passes CI and
+can be deployed on its own. Taken **wholesale**.
+
+**This range includes v2.0.0's rebuilt migration baseline** (`c5e64bac`). The fork
+carries no migrations of its own, so nothing here conflicts, but a deployed D1
+does **not** pick the change up by migrating: follow "Upgrading across a rebuilt
+baseline" in `docs/operate/upgrade.md` (back up first) **before** deploying this
+merge.
+
+**Four files conflicted, none of them code.**
+
+- `CLAUDE.md`: upstream's refreshed frontend summary and its quality-gates lead
+  paragraph taken; the fork's paragraphs after it (gates before writing,
+  preflight, worktree location, the `verify` ruleset) kept.
+- `docs/develop/architecture.md`: upstream's component/hook summary taken. The
+  field-surface list stays the fork's: upstream's now says photo upload is not
+  offline-capable, which is false here (`85669e05` queues it), and the
+  capture-first client is this fork's decision.
+- `package-lock.json`: upstream's taken, then `npm install` re-resolved it
+  against the merged `package.json` (every `resolved` URL on the public
+  registry, as upstream's `lint:lockreg` requires).
+- `scripts/file-size-baseline.json`: upstream's copy has no caps for the fork's
+  own large files, so it was re-snapshotted at merged sizes
+  (`check-file-size.mjs --update`), the same reviewed decision as the 09-07
+  merge. No file grew because of this merge.
+
 ## Snapshot — 2026-09-07, after the merge below
 
 | | |

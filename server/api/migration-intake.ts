@@ -8,6 +8,7 @@ import { migrationBatches, migrationRows } from '../lib/db/schema';
 import type { VendorId } from '../lib/migration-intake/bundle';
 import { MIGRATION_BATCH_STATUS } from '../lib/status/migration-batch-status';
 import { assertSourceSizeWithin, limitsFor } from '../lib/migration-intake/limits';
+import { parkUnlessMisdeclared } from '../lib/migration-intake/adapters/vendor-correction';
 import {
     buildBundle,
     defaultMappingFor,
@@ -172,7 +173,7 @@ const migrationIntakeRoutes = createApiRouter()
         const declaredVendor: VendorId = form.vendor;
 
         const match = await matchAdapter(intent, declaredVendor, source);
-        if (!match) return openWaitingRun();
+        if (!match) return parkUnlessMisdeclared(intent, declaredVendor, source, openWaitingRun);
 
         const built = await buildBundle(match.vendor, source, defaultMappingFor(intent, match.inspection, source), await new DefectCategoryService(c.env.DB).orderedNames(tenantId));
         if (!built.ok) throw Errors.UnprocessableEntity(built.error.message);
@@ -192,7 +193,7 @@ const migrationIntakeRoutes = createApiRouter()
         // export is routinely named after the person it is about.
         auditFromContext(c, 'migration.staged', 'migration_batch', {
             entityId: staged.batchId,
-            metadata: { intent, vendor: match.vendor, rows: staged.rows.length },
+            metadata: { intent, vendor: match.vendor, adapterName: match.adapterName, adapterVersion: match.adapterVersion, rows: staged.rows.length },
         });
         return c.json({
             success: true as const,

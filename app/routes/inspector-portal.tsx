@@ -924,7 +924,6 @@ export default function InspectionHubPage() {
             (getPeopleCard) the rest of the page already uses. */}
         <div className="space-y-4">
           <PeopleEditor
-            inspectionId={inspection.id}
             people={people}
             roleProfiles={roleProfiles}
             isAdmin={isAdmin}
@@ -1325,6 +1324,7 @@ export default function InspectionHubPage() {
         courtesyTranslationEnabled={inspection.courtesyTranslationEnabled ?? false}
         courtesyTranslationLocale={COURTESY_TRANSLATION_LOCALE}
         clientPrefersTranslation={inspection.clientLocale === COURTESY_TRANSLATION_LOCALE}
+        blockingCount={hub.publishReadiness.blockingCount}
         fetcher={publishModal.fetcher}
         submitting={publishModal.busy}
         error={publishModal.error}
