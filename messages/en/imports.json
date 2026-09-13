@@ -77,7 +77,6 @@
   "imports_pdf_statement": "I am uploading a template with no inspection in it, and I have removed any personal information from it.",
   "imports_pdf_upload_hint": "A PDF, printed from a template you have not filled in.",
   "imports_policy_overwrite": "Replace with the imported version",
-  "imports_policy_per_row": "Decide one at a time",
   "imports_policy_skip": "Keep what is already here",
   "imports_policy_title": "Entries that already exist",
   "imports_preview_aftercare_comments": "Imported comments land under Information unless the file said which tab they belong to.",

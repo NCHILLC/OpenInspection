@@ -15,7 +15,6 @@ const CAN_REVERT: readonly string[] = [
 const POLICY_LABEL: Record<ImportConflictPolicy, () => string> = {
     skip: m.imports_policy_skip,
     overwrite: m.imports_policy_overwrite,
-    per_row: m.imports_policy_per_row,
 };
 
 /**

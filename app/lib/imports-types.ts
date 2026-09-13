@@ -47,15 +47,16 @@ export const IMPORT_MEMBER_ROLES: readonly BundleMemberRole[] = BUNDLE_MEMBER_RO
 export const IMPORT_TEMPLATE_RATING_KINDS: readonly TemplateRatingKind[] = TEMPLATE_RATING_KINDS;
 
 /**
- * How an entry that clashes with something already here is settled.
+ * How an entry that clashes with something already here is settled, offered
+ * to the operator.
  *
- * Written out rather than imported, unlike the two lists above: this one lives
- * on the Drizzle column enum, and reaching for it would put a table definition
- * in the browser bundle. `settings-imports-batch.test.tsx` renders every option
- * and the server's own zod enum refuses anything else, so a value that drifted
- * apart from the column would be a red test rather than a silent no-op.
+ * A SUBSET of the column enum, not a restatement of it: the column (and the
+ * API contract behind it) also accepts `per_row`, but this screen has no
+ * control that produces a `rowResolutions` map, so offering it here would be a
+ * choice that reads as "decide one at a time" and behaves as "skip" — see
+ * `ImportStage.tsx`. A direct API caller may still use `per_row`.
  */
-export const IMPORT_CONFLICT_POLICIES = ["skip", "overwrite", "per_row"] as const;
+export const IMPORT_CONFLICT_POLICIES = ["skip", "overwrite"] as const;
 export type ImportConflictPolicy = (typeof IMPORT_CONFLICT_POLICIES)[number];
 
 /**

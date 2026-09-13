@@ -15,7 +15,7 @@ import {
 } from '../../../server/lib/migration-intake/bundle';
 import { contacts } from '../../../server/lib/db/schema';
 import { ROLES } from '../../../server/lib/auth/roles';
-import { RemapRequestSchema } from '../../../server/lib/validations/migration-intake.schema';
+import { ApplyRequestSchema, RemapRequestSchema } from '../../../server/lib/validations/migration-intake.schema';
 import { IMPORT_MEMBER_ROLES } from '../../../app/lib/imports-types';
 import { describeRowProblem } from '../../../server/lib/migration-intake/row-problems';
 
@@ -80,6 +80,22 @@ describe('bundle vocabularies', () => {
             expect(describeRowProblem('member', { email: value, role: 'inspector' }))
                 .toMatchObject({ field: 'email', value });
         }
+    });
+
+    /**
+     * The wizard's own conflict-policy list dropped `per_row` (the UI never
+     * sent `rowResolutions`, so the server settled every row as `skip` anyway
+     * — see `app/lib/imports-types.ts`). The contract did not: a direct API
+     * caller can still supply `per_row` with `rowResolutions` today, and this
+     * guards against someone "finishing the job" by deleting it from here too.
+     */
+    it('the apply contract still accepts per_row with rowResolutions', () => {
+        const parsed = ApplyRequestSchema.parse({
+            conflictPolicy: 'per_row',
+            rowResolutions: { row1: 'overwrite', row2: 'skip' },
+        });
+        expect(parsed.conflictPolicy).toBe('per_row');
+        expect(parsed.rowResolutions).toEqual({ row1: 'overwrite', row2: 'skip' });
     });
 
     it('every entity kind has a vendor-independent name', () => {

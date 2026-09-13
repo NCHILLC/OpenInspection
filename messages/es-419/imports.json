@@ -77,7 +77,6 @@
   "imports_pdf_statement": "Estoy subiendo una plantilla sin ninguna inspección y he eliminado de ella toda información personal.",
   "imports_pdf_upload_hint": "Un PDF, impreso desde una plantilla que no ha completado.",
   "imports_policy_overwrite": "Reemplazar con la versión importada",
-  "imports_policy_per_row": "Decidir una por una",
   "imports_policy_skip": "Conservar lo que ya está aquí",
   "imports_policy_title": "Entradas que ya existen",
   "imports_preview_aftercare_comments": "Los comentarios importados quedan en Información, salvo que el archivo indicara a qué pestaña pertenecen.",

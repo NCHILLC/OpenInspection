@@ -61,6 +61,16 @@ describe("ImportStage: entries that already exist", () => {
         expect(screen.queryByRole("radiogroup")).toBeNull();
     });
 
+    it("offers skip and overwrite, and not the per-row option the UI cannot honor", () => {
+        // The UI never sends `rowResolutions`, so the server settles every
+        // conflicting row under `per_row` as `skip` — identical to choosing
+        // "skip" outright while the label claims something else happens.
+        renderStage();
+        expect(screen.getByRole("radio", { name: "Keep what is already here" })).toBeTruthy();
+        expect(screen.getByRole("radio", { name: "Replace with the imported version" })).toBeTruthy();
+        expect(screen.queryByRole("radio", { name: "Decide one at a time" })).toBeNull();
+    });
+
     it("sends the answer that was chosen, not the one it opened on", () => {
         const { onApply } = renderStage();
         fireEvent.click(screen.getByRole("radio", { name: "Replace with the imported version" }));
