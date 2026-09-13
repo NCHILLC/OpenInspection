@@ -5,7 +5,9 @@
 (2026-08-27), so everything committed here, history included, is world-readable.
 It is not a GitHub-network fork (`gh repo view --json isFork` is `false`), so a
 pull request cannot be opened from it into upstream; contributions need a real
-fork under another name. This file records what has been
+fork under another name. Since 2026-09-13 new work goes upstream rather than
+here; which fork commits to send, hold or keep is sorted in
+[`upstream-contribution-ledger.md`](upstream-contribution-ledger.md). This file records what has been
 taken from upstream, what has been deliberately skipped, and where the two have
 diverged on purpose.
 
