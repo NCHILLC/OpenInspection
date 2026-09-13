@@ -6,7 +6,7 @@ API in-process and delegates page routes to React Router v8 SSR.
 
 **Docs**: `docs/README.md` is the map — `docs/operate/` (deploy, upgrade, configure) · `docs/develop/` (architecture, testing, design system) · `docs/reference/` (API, database, roles, deployment modes) · `docs/concepts/` (how the engine works) · `docs/integrations/` (external services) · `docs/compliance/` (data handling). Docs here cover the **engine**: deploying it, operating it, changing it, integrating it. Using the product day to day is documented at <https://inspectorhub.io/docs>, which serves self-hosted and hosted deployments alike.
 
-**This checkout is a fork.** `origin` is `NCHILLC/OpenInspection` (private), `upstream` is `InspectorHub/OpenInspection`. What has been taken from upstream, skipped, or deliberately diverged on is recorded in [`docs/develop/fork-log.md`](docs/develop/fork-log.md) — read it before merging upstream or before "fixing" behaviour that looks like drift. It is linked from here rather than from `docs/README.md` on purpose: that map is upstream's, and a fork-only row in it would conflict on every merge.
+**This checkout is a fork.** `origin` is `NCHILLC/OpenInspection` (**public**, and not a GitHub-network fork — see the fork log), `upstream` is `InspectorHub/OpenInspection`. What has been taken from upstream, skipped, or deliberately diverged on is recorded in [`docs/develop/fork-log.md`](docs/develop/fork-log.md) — read it before merging upstream or before "fixing" behaviour that looks like drift. It is linked from here rather than from `docs/README.md` on purpose: that map is upstream's, and a fork-only row in it would conflict on every merge.
 
 ## Check upstream BEFORE debugging anything
 
@@ -356,11 +356,14 @@ An absolute path in `launch.json` does not save you; the launcher rebases it.
 **`--no-verify` is blocked**, with `--dangerously-skip-permissions` and
 `HUSKY=0`, by a PreToolUse hook (`~/.claude/hooks/block-verify-skip.mjs`).
 CI does run now — `verify` fires on pull requests and on pushes to `main`
-(2026-09-07) — but it **cannot block a merge on this plan**. Branch protection
-and rulesets are unenforced on a private repository under GitHub Free; the
-`verify` ruleset on `NCHILLC/OpenInspection` exists and is inert, and goes live
-only if the org moves to Team. So a red `verify` is a signal you have to choose
-to honour, and **pre-commit remains the only gate that actually stops anything**.
+(2026-09-07) — but it **does not block a merge today**. The repository is public,
+so GitHub Free does enforce rulesets on it; the one that exists does not guard
+`main`. The `verify` ruleset is `active` but targets `refs/heads/verify` (a
+branch of that name), and carries only deletion and non-fast-forward rules — no
+required status check (verified 2026-09-13 via
+`gh api repos/NCHILLC/OpenInspection/rulesets/22446814`). So a red `verify` is a
+signal you have to choose to honour, and **pre-commit remains the only gate that
+actually stops anything** until that ruleset targets `main` with a required check.
 If a gate fails, fix the cause.
 
 - **Hook mechanism**: `.githooks/pre-commit`, activated by the `prepare` npm script (`git config core.hooksPath .githooks`) on `npm install`/`npm ci` — native git hooks, **no husky**.

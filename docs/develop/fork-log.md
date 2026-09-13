@@ -1,7 +1,11 @@
 # Fork log
 
-`NCHILLC/OpenInspection` (`origin`) is a private fork of
-`InspectorHub/OpenInspection` (`upstream`). This file records what has been
+`NCHILLC/OpenInspection` (`origin`) is a **public** copy of
+`InspectorHub/OpenInspection` (`upstream`) — public since it was created
+(2026-08-27), so everything committed here, history included, is world-readable.
+It is not a GitHub-network fork (`gh repo view --json isFork` is `false`), so a
+pull request cannot be opened from it into upstream; contributions need a real
+fork under another name. This file records what has been
 taken from upstream, what has been deliberately skipped, and where the two have
 diverged on purpose.
 
