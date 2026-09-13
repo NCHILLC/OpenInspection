@@ -29,8 +29,6 @@ export interface EditorUrlNav {
     goNext: (() => void) | null;
     /** Up one level — pops real history where there is any to pop. */
     goUp: () => void;
-    /** True when `goUp` from the section list leaves the editor entirely. */
-    atRoot: boolean;
 }
 
 /**
@@ -175,7 +173,6 @@ export function useEditorUrlNav({
         : searchParams.get("section")
             ? "items"
             : "sections";
-    const atRoot = level === "sections";
 
     const goUp = useCallback(() => {
         // ROOT FIRST. At the top of the drill stack there is nothing of ours
@@ -205,5 +202,5 @@ export function useEditorUrlNav({
         void navigate("/inspections");
     }, [currentSectionId, navigate, searchParams, setSearchParams, paramsForState]);
 
-    return { level, goToSection, goToItem, goToItemIn, goNext, goUp, atRoot };
+    return { level, goToSection, goToItem, goToItemIn, goNext, goUp };
 }
