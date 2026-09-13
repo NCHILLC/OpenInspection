@@ -1,17 +1,17 @@
 /**
- * The readiness gate has to live on the SERVER.
+ * Readiness WARNS. It does not refuse a publish.
  *
- * `computePublishReadiness` decides whether a report may ship — an unresolved
- * `{{location}}` token renders as a literal gap in the document a client reads,
- * which is why the gate treats it as blocking rather than advisory. It was
- * enforced in exactly one place: `inspection-edit.tsx`'s pre-flight fetch, which
- * falls through to the publish modal on a network error. Two other first-party
- * callers never asked at all — the inspector hub's publish action
- * (`app/routes/inspector-portal.tsx`) and the MCP/API surface — so the blocked
- * report shipped through ordinary UI use, not a crafted request.
+ * `computePublishReadiness` reports defects that still need attention — an
+ * unresolved `{{location}}` token among them — and the editor and the inspector
+ * hub surface that count before the inspector publishes. The server does not
+ * turn it into a refusal. That is a product decision, not an omission:
+ * upstream d685a459 surveyed five established products on 2026-09-07 and found
+ * four never block publishing on completeness, and the one that can — Spectora
+ * — ships it off by default. The fork adopted the same rule on 2026-09-13.
  *
- * These assertions drive the REAL service, because the fault was never in the
- * readiness computation (which has its own spec) but in nobody calling it.
+ * This file used to assert the opposite. It now exists so that a future "just
+ * refuse it on the server" goes red here instead of quietly reversing that
+ * decision. It drives the REAL service with a report the readiness check flags.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
@@ -55,7 +55,7 @@ function structure(comment: string, location?: string) {
     };
 }
 
-describe('publishInspection refuses a report the readiness gate blocks', () => {
+describe('publishInspection publishes a report the readiness check flags', () => {
     let db: BetterSQLite3Database<typeof schema>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let sqlite: any;
@@ -96,36 +96,20 @@ describe('publishInspection refuses a report the readiness gate blocks', () => {
         return row?.reportStatus ?? null;
     }
 
-    it('throws a 400 whose message names the blocked defect', async () => {
+    it('publishes an unready report — the count is a warning, never a refusal', async () => {
+        // A defect whose comment names {{location}} with no location supplied:
+        // exactly the report the readiness check flags as needing attention.
         await seed(structure('Replace shingles at {{location}}.'));
-        // Proof the fixture is the blocking shape, not a broken fixture.
         const readiness = await svc.computePublishReadiness(INSPECTION_ID, TENANT);
         expect(readiness.ready).toBe(false);
+        expect(readiness.blockingDefects.length).toBeGreaterThan(0);
 
-        await expect(svc.publishInspection(INSPECTION_ID, TENANT, PUBLISH_OPTIONS))
-            .rejects.toMatchObject({ status: 400 });
-        // The editor's action.server.ts surfaces `error.message` verbatim in the
-        // publish modal, so the reason has to be IN the message — a bare
-        // "couldn't publish" is what sent the inspector back to guessing.
-        await expect(svc.publishInspection(INSPECTION_ID, TENANT, PUBLISH_OPTIONS))
-            .rejects.toThrow(/Roof Covering|Missing shingles|1 defect/i);
+        const out = await svc.publishInspection(INSPECTION_ID, TENANT, PUBLISH_OPTIONS);
+        expect(out.reportStatus).toBe('published');
+        expect(await reportStatus()).toBe('published');
     });
 
-    it('leaves the report unpublished — the refusal is before the status write', async () => {
-        await seed(structure('Replace shingles at {{location}}.'));
-        const before = await reportStatus();
-        await expect(svc.publishInspection(INSPECTION_ID, TENANT, PUBLISH_OPTIONS)).rejects.toThrow();
-        expect(await reportStatus()).toBe(before);
-    });
-
-    it('carries the blockers as error details for a richer surface than one line', async () => {
-        await seed(structure('Replace shingles at {{location}}.'));
-        const err = await svc.publishInspection(INSPECTION_ID, TENANT, PUBLISH_OPTIONS)
-            .then(() => null, (e: unknown) => e as { details?: { blockingDefects?: unknown[] } });
-        expect(err?.details?.blockingDefects).toHaveLength(1);
-    });
-
-    it('publishes when nothing blocks — the gate is not a new refusal of good work', async () => {
+    it('publishes a ready report too — the positive control', async () => {
         // Same defect, location supplied, so the token resolves.
         await seed(structure('Replace shingles at {{location}}.', 'north slope'));
         expect((await svc.computePublishReadiness(INSPECTION_ID, TENANT)).ready).toBe(true);
