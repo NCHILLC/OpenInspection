@@ -490,13 +490,14 @@ export class InspectionAnalyticsService extends InspectionSubService {
         //  - active inspection with an overdue invoice past the invoice threshold.
         const needsAttention = all.filter(i => {
             const d = insDate(i);
-            // Appointment clauses only look 30 days back (owner's call, 2026-09-14),
-            // or every never-closed inspection ever piles in and buries this week.
-            const withinWindow = d !== null && d >= minus30days;
-            if (i.status === INSPECTION_STATUS.SCHEDULED && withinWindow && d <= in48h) return true;
-            // Overdue: an active appointment whose DAY has passed — no other bucket
-            // looks behind startOfToday. Rationale: inspection-dashboard-overdue.spec.ts.
-            if (withinWindow && d < startOfToday && i.status !== INSPECTION_STATUS.COMPLETED && i.status !== INSPECTION_STATUS.CANCELLED) return true;
+            if (i.status === INSPECTION_STATUS.SCHEDULED && d && d <= in48h) return true;
+            // Overdue: an active appointment whose DAY has passed. Every other
+            // date bucket looks forward of startOfToday, so without this a
+            // `requested` or `confirmed` row past its date sits in no bucket at
+            // all and drops off the page while still being open work.
+            // (`scheduled` was already caught above — `d <= in48h` has no lower
+            // bound.) Full rationale: inspection-dashboard-overdue.spec.ts.
+            if (d && d < startOfToday && i.status !== INSPECTION_STATUS.COMPLETED && i.status !== INSPECTION_STATUS.CANCELLED) return true;
             // Report not yet published past threshold (completed but reportStatus still in_progress/submitted)
             if (i.status === INSPECTION_STATUS.COMPLETED && !isReportPublished(i.reportStatus) && new Date(i.createdAt) <= reportStaleAt) return true;
             // Submitted reports awaiting manager review
