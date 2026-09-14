@@ -71,6 +71,23 @@ describe('dashboard buckets — an overdue inspection is never nowhere', () => {
         });
     }
 
+    // The owner's call, 2026-09-14: overdue ages out after 30 days. Without a
+    // floor every never-closed inspection since the workspace began sits in
+    // needsAttention at once and stays there, burying this week's real work.
+    for (const status of ['requested', 'confirmed', 'scheduled'] as const) {
+        it(`lets a ${status} inspection more than 30 days past its date age out of needsAttention`, async () => {
+            await seed(`i-stale-${status}`, status, iso(Date.now() - 31 * DAY));
+            expect(bucketsOf(await svc.getDashboardBuckets(TENANT), `i-stale-${status}`))
+                .not.toContain('needsAttention');
+        });
+    }
+
+    it('still surfaces an inspection 29 days past its date', async () => {
+        await seed('i-29', 'requested', iso(Date.now() - 29 * DAY));
+        expect(bucketsOf(await svc.getDashboardBuckets(TENANT), 'i-29'))
+            .toContain('needsAttention');
+    });
+
     it('leaves an inspection in today for the whole of its own day, not overdue yet', async () => {
         // 00:30 UTC today — past as an instant, but still this day.
         const startOfToday = new Date(); startOfToday.setUTCHours(0, 30, 0, 0);
