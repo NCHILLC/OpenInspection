@@ -59,7 +59,7 @@
   "imports_open": "Abrir",
   "imports_page_subtitle": "Traiga plantillas, contactos y miembros del equipo desde otro producto.",
   "imports_page_title": "Importaciones",
-  "imports_pdf_blank_body": "Envíe una plantilla sin ninguna inspección. Un informe terminado incluye un cliente, una dirección y una firma, y esta carga lo rechazará.",
+  "imports_pdf_blank_body": "Envíe una plantilla sin ninguna inspección. Un informe terminado incluye un cliente, una dirección y una firma, así que verifique que el archivo que envía no contenga nada de eso.",
   "imports_pdf_blank_how": "El paso es el mismo en todos los productos: abra la plantilla en su software actual y luego imprímala o expórtela a PDF antes de ingresar cualquier inspección.",
   "imports_pdf_blank_title": "Comience con una plantilla en blanco",
   "imports_pdf_kind_address": "una dirección",

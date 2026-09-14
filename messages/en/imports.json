@@ -59,7 +59,7 @@
   "imports_open": "Open",
   "imports_page_subtitle": "Bring templates, contacts and team members over from another product.",
   "imports_page_title": "Imports",
-  "imports_pdf_blank_body": "Send a template with no inspection in it. A finished report carries a client, an address and a signature, and this upload will refuse it.",
+  "imports_pdf_blank_body": "Send a template with no inspection in it. A finished report carries a client, an address and a signature, so check that the file you send has none of that in it.",
   "imports_pdf_blank_how": "The step is the same in every product: open the template in your current software, then print or export it to PDF before entering any inspection.",
   "imports_pdf_blank_title": "Start with a blank template",
   "imports_pdf_kind_address": "an address",
