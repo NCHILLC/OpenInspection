@@ -17,16 +17,16 @@ never pushed).
 
 | Commit | What |
 |---|---|
-| `ecc83f48` † | Auth hardening, security-relevant. Goes to upstream as a **GitHub Security Advisory**, not a PR or discussion. Do not push `fix/wizard-dashboard-offline` to this public repo until the advisory is filed and upstream has shipped a fix, because the commit message and diff describe the gap. |
+| `bda22908` † | Auth hardening, security-relevant. Goes to upstream as a **GitHub Security Advisory**, not a PR or discussion. Do not push `fix/wizard-dashboard-offline` to this public repo until the advisory is filed and upstream has shipped a fix, because the commit message and diff describe the gap. |
 
 ## 2. Already upstream or superseded: do not send
 
 | Commit | What | Why not |
 |---|---|---|
-| `42a5a92f` † | Published report stays shut until payment and agreement clear | Upstream fixed it independently: `f2ad2570`, `a1541b7f` |
+| `71fa3e26` † | Published report stays shut until payment and agreement clear | Upstream fixed it independently: `f2ad2570`, `a1541b7f` |
 | `af4eef00` | OpenAPI snapshot lazy-loaded | Upstream's copy kept at the 09-07 merge (Discussion #325) |
 | `5cf05963` | Bundle gate measures the eager import closure | Replaced by upstream's `wrangler check startup` gate |
-| `8097e857` † | Embedded booking form carries Turnstile | A hand port of upstream `1477a75f` |
+| (was `8097e857`, dropped in the 2026-09-14 rebase) | Embedded booking form carries Turnstile | Upstream `1477a75f` arrived whole with the v2.0.0 merge, together with the server change that skips an empty origin allowlist, so the hand port and its unsent-`?embed=1` workaround were both superseded |
 | `5743faf4` | sharp 0.35.4 | Upstream already requires `>=0.35.4` |
 
 ## 3. Bug fixes upstream lacks: send as small PRs, each with its test
@@ -36,19 +36,19 @@ Grouped into one PR per line.
 
 | PR | Commits | What |
 |---|---|---|
-| Scheduling guard | `1e745091` †, part of `6288dba8` † | `PATCH /inspections/:id` bypassed the closed-day/overlap refusal the dispatch board enforces |
-| Report versions | `3932c203` †, part of `6288dba8` † | Version lookups scoped by inspection, not report; arbitrary tie on multi-report orders |
-| Publish reads fresh doc | `4d125c74` † as amended by `db70b978` † | Publish must flush the collab Durable Object before snapshotting. Send the flush only; the readiness refusal was withdrawn |
-| Billing/team/metrics | `fe51facb` † (consider three PRs) | Void invoice accepts payment; last owner removable; metrics count cancelled inspections |
-| Dashboard overdue | `26a87c7f` †, `c6138259` † | `requested`/`confirmed` past date lands in no bucket |
-| Wizard | `31fcfc39` †, `6d8399e2` † | Refused create closes the wizard silently; device day instead of workspace day; email fields ungated |
-| Intake review | `fb00fffb` †, `50c276f8` † | Review promises rows and a conflict policy the commit won't honour |
+| Scheduling guard | `8994e0cd` †, part of `e3b47704` † | `PATCH /inspections/:id` bypassed the closed-day/overlap refusal the dispatch board enforces |
+| Report versions | `aee86da6` †, part of `e3b47704` † | Version lookups scoped by inspection, not report; arbitrary tie on multi-report orders |
+| Publish reads fresh doc | `27f9f9de` † as amended by `140720a3` † | Publish must flush the collab Durable Object before snapshotting. Send the flush only; the readiness refusal was withdrawn |
+| Billing/team/metrics | `c1aec37e` † (consider three PRs) | Void invoice accepts payment; last owner removable; metrics count cancelled inspections |
+| Dashboard overdue | `7ad1ef0c` †, `5b6cfed4` † | `requested`/`confirmed` past date lands in no bucket |
+| Wizard | `8632b8f7` †, `eb645da9` † | Refused create closes the wizard silently; device day instead of workspace day; email fields ungated |
+| Intake review | `3f4c4d67` †, `900437c5` † | Review promises rows and a conflict policy the commit won't honour |
 | XLSX shared strings | `006f2eab` | Re-saved XLSX exports read as empty: upstream reads inline strings (`6c3cfd08`) but not `sharedStrings.xml` |
 | Intake severity | `70d92692`, `781c3be4`, `740aac9f` | Imported comments and graded severity lost; defects filed by category name instead of position. Upstream reworked the adapters since (`7a423e0f`, `d124e433`), so expect a rebase |
 | Logo upload | `0f63f137` | Branding service is constructed with no R2 bucket, so the logo upload has nowhere to write |
 | Prefs revalidation | `0443b527` | Tenant prefs revalidated on every editor interaction |
-| Hydration | `2103c1d2` † | `useBreakpoint` reads `matchMedia` on first client render; hydration mismatch rebuilds the editor on every phone load |
-| Offline PWA | `a73b9321` †, `c569bd5f` †, `a30277c7` | Offline reload hits the error boundary; service-worker API branch never fires |
+| Hydration | `4ac38e91` † | `useBreakpoint` reads `matchMedia` on first client render; hydration mismatch rebuilds the editor on every phone load |
+| Offline PWA | `ca90a94d` †, `f54f17ee` †, `a30277c7` | Offline reload hits the error boundary; service-worker API branch never fires |
 | Offline defect photo | `85669e05`, `0a67710d`, `14ab84f9` | A defect photo taken offline is lost instead of queued |
 | Cold-start CPU | `cf7a4999`, `6bb5dbb2` | Signing workflow and MCP/OAuth graph evaluated on every cold start. Fits upstream's stated free-plan goal; bring before/after numbers |
 | Editor small fixes | `2f4a81e4`, `bad3381d`, `207964b3`, `58c24855`, `56851e5f`, `ee2e5a02`, `72f5cd94` | Photo picker target, capture session target, unsaved-changes blocker with no exit on phone, idle tile reads rated, flag not shown plus layout collisions, shutter taps eaten by double-tap, sun theme tiers identical |
@@ -87,8 +87,8 @@ dependency order.
 ## 6. Fork infrastructure: never upstream
 
 CI and gates: `28911d9b`, `bd5568b8`, `92b4bdae`, `07fbe2c3`, `80042fcf`,
-`4e6f5e92`, CI half of `79d1cd47`, `4b2190cb`, `7f3be3e6`, `3a4a3b98` †.
+`4e6f5e92`, CI half of `79d1cd47`, `4b2190cb`, `7f3be3e6`, `ce03cde3` †.
 Docs: `6c40fd64`, `7a32c9f5`, `bbdda79e`, `d39ea9b3`, `96497f88`, `886424a3`,
-`b1d7b58a` †, `35391e0f`. Tooling and tests: `bd1e8478` preflight,
+`fdaf91d7` †, `35391e0f`. Tooling and tests: `bd1e8478` preflight,
 `b9577317` CRLF escape hatch (moot under upstream's LF policy), `8098337a`,
 `1a6e30b5`.
