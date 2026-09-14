@@ -63,6 +63,114 @@ that is waste.
 When an upstream scope in the table below is decided as **take**, this branch is
 what you merge from.
 
+## Merge — 2026-09-14, upstream `8ba7467b..c9ba8112` (46 commits, PR #353)
+
+The second of three pieces (the rest: #354–#356). No migration changes, so this
+one deploys without the baseline reconcile piece 1 needed. Taken **wholesale**
+apart from the agent-portal UI, below.
+
+**Twenty-two paths conflicted — nine of them modify/delete against the fork's
+agent-portal removal (`2172d817`), thirteen content.**
+
+**Agent portal: kept deleted, and four more files removed.** Upstream did real
+work on the agent portal in this range (`bb518f3` refuses non-agents at the
+door, `216f548` gates the terms clauses), and its UI half has nowhere to live
+here. The nine modify/delete conflicts were resolved with `git rm`, and four
+files upstream ADDED in this range went the same way because their only callers
+were pages this fork does not have: `app/components/agent/AgentSignupPanel.tsx`,
+`AgentUserMenu.tsx` and its test, and `app/routes/agent-layout.test.tsx` (which
+imports the deleted route). `app/routes.ts` registers no agent page after the
+merge — upstream's only change to it in this range adds `resources/contact-search`.
+
+**`app/lib/agent-portal-access.server.ts` was KEPT**, with its test, although
+the loader that called it is gone. It is app-tier policy, not a page, and the
+fork already keeps its sibling `agent-terms.server.ts` on the same footing; both
+are reachable by `knip` through their own specs, so neither is dead weight the
+gate can see. If the portal ever returns, upstream's reasoning returns with it.
+
+**Server-side agent work was taken in full** — `server/api/agent.ts`'s role
+refusal, the agent-terms gate, and upstream's two new gate scripts
+(`check-agent-terms.mjs` with its self-test, `report-agent-acceptance.mjs`).
+Neither reads a UI path, so both run green here.
+
+**Code conflicts, and what each kept:**
+
+- `server/lib/mcp/oauth-provider.ts`: both. Upstream's `allowPlainPKCE: false`
+  (S256-only — `plain` returns a stolen authorization code to being usable) sits
+  on top of the fork's endpoint constants from `oauth-paths.ts`, which the lazy
+  MCP/OAuth gate reads so the two cannot drift.
+- `server/lib/migration-intake/formats/xlsx-sheet.ts`: both, and a re-saved
+  workbook needs both. The fork's attribute parse still resolves `t="s"` cells
+  through `sharedStrings.xml`; upstream's `inlineStringOf` is now the fallback
+  when a cell carries no `<v>` at all. One cell has one form or the other, never
+  both, so the fallback cannot mask a value.
+- `RatingSegment.tsx`: upstream's F56 fix taken whole — the label swap moves
+  from a viewport breakpoint to a per-TILE container query, and the label span
+  becomes `block` so `truncate` can finally clip. The fork's 14/16px type and
+  its `icon` tile survive. ⚠️ Upstream's `6.5rem` threshold was measured at
+  13px; this fork renders `md` tiles at 16px, so it is conservative rather than
+  exact here and a near-fitting label gets an ellipsis. Taken unchanged: the
+  ellipsis is the fallback upstream designed for, and at phone widths every tile
+  is far below the threshold either way.
+- `NotesFieldHeader.tsx`, `CannedCommentTabs.tsx`: upstream's contrast fix
+  (`text-ih-fg-4` → `fg-3`, which did not clear AA at these sizes) on the fork's
+  phone type sizes. The canned-comment body keeps the fork's inline-edit
+  textarea and `htmlToPlainText`; its `isIncluded ? fg-3 : fg-3` collapsed to
+  one class, since upstream's fix left both arms the same token.
+- `PublishModal.tsx`: upstream's revision-reason box (`isAmendment`,
+  `PublishExtras`, the receipt) and its corrected "what publishing actually
+  does" copy taken; the fork's 15/16px sizes kept on the lines it had changed.
+  The new textarea keeps upstream's own smaller type — see the PR.
+- `AnnotationToolbar.tsx`: the fork's 44px tool targets and literal white kept.
+  Upstream converged on raw `white/*` for the same reason in this range, but
+  left the ACTIVE glyph on `text-ih-fg-inverse`, which is the same flipping
+  token one state over; upstream's `ds-allow` comment was taken.
+- `PhotoAnnotator.tsx`: upstream's `usePhotoSource` and `AnnotatorPlaceholder`
+  taken (a failed photo load is now told apart from an empty one). Upstream's
+  `MeasureCalibration` import was NOT — Measure is removed here and the
+  component does not exist.
+- `app/lib/forms/auth.schema.ts`: the fork's deletion stands. Upstream's change
+  renames a field on `makeAgentLoginLinkSchema`, whose page `2172d817` deleted;
+  nothing else in the file moved.
+- `messages/{en,es-419}/editor-3.json`: every key from both sides, 125 each, no
+  duplicates, the two locales in step.
+
+**Two things the merge SURFACED rather than caused**, both fixed here rather
+than papered over:
+
+- **`sun` never restated `--ih-primary-fg`.** Upstream `5e36d52` declared that
+  token per theme and removed the `@theme` alias's `#ffffff` fallback, which is
+  what finally made it measurable. The fork's sun block overrides `--ih-primary`
+  to indigo-700 and did not restate the on-fill foreground, so the gate's
+  declaration-order cascade handed it dark/field's near-black: **#0f172a on
+  #4338ca, 2.26:1, at 26 call sites** — every filled button on the theme meant
+  for a phone in direct sun. White is 8.6:1 on that fill, which the block's own
+  comment already says for the link half. `sun` was added to the
+  `--ih-primary-fg` token invariant in `scripts/lib/palette-invariants.mjs` so
+  the restatement is enforced rather than remembered; a positive control (the
+  token set back to #0f172a) confirms the invariant reports it.
+- **`tests/unit/tooling/contrast-gate-blind-spots.spec.ts`** (new upstream, in
+  this range) retyped `['light', 'dark', 'field']` in three places. This fork
+  has a fourth theme. The two that mean "every theme reports" now DERIVE the
+  list from the gate's own `THEMES`, so the next theme cannot silently narrow
+  the claim; the third genuinely reads `['light', 'sun']`, because a fixed dark
+  chrome fails in exactly the themes whose foreground is dark and sun is a white
+  ground with near-black type.
+
+**Baselines.** `scripts/file-size-baseline.json` re-snapshotted at merged sizes
+(upstream's copy caps none of the fork's own large files) — the same reviewed
+decision as the last two merges. Two files grew *because of* this merge:
+`template-edit.tsx` 734 (fork 719, upstream 723 — both sides added), and
+`CannedCommentTabs.tsx` 464, one line, for the note on the resolution above.
+`scripts/middleware-budget-baseline.json` regenerated against the merged tree:
+132 → 135 tracked files and 537 → 541 `$`-method refs, all of it upstream's
+three new app-tier modules (`booking-open.server.ts`,
+`action-followup.server.ts`, `resources/contact-search.tsx`); the two numbers
+that would matter, `globalMiddlewareUse` (12) and `apiWorker` (9), did not move.
+`scripts/unread-fields-baseline.json` needed no entry — the gate is green as it
+stands. `package-lock.json` did not conflict and is unchanged: upstream's
+`package.json` change in this range is scripts only, no dependency moved.
+
 ## Merge — 2026-09-13, upstream `ac02ba3e..8ba7467b` (55 commits, through PR #352)
 
 The first of three pieces bringing the fork current (the rest: PR #353, then
@@ -184,6 +292,7 @@ deliberate departure rather than work upstream simply has not done yet.
 |---|---|---|
 | `editor` (20 commits) | Field capture on a phone: camera, offline defect photos, shutter gesture handling, mobile layouts | Upstream's field surface is responsive web; this fork treats crawlspace capture as a core requirement — see the capture-first decision in `architecture.md` |
 | `media` (2026-09-08 field eval) | Camera holds its stream across parent re-renders; the in-camera edit badge opens the defect annotator for a defect session; annotator marks scale with the photo, freehand and arrow take touch (arrow is drag-to-draw), Pan and Measure tools removed, toolbar text is literal white | Upstream has none of these (`git log main..upstream/main -- app/components/media-studio app/components/editor/FieldCamera.tsx` is empty). Measure is a deliberate removal, not a fix: its first-use calibration dialog read as a broken tool mid-inspection |
+| `sun` theme | A fourth `data-color-scheme`: white ground, near-black type, 18px base, for a phone in direct sun | Upstream has three themes and `field` is dark-based, which is right for a crawlspace and wrong on a roof at noon. Every upstream change that counts themes or names them (`scripts/lib/contrast-css.mjs`'s `THEMES`, the palette invariants, any spec that retypes the list) needs a fourth answer on merge — the 09-14 merge above is what that costs |
 | `ratings` (4) | "Not inspected" reasons, Safety-Major level | — |
 | `intake` (3) | Graded defects filed by position, severity preserved on import | — |
 | CI | `verify` also runs on pushes to `main` | Fork commits directly to `main`; upstream works through PRs |

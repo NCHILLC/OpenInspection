@@ -23,7 +23,8 @@ import { buildReportOutline } from '../../lib/report-outline';
 import { resolveProfile } from '../../lib/report-style/resolve';
 import type { Deviation } from '../../lib/pca-deviations';
 import type { DefectCommentState } from '../../types/inspection-item-state';
-import { resolveCoverUrl, resolveDefectMustacheVars, RECOMMENDATION_CATEGORY_LABELS, requireTemplateSnapshot } from './shared';
+import { resolveCoverUrl, resolveDefectMustacheVars, requireTemplateSnapshot } from './shared';
+import { RECOMMENDATION_CATEGORY_LABELS } from '../../lib/recommendation-categories';
 import { reportContentHash, resolveRenderedReportId, resolveResultsRow, type TranslationIdentity } from './report-grain';
 import { resolveReportPdfFooterContext, type ReportPdfFooterContext } from './report-pdf-footer';
 import { InspectionSubService } from './base';
@@ -394,11 +395,8 @@ export class InspectionReportService extends InspectionSubService {
                     ));
                     if (slugs.length > 0) {
                         // Resolve labels from the catalog, joined with bullet.
-                        // Lazy require so the import isn't pulled into every
-                        // service consumer that doesn't render a report.
-                        const cats = (RECOMMENDATION_CATEGORY_LABELS as Map<string, string>);
                         itemRecommendation = slugs
-                            .map(s => cats.get(s) ?? s)
+                            .map(s => RECOMMENDATION_CATEGORY_LABELS.get(s) ?? s)
                             .join(' · ');
                     }
                 }
@@ -516,10 +514,13 @@ export class InspectionReportService extends InspectionSubService {
         const showEstimates = inspection.reportTier === 'full_pca';
         // Report Style Presets — tenant's default appearance profile id (resolved below).
         let tenantDefaultProfileId: string | null = null;
-        // Per-tenant report-feature flags surfaced to the published report so the
-        // client report can render the "View Repair List" and "Build repair request"
-        // entries. Read live here (not part of the cached report content).
-        let enableRepairList = false;
+        // The per-tenant report-feature flag surfaced to the published report so
+        // the client report can render the "Build repair request" entry. Read
+        // live here (not part of the cached report content).
+        //
+        // `enableRepairList` rode along here until it was removed: it gated a
+        // "View Repair List" button pointing at a page route that never existed,
+        // so the payload fed a renderer which never read the flag.
         let enableCustomerRepairExport = false;
         // Commercial PCA Phase C — tenant-level Reserve Schedule (TABLE 2) opt-in
         // + its assumptions. Read alongside the other tenant report flags.
@@ -532,7 +533,6 @@ export class InspectionReportService extends InspectionSubService {
         try {
             const cfg = await db.select({
                 defaultProfileId: tenantConfigs.defaultProfileId,
-                enableRepairList: tenantConfigs.enableRepairList,
                 enableCustomerRepairExport: tenantConfigs.enableCustomerRepairExport,
                 reserveScheduleEnabled: tenantConfigs.reserveScheduleEnabled,
                 reserveTermYears: tenantConfigs.reserveTermYears,
@@ -543,7 +543,6 @@ export class InspectionReportService extends InspectionSubService {
                 .where(eq(tenantConfigs.tenantId, tenantId))
                 .get();
             if (cfg) {
-                enableRepairList = Boolean(cfg.enableRepairList);
                 enableCustomerRepairExport = Boolean(cfg.enableCustomerRepairExport);
                 reserveScheduleEnabled = Boolean(cfg.reserveScheduleEnabled);
                 reserveTermYears = cfg.reserveTermYears ?? 12;
@@ -854,7 +853,6 @@ export class InspectionReportService extends InspectionSubService {
                 { id: 'Not Present', label: 'Not Present', abbreviation: 'NP', color: '#94a3b8', severity: 'minor', isDefect: false },
             ],
             showEstimates,
-            enableRepairList,
             enableCustomerRepairExport,
             reportTimeZone,
             propertyFacts,

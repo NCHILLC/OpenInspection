@@ -68,6 +68,12 @@ export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange
       style={{ background: "rgba(15,23,42,0.85)", borderTop: "1px solid rgba(255,255,255,0.08)" }}
     >
       <div className="flex items-center gap-1 flex-wrap">
+        {/* ds-allow: fixed-dark photo-studio chrome — raw white/* on the inline
+            rgba(15,23,42,0.85) toolbar, matching the sibling controls in
+            PhotoAnnotator. The inactive state read `text-ih-fg-inverse/60`, and
+            that token FLIPS: white in light, #0f172a in dark and field — so it
+            painted near-black glyphs on a near-black toolbar at 1.00:1. A chrome
+            that does not follow the theme cannot take a foreground that does. */}
         {TOOLS.map((t) => (
           /* Literal white, not `text-ih-fg-inverse`: that token flips to
              near-black in dark mode, and this bar is dark in BOTH themes —
@@ -77,6 +83,10 @@ export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange
             type="button"
             data-testid={`tool-${t.id}`}
             onClick={() => onSelectTool(t.id)}
+            // 44px box and the brighter white/70 idle are the fork's; upstream
+            // renders h-9 at white/60 and leaves the ACTIVE glyph on the
+            // flipping `text-ih-fg-inverse`, which is the same bug one state
+            // over. Literal white in both states, per the comment above.
             className={`h-11 min-w-11 px-3 rounded-md text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${
               tool === t.id ? "bg-ih-primary text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
