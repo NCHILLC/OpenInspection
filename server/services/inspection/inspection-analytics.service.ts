@@ -436,7 +436,6 @@ export class InspectionAnalyticsService extends InspectionSubService {
             .limit(1);
         const thresholds = cfg[0]?.thresholds ?? null;
         const reportUnpublishedH  = thresholds?.report_unpublished_h ?? 24;
-        const agreementUnsignedH  = thresholds?.agreement_unsigned_h ?? 72;
         const invoiceOverdueH     = thresholds?.invoice_overdue_h    ?? 72;
 
         const now           = Date.now();
@@ -449,7 +448,6 @@ export class InspectionAnalyticsService extends InspectionSubService {
         const in7days       = new Date(now + 7 * 86400 * 1000);
         const minus30days   = new Date(now - 30 * 86400 * 1000);
         const reportStaleAt    = new Date(now - reportUnpublishedH * 3600 * 1000);
-        const agreementStaleAt = new Date(now - agreementUnsignedH * 3600 * 1000);
         const invoiceStaleAt   = new Date(now - invoiceOverdueH    * 3600 * 1000);
 
         // handoff §1 — extra signals for needsAttention bucket.
@@ -485,9 +483,10 @@ export class InspectionAnalyticsService extends InspectionSubService {
 
         // Needs attention (handoff §1):
         //  - scheduled within 48h, OR
-        //  - in_progress past the report-unpublished threshold, OR
-        //  - active inspection with no signed agreement past the agreement threshold, OR
-        //  - active inspection with an overdue invoice past the invoice threshold.
+        //  - in_progress past the report-unpublished threshold.
+        // No unsigned-agreement or overdue-invoice clause (owner, 2026-09-14): NCHI
+        // settles both in ISN, so this app's records of them never clear. They
+        // still feed the row's statusFlags chips below.
         const needsAttention = all.filter(i => {
             const d = insDate(i);
             if (i.status === INSPECTION_STATUS.SCHEDULED && d && d <= in48h) return true;
@@ -502,8 +501,6 @@ export class InspectionAnalyticsService extends InspectionSubService {
             if (i.status === INSPECTION_STATUS.COMPLETED && !isReportPublished(i.reportStatus) && new Date(i.createdAt) <= reportStaleAt) return true;
             // Submitted reports awaiting manager review
             if (i.reportStatus === REPORT_STATUS.SUBMITTED) return true;
-            if (i.status !== INSPECTION_STATUS.CANCELLED && new Date(i.createdAt) <= agreementStaleAt && !signedSet.has(i.id as string)) return true;
-            if (i.status !== INSPECTION_STATUS.CANCELLED && overdueSet.has(i.id as string)) return true;
             return false;
         });
 

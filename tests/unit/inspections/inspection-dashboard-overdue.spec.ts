@@ -96,4 +96,22 @@ describe('dashboard buckets — an overdue inspection is never nowhere', () => {
         expect(buckets).toContain('recentReports');
         expect(buckets).not.toContain('needsAttention');
     });
+
+    // Owner's decision, 2026-09-14: agreements are signed and invoices paid in
+    // ISN, so this app's own records of either are empty for every job. An
+    // alert that reads them could never clear, so neither one raises it.
+    it('does not flag a week-old inspection for an unsigned agreement or an overdue invoice', async () => {
+        await testDb.insert(schema.inspections).values({
+            id: 'i-paperwork', tenantId: TENANT, propertyAddress: 'i-paperwork',
+            date: iso(Date.now() + 5 * DAY), status: 'confirmed',
+            paymentStatus: 'unpaid', price: 0,
+            agreementRequired: false, paymentRequired: false, createdAt: new Date(Date.now() - 7 * DAY),
+        } as never);
+        await testDb.insert(schema.invoices).values({
+            id: 'inv-overdue', tenantId: TENANT, inspectionId: 'i-paperwork',
+            amountCents: 40000, dueDate: iso(Date.now() - 7 * DAY), createdAt: new Date(),
+        } as never);
+        expect(bucketsOf(await svc.getDashboardBuckets(TENANT), 'i-paperwork'))
+            .not.toContain('needsAttention');
+    });
 });
