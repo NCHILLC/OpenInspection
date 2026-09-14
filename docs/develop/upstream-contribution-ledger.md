@@ -23,7 +23,7 @@ never pushed).
 
 | Commit | What | Why not |
 |---|---|---|
-| `71fa3e26` † | Published report stays shut until payment and agreement clear | Upstream fixed it independently: `f2ad2570`, `a1541b7f` |
+| `71fa3e26` † | Published report stays shut until payment and agreement clear | Upstream fixed it independently: `f2ad2570`, `a1541b7f`. When those reach this `main` (upstream piece 2) and conflict in `report-access.ts` / `public-report.ts`, **take upstream's version** (owner, 2026-09-14): it also gates the repair builder. Upstream's photo door still re-resolves the gate once per photo, so apply the once-per-view fix to its code, not ours |
 | `af4eef00` | OpenAPI snapshot lazy-loaded | Upstream's copy kept at the 09-07 merge (Discussion #325) |
 | `5cf05963` | Bundle gate measures the eager import closure | Replaced by upstream's `wrangler check startup` gate |
 | (was `8097e857`, dropped in the 2026-09-14 rebase) | Embedded booking form carries Turnstile | Upstream `1477a75f` arrived whole with the v2.0.0 merge, together with the server change that skips an empty origin allowlist, so the hand port and its unsent-`?embed=1` workaround were both superseded |
