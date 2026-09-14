@@ -287,7 +287,8 @@ export function CannedCommentTabs({
                       className="w-full mt-1 text-[14px] bg-transparent border border-ih-border rounded px-1 py-0.5 outline-none text-ih-fg-3"
                     />
                   ) : (
-                    <p className={`text-[14px] mt-0.5 leading-relaxed ${isIncluded ? "text-ih-fg-3" : "text-ih-fg-4"}`}>
+                    // 14px is the fork's phone size; one `fg-3` for both states is upstream's contrast fix (`fg-4` missed AA).
+                    <p className="text-[14px] mt-0.5 leading-relaxed text-ih-fg-3">
                       {htmlToPlainText(vars ? renderTemplate(effectiveComment, vars) : effectiveComment)}
                     </p>
                   )

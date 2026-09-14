@@ -78,8 +78,10 @@ export function NotesFieldHeader({
         </Button>
       )}
       <span
+        // 13px is the fork's phone size (upstream renders 10px here); `fg-3` is
+        // upstream's contrast fix — `fg-4` did not clear AA at this size.
         className={`ml-auto text-[13px] font-mono tabular-nums ${
-          charCount > NOTES_SOFT_LIMIT ? "text-ih-bad-fg" : "text-ih-fg-4"
+          charCount > NOTES_SOFT_LIMIT ? "text-ih-bad-fg" : "text-ih-fg-3"
         }`}
       >
         {m.editor_item_notes_chars({ count: charCount })}
