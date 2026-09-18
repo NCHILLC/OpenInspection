@@ -68,6 +68,12 @@ export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange
       style={{ background: "rgba(15,23,42,0.85)", borderTop: "1px solid rgba(255,255,255,0.08)" }}
     >
       <div className="flex items-center gap-1 flex-wrap">
+        {/* ds-allow: fixed-dark photo-studio chrome — raw white/* on the inline
+            rgba(15,23,42,0.85) toolbar, matching the sibling controls in
+            PhotoAnnotator. The inactive state read `text-ih-fg-inverse/60`, and
+            that token FLIPS: white in light, #0f172a in dark and field — so it
+            painted near-black glyphs on a near-black toolbar at 1.00:1. A chrome
+            that does not follow the theme cannot take a foreground that does. */}
         {TOOLS.map((t) => (
           /* Literal white, not `text-ih-fg-inverse`: that token flips to
              near-black in dark mode, and this bar is dark in BOTH themes —

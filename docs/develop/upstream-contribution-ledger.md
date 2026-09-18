@@ -17,13 +17,13 @@ never pushed).
 
 | Commit | What |
 |---|---|
-| `bda22908` † | Auth hardening, security-relevant. Goes to upstream as a **GitHub Security Advisory**, not a PR or discussion. Do not push `fix/wizard-dashboard-offline` to this public repo until the advisory is filed and upstream has shipped a fix, because the commit message and diff describe the gap. |
+| `bda22908` † | Auth hardening, security-relevant. Goes to upstream as a **GitHub Security Advisory**, not a PR or discussion. Do not push `fix/wizard-dashboard-offline` to this public repo until the advisory is filed and upstream has shipped a fix, because the commit message and diff describe the gap. **Done 2026-09-18:** GHSA-cq23-3742-44fj was published 2026-09-15 and upstream's fix is `a27c07c5`, so the hold is lifted. |
 
 ## 2. Already upstream or superseded: do not send
 
 | Commit | What | Why not |
 |---|---|---|
-| `71fa3e26` † | Published report stays shut until payment and agreement clear | Upstream fixed it independently: `f2ad2570`, `a1541b7f`. When those reach this `main` (upstream piece 2) and conflict in `report-access.ts` / `public-report.ts`, **take upstream's version** (owner, 2026-09-14): it also gates the repair builder. Upstream's photo door still re-resolves the gate once per photo, so apply the once-per-view fix to its code, not ours |
+| `71fa3e26` † | Published report stays shut until payment and agreement clear | Upstream fixed it independently: `f2ad2570`, `a1541b7f`. When those reach this `main` (upstream piece 2) and conflict in `report-access.ts` / `public-report.ts`, **take upstream's version** (owner, 2026-09-14): it also gates the repair builder. Upstream's photo door still re-resolves the gate once per photo, so apply the once-per-view fix to its code, not ours. **Taken 2026-09-18** (upstream's version, whole); the once-per-view fix is still open |
 | `af4eef00` | OpenAPI snapshot lazy-loaded | Upstream's copy kept at the 09-07 merge (Discussion #325) |
 | `5cf05963` | Bundle gate measures the eager import closure | Replaced by upstream's `wrangler check startup` gate |
 | (was `8097e857`, dropped in the 2026-09-14 rebase) | Embedded booking form carries Turnstile | Upstream `1477a75f` arrived whole with the v2.0.0 merge, together with the server change that skips an empty origin allowlist, so the hand port and its unsent-`?embed=1` workaround were both superseded |

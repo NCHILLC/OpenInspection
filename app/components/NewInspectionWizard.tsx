@@ -4,7 +4,13 @@ import { useContactSearch } from "~/hooks/useContactSearch";
 import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
 import { buildWizardSteps, wizardBlockedReason, looksLikeEmail, type WizardStepId } from "~/lib/wizard-steps";
 import { summariseNewInspection } from "~/lib/wizard-review";
-import { buildWizardCreatePayload, wizardRefusalMessage, type WizardCreateResult } from "~/lib/wizard-submit";
+import { orderTemplatesForPicker } from "~/lib/template-order";
+import {
+  buildWizardCreatePayload,
+  INSPECTION_PROPERTY_TYPES,
+  wizardRefusalMessage,
+  type WizardCreateResult,
+} from "~/lib/wizard-submit";
 import { PropertyStep } from "./new-inspection/PropertyStep";
 import { PeopleStep } from "./new-inspection/PeopleStep";
 import { ServicesStep } from "./new-inspection/ServicesStep";
@@ -14,7 +20,7 @@ import { WizardLayout } from "./new-inspection/WizardLayout";
 import { Breadcrumb } from "./Breadcrumb";
 import { PageHeader } from "@core/shared-ui";
 import { civilToInstantISO, todayInZone } from "~/lib/civil-time";
-import { useDisplayTimeZone, useSessionContext } from "~/hooks/useSessionContext";
+import { useSchedulingTimeZone, useSessionContext } from "~/hooks/useSessionContext";
 import { QuotaExceededPanel } from "./new-inspection/QuotaExceededPanel";
 import type { AddressSelection } from "~/routes/resources/places";
 import { m } from "~/paraglide/messages";
@@ -37,6 +43,9 @@ export interface WizardTemplate {
   // product. `TemplateCombobox` holds both halves of that.
   retiredAt?: number | null;
   retiredReason?: "superseded" | "uninstalled" | null;
+  /** State or country this template is written to, null for none. Decides which
+   *  is offered FIRST, never which are available — `app/lib/template-order.ts`. */
+  jurisdiction?: string | null;
 }
 
 export interface WizardService {
@@ -103,10 +112,10 @@ export function NewInspectionWizard({
   // created three byte-identical inspections seconds apart because Create was a
   // plain `fetcher.submit` behind a button that stayed live.
   const { fetcher, submit: submitCreate, busy: creating } = useGuardedSubmit();
-  // The zone the Schedule step names, and the zone the typed time is read in.
-  // Both must be the same value or the inspector is told one thing and the
-  // booking stores another.
-  const displayTz = useDisplayTimeZone();
+  // The zone the Schedule step names, the zone the typed time is read in, and
+  // the zone "today" is counted in — one value, never UTC by default, which had
+  // this step scheduling 9:00 AM UTC while the home checklist still asked for one.
+  const schedulingTz = useSchedulingTimeZone();
   const sessionCtx = useSessionContext();
   // IA-1 agent typeahead, and (Batch D) the same search for the client — one
   // hook, two instances, each with its own fetcher.
@@ -139,7 +148,7 @@ export function NewInspectionWizard({
   }>();
 
   const [stepIdx, setStepIdx] = useState(0);
-  const [propertyType, setPropertyType] = useState("single_family");
+  const [propertyType, setPropertyType] = useState<string>(INSPECTION_PROPERTY_TYPES[0]);
   const [address, setAddress] = useState("");
   // #198 — structured, geocoded address captured when the inspector picks a
   // Places suggestion. Cleared when they edit the text back to free-form, so we
@@ -151,9 +160,8 @@ export function NewInspectionWizard({
   // P-4: per-service price overrides (serviceId → cents). Only populated when
   // the inspector edits the price input for a selected service.
   const [priceOverrides, setPriceOverrides] = useState<Map<string, number>>(new Map());
-  // B-21: on-site creation is overwhelmingly same-day — default to today, read
-  // in the WORKSPACE zone rather than the device's (see todayInZone).
-  const [date, setDate] = useState(() => todayInZone(displayTz));
+  // B-21: on-site creation is overwhelmingly same-day — default to today.
+  const [date, setDate] = useState(() => todayInZone(schedulingTz));
   const [time, setTime] = useState("09:00");
   const [soloMode, setSoloMode] = useState(true);
   const [inspectorId, setInspectorId] = useState("");
@@ -190,6 +198,15 @@ export function NewInspectionWizard({
   const steps = useMemo(() => buildWizardSteps({ hasServiceCatalog }), [hasServiceCatalog]);
   const step: WizardStepId = steps[Math.min(stepIdx, steps.length - 1)];
 
+  // The picker highlights its first row and Enter takes it, so `created_at DESC`
+  // was deciding which template an inspection gets built from — see
+  // `template-order`. Ordered here, not in the loader: the region arrives with
+  // the session context, which the loader does not hold.
+  const orderedTemplates = useMemo(
+    () => orderTemplatesForPicker(templates, sessionCtx?.branding?.holidayRegion ?? null),
+    [templates, sessionCtx],
+  );
+
   // What the final step states back before Create is pressed.
   const summary = useMemo(
     () =>
@@ -224,7 +241,7 @@ export function NewInspectionWizard({
       setTemplateId("");
       setServices(new Set());
       setPriceOverrides(new Map());
-      setDate(todayInZone(displayTz));
+      setDate(todayInZone(schedulingTz));
       setTime("09:00");
       setSoloMode(true);
       setInspectorId("");
@@ -276,7 +293,7 @@ export function NewInspectionWizard({
   // will be assigned to. Advisory only — never blocks.
   useEffect(() => {
     if (!date) return;
-    const combinedDate = civilToInstantISO(date, time, displayTz);
+    const combinedDate = civilToInstantISO(date, time, schedulingTz);
     const params = new URLSearchParams({ date: combinedDate });
     if (inspectorId) params.set("inspectorId", inspectorId);
     const t = setTimeout(() => {
@@ -411,7 +428,7 @@ export function NewInspectionWizard({
         priceOverrides,
         date,
         time,
-        timeZone: displayTz,
+        timeZone: schedulingTz,
         soloMode,
         inspectorId,
         clientName,
@@ -454,8 +471,8 @@ export function NewInspectionWizard({
       review={
         <ReviewPanel
           summary={summary}
-          scheduledIso={civilToInstantISO(date, time, displayTz)}
-          timeZone={displayTz}
+          scheduledIso={civilToInstantISO(date, time, schedulingTz)}
+          timeZone={schedulingTz}
           currentStep={step}
           onJump={(target) => {
             const idx = steps.indexOf(target);
@@ -474,7 +491,7 @@ export function NewInspectionWizard({
               onAddressSelect={handleAddressSelect}
               addressLat={addressSel?.lat}
               addressLng={addressSel?.lng}
-              templates={templates}
+              templates={orderedTemplates}
               templateId={templateId}
               setTemplateId={setTemplateId}
             />
@@ -527,7 +544,7 @@ export function NewInspectionWizard({
               setDate={setDate}
               time={time}
               setTime={setTime}
-              timeZone={displayTz}
+              timeZone={schedulingTz}
               conflictFetcher={conflictFetcher}
               holidayFetcher={holidayFetcher}
               showTeam={teamMembers.length > 0}

@@ -6,8 +6,8 @@
   ],
   "globalMiddlewareUse": 12,
   "fanOutTotals": {
-    "files": 132,
-    "dollarMethods": 537,
+    "files": 135,
+    "dollarMethods": 541,
     "apiWorker": 9
   },
   "fanOut": {
@@ -71,6 +71,10 @@
       "dollarMethods": 4,
       "apiWorker": 0
     },
+    "app/lib/settings/booking-open.server.ts": {
+      "dollarMethods": 2,
+      "apiWorker": 0
+    },
     "app/lib/settings/booking-policy-actions.ts": {
       "dollarMethods": 2,
       "apiWorker": 0
@@ -124,6 +128,10 @@
       "apiWorker": 0
     },
     "app/routes/forgot-password.tsx": {
+      "dollarMethods": 1,
+      "apiWorker": 0
+    },
+    "app/routes/inspection-edit/action-followup.server.ts": {
       "dollarMethods": 1,
       "apiWorker": 0
     },
@@ -301,6 +309,10 @@
     },
     "app/routes/resources/contact-access.tsx": {
       "dollarMethods": 2,
+      "apiWorker": 0
+    },
+    "app/routes/resources/contact-search.tsx": {
+      "dollarMethods": 1,
       "apiWorker": 0
     },
     "app/routes/resources/cost-export.tsx": {

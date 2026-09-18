@@ -3,28 +3,38 @@ import { isReportPublished } from './status/report-status';
 
 /**
  * Decide whether a PUBLIC report-access request may proceed.
- * Client/token access is allowed only while the report is currently published
- * AND the order's delivery gate is clear. Owner-preview and headless
- * render-token access always bypass (they must be able to load
- * in-progress/unpublished reports for editing/preview/rendering).
- * Reads CURRENT report_status — re-publishing restores access automatically.
  *
- * THE CONTENT IS GATED BY THE SAME RESOLVER THE HUB'S LOCK NOTICE SHOWS.
- * `resolveGate` is InspectionService.getReportGate: non-null = an unsigned
- * required agreement or an unpaid required invoice, which withholds the report
- * itself and not only the banner explaining it. Passed as a thunk so it is
- * consulted once, on the one path that can serve content — never on a bypass
- * or an unpublished report, which are already refused.
+ * TWO gates, and this function takes both ON PURPOSE.
+ *
+ *  1. PUBLISHED. Client/token access is allowed only while the report is
+ *     currently published. Reads CURRENT report_status, so re-publishing
+ *     restores access automatically.
+ *  2. RELEASED. A workspace may require a signed agreement or payment before
+ *     the report is handed over. `releaseGate` is the outstanding reason from
+ *     `InspectionPublishService.resolveReleaseGate`, or null when nothing is
+ *     holding it back.
+ *
+ * ⚠️ `releaseGate` is a REQUIRED field with no default, and that is the whole
+ * point of this change. Every public enforcement point checked gate 1 and none
+ * of them checked gate 2, so a workspace that switched on "require payment"
+ * got a client Hub correctly reporting the report as held back and an endpoint
+ * beside it serving the report in full. Making the field required turns
+ * "forgot the second gate" from a silent release into a type error. Do not give
+ * it a default, and do not reintroduce a variant that omits it.
+ *
+ * Owner-preview and headless render-token access bypass BOTH (they must load
+ * in-progress and gated reports for editing, preview and PDF rendering — the
+ * renderer is how the gated report gets built in the first place).
  */
-export async function publicReportAccessAllowed(opts: {
+export function publicReportAccessAllowed(opts: {
   renderMode: boolean;
   ownerPreview: boolean;
   reportStatus: string | null | undefined;
-  resolveGate: () => Promise<unknown>;
-}): Promise<boolean> {
+  releaseGate: 'payment' | 'agreement' | null;
+}): boolean {
   if (opts.renderMode || opts.ownerPreview) return true;
   if (!isReportPublished(opts.reportStatus)) return false;
-  return (await opts.resolveGate()) == null;
+  return opts.releaseGate === null;
 }
 
 /**

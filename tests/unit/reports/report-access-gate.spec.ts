@@ -3,25 +3,16 @@ import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vite
 import { publicReportAccessAllowed, shouldPinLatestPublished } from '../../../server/lib/report-access';
 
 describe('publicReportAccessAllowed', () => {
-  const ungated = () => Promise.resolve(null);
-  it('client token: allowed only when published', async () => {
-    expect(await publicReportAccessAllowed({ renderMode: false, ownerPreview: false, reportStatus: 'published', resolveGate: ungated })).toBe(true);
-    expect(await publicReportAccessAllowed({ renderMode: false, ownerPreview: false, reportStatus: 'in_progress', resolveGate: ungated })).toBe(false);
-    expect(await publicReportAccessAllowed({ renderMode: false, ownerPreview: false, reportStatus: 'submitted', resolveGate: ungated })).toBe(false);
+  it('client token: allowed only when published', () => {
+    expect(publicReportAccessAllowed({ renderMode: false, ownerPreview: false, reportStatus: 'published', releaseGate: null })).toBe(true);
+    expect(publicReportAccessAllowed({ renderMode: false, ownerPreview: false, reportStatus: 'in_progress', releaseGate: null })).toBe(false);
+    expect(publicReportAccessAllowed({ renderMode: false, ownerPreview: false, reportStatus: 'submitted', releaseGate: null })).toBe(false);
   });
-  it('client token: a published report with an outstanding order gate is refused', async () => {
-    expect(await publicReportAccessAllowed({
-      renderMode: false, ownerPreview: false, reportStatus: 'published',
-      resolveGate: () => Promise.resolve({ reason: 'payment' }),
-    })).toBe(false);
+  it('render mode bypasses (drafts must render headless)', () => {
+    expect(publicReportAccessAllowed({ renderMode: true, ownerPreview: false, reportStatus: 'in_progress', releaseGate: null })).toBe(true);
   });
-  it('render mode bypasses (drafts must render headless), without resolving the gate', async () => {
-    const gate = vi.fn();
-    expect(await publicReportAccessAllowed({ renderMode: true, ownerPreview: false, reportStatus: 'in_progress', resolveGate: gate })).toBe(true);
-    expect(gate).not.toHaveBeenCalled();
-  });
-  it('owner preview bypasses', async () => {
-    expect(await publicReportAccessAllowed({ renderMode: false, ownerPreview: true, reportStatus: 'in_progress', resolveGate: ungated })).toBe(true);
+  it('owner preview bypasses', () => {
+    expect(publicReportAccessAllowed({ renderMode: false, ownerPreview: true, reportStatus: 'in_progress', releaseGate: null })).toBe(true);
   });
 });
 
@@ -43,7 +34,6 @@ import { createTestDb, setupSchema } from '../db';
 import * as schema from '../../../server/lib/db/schema';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { buildKeyring, signJwt, type JwtKeyring } from '../../../server/lib/jwt-keyring';
-import { InspectionPublishService } from '../../../server/services/inspection/inspection-publish.service';
 
 const TENANT_ID = '00000000-0000-0000-0000-0000000000a1';
 const INSP_ID = '00000000-0000-0000-0000-0000000000b1';
@@ -80,10 +70,7 @@ describe('GET /api/public/report/:tenant/:id — publish gate', () => {
         });
     });
 
-    async function seedInspection(
-        reportStatus: string,
-        gate: { paymentRequired?: boolean; paymentStatus?: string; unlockedAt?: Date } = {},
-    ) {
+    async function seedInspection(reportStatus: string) {
         await db.insert(schema.tenants).values({
             id: TENANT_ID, slug: 'acme', status: 'active',
             deploymentMode: 'shared', tier: 'free', createdAt: new Date(),
@@ -91,17 +78,12 @@ describe('GET /api/public/report/:tenant/:id — publish gate', () => {
         await db.insert(schema.inspections).values({
             id: INSP_ID, tenantId: TENANT_ID, propertyAddress: '1 Main St', clientName: 'Jane',
             clientEmail: 'jane@test.com', date: '2026-06-01', status: 'completed',
-            reportStatus, paymentStatus: gate.paymentStatus ?? 'unpaid', price: 50000,
-            agreementRequired: false, paymentRequired: gate.paymentRequired ?? false,
-            unlockedAt: gate.unlockedAt ?? null, createdAt: new Date(),
+            reportStatus, paymentStatus: 'unpaid', price: 50000,
+            agreementRequired: false, paymentRequired: false, createdAt: new Date(),
         } as any);
     }
 
     function buildApp(opts: { withKeyring?: boolean } = {}) {
-        const publishService = new InspectionPublishService(
-            {} as D1Database, undefined, undefined, undefined, undefined,
-            {} as never,
-        );
         const resolveToken = vi.fn().mockResolvedValue({
             inspectionId: INSP_ID, tenantId: TENANT_ID, role: 'client',
             recipientEmail: 'a@b.com', revokedAt: null, expiresAt: null,
@@ -115,14 +97,7 @@ describe('GET /api/public/report/:tenant/:id — publish gate', () => {
             (c as unknown as { env: Record<string, unknown> }).env = { DB: {} };
             c.set('services', {
                 portalAccess: { resolveToken },
-                // The REAL getReportGate, over the seeded DB (the drizzle mock
-                // ignores its argument), so these cases exercise the resolver the
-                // Hub's lock notice reads rather than a stub of it.
-                inspection: {
-                    getReportData, resolveAgentViewToken,
-                    getReportGate: (i: string, t: string, slug: string) =>
-                        publishService.getReportGate(i, t, slug),
-                },
+                inspection: { getReportData, resolveReleaseGate: vi.fn().mockResolvedValue(null), resolveAgentViewToken },
                 // Option A resolves the latest published version on the recipient
                 // track. `null` = no version row, which keeps these cases about
                 // the PUBLISH GATE rather than about snapshot selection.
@@ -165,24 +140,6 @@ describe('GET /api/public/report/:tenant/:id — publish gate', () => {
         // read to the latest published version; public-report-endpoint.spec.ts
         // owns that assertion.
         expect(getReportData).toHaveBeenCalledWith(INSP_ID, TENANT_ID, expect.any(Function), expect.any(Object), undefined);
-    });
-
-    it('403 for a client token when the order gate is outstanding (published + payment required + unpaid)', async () => {
-        await seedInspection('published', { paymentRequired: true, paymentStatus: 'unpaid' });
-        const { app, getReportData } = buildApp();
-        const res = await app.request(`/api/public/report/acme/${INSP_ID}?token=tok`);
-        expect(res.status).toBe(403);
-        expect(getReportData).not.toHaveBeenCalled();
-    });
-
-    it('200 once the order gate is manually released (unlocked_at set)', async () => {
-        await seedInspection('published', {
-            paymentRequired: true, paymentStatus: 'unpaid', unlockedAt: new Date(),
-        });
-        const { app, getReportData } = buildApp();
-        const res = await app.request(`/api/public/report/acme/${INSP_ID}?token=tok`);
-        expect(res.status).toBe(200);
-        expect(getReportData).toHaveBeenCalled();
     });
 
     it('owner-preview bypasses the gate (200 even when report_status=in_progress)', async () => {
@@ -245,7 +202,7 @@ describe('GET /api/public/report/:tenant/:id/photo — publish gate', () => {
                     inspectionId: ID, tenantId: T, role: 'client',
                     recipientEmail: 'a@b.com', revokedAt: null, expiresAt: null,
                 }) },
-                inspection: { resolveAgentViewToken: vi.fn().mockResolvedValue(null) },
+                inspection: { resolveReleaseGate: vi.fn().mockResolvedValue(null), resolveAgentViewToken: vi.fn().mockResolvedValue(null) },
             } as any);
             await next();
         });
@@ -292,7 +249,7 @@ describe('GET /api/public/report/:tenant/:id/pdf — publish gate', () => {
             c.env = { DB: {}, BROWSER: {}, PHOTOS: {} } as any; // BROWSER+PHOTOS must be truthy to pass the 503 guard
             c.set('services', {
                 portalAccess: { resolveToken: vi.fn().mockResolvedValue({ inspectionId: ID, tenantId: T, role: 'client', recipientEmail: 'a@b.com', revokedAt: null, expiresAt: null }) },
-                inspection: { resolveAgentViewToken: vi.fn().mockResolvedValue(null) },
+                inspection: { resolveReleaseGate: vi.fn().mockResolvedValue(null), resolveAgentViewToken: vi.fn().mockResolvedValue(null) },
             } as any);
             await next();
         });

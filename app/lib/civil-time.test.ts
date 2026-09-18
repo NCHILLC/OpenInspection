@@ -62,27 +62,48 @@ describe('civilToInstantISO', () => {
     });
 });
 
+/**
+ * The date half of the same pair. The wizard read the typed TIME in one zone
+ * while defaulting the DATE from another, and nobody had to touch a control for
+ * the two to disagree — for a third of every day the browser's calendar day and
+ * a UTC day are different dates.
+ *
+ * Both transitions are here in one zone because "today" is computed from an
+ * offset, and an offset captured once is right for half the year.
+ */
 describe('todayInZone', () => {
-    // 2026-09-11T01:29Z is still Sep 10 in New York and already Sep 11 in UTC.
-    // Seeding a form from the DEVICE clock returns the New York day whatever the
-    // workspace is set to, and civilToInstantISO then reads that day in the
-    // WORKSPACE zone — so a UTC workspace opened the wizard on a date that had
-    // already passed. The zone the date is read in has to be the zone it is
-    // stated in.
-    const evening = new Date('2026-09-11T01:29:00.000Z');
+    const PACIFIC = 'America/Los_Angeles';
 
-    it('reads the date in the given zone, not the runtime default', () => {
-        expect(todayInZone('UTC', evening)).toBe('2026-09-11');
-        expect(todayInZone('America/New_York', evening)).toBe('2026-09-10');
+    it('answers the day in that zone, not the UTC day', () => {
+        // 19:30 Pacific on the 4th; UTC has already rolled to the 5th.
+        const at = new Date('2026-11-05T03:30:00.000Z');
+        expect(todayInZone(PACIFIC, at)).toBe('2026-11-04');
+        expect(todayInZone('UTC', at)).toBe('2026-11-05');
+        // And east of Greenwich the same instant is already the 5th locally.
+        expect(todayInZone('Asia/Shanghai', at)).toBe('2026-11-05');
     });
 
-    it('crosses forward as well as back', () => {
-        // Same instant is already the 11th in Tokyo (UTC+9).
-        expect(todayInZone('Asia/Tokyo', evening)).toBe('2026-09-11');
+    it('follows the zone across the autumn fall-back', () => {
+        // PDT (-07:00) the Friday before...
+        expect(todayInZone(PACIFIC, new Date('2026-10-31T06:30:00.000Z'))).toBe('2026-10-30');
+        // ...PST (-08:00) the Friday after. A captured -07:00 reads this as the 7th.
+        expect(todayInZone(PACIFIC, new Date('2026-11-07T07:30:00.000Z'))).toBe('2026-11-06');
     });
 
-    it('falls back to UTC when the zone is blank or unknown rather than throwing', () => {
-        expect(todayInZone('', evening)).toBe('2026-09-11');
-        expect(todayInZone('Not/AZone', evening)).toBe('2026-09-11');
+    it('follows the zone across the spring forward', () => {
+        // PST (-08:00) before the jump...
+        expect(todayInZone(PACIFIC, new Date('2027-03-13T07:30:00.000Z'))).toBe('2027-03-12');
+        // ...PDT (-07:00) after it, where the local day has already turned over.
+        // A captured -08:00 reads this as the 19th.
+        expect(todayInZone(PACIFIC, new Date('2027-03-20T07:30:00.000Z'))).toBe('2027-03-20');
+    });
+
+    it('falls back to the day in the local environment for an unusable zone', () => {
+        // Not a UTC day: a UTC day is already tomorrow for a third of the planet.
+        const at = new Date('2026-11-05T03:30:00.000Z');
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const envDay = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+        expect(todayInZone('', at)).toBe(envDay);
+        expect(todayInZone('Not/AZone', at)).toBe(envDay);
     });
 });

@@ -29,6 +29,12 @@ import { DateTimeFormatFields } from "~/components/settings/DateTimeFormatFields
 import { useDisplayLocale } from "~/hooks/useSessionContext";
 import { m } from "~/paraglide/messages";
 
+// F68 — with no `meta` this page's browser tab reads only "OpenInspection".
+// Why it is a catalogue key and not a literal: settings-meta-titles.test.ts.
+export function meta() {
+  return [{ title: m.settings_workspace_meta_title() }];
+}
+
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
@@ -43,7 +49,6 @@ interface Branding {
   logoUrl?: string | null;
   customReferralSources?: string[];
   repairQuickPhrases?: string[] | null;
-  enableRepairList?: boolean | null;
   enableCustomerRepairExport?: boolean | null;
   companyAddress?: string | null;
   pdfShowFooter?: boolean | null;
@@ -138,7 +143,6 @@ export default function SettingsWorkspacePage() {
   const [color, setColor] = useState(branding.primaryColor ?? "#6366f1");
   const [profile, setProfile] = useState(branding.defaultProfileId ?? "signature");
   const displayLocale = useDisplayLocale();
-
 
   const [form, fields] = useForm({
     lastResult: actionData && "status" in actionData ? actionData : undefined,
@@ -364,10 +368,7 @@ export default function SettingsWorkspacePage() {
           repairQuickPhrases={branding.repairQuickPhrases}
         />
 
-        <ReportFeaturesPanel
-          enableRepairList={branding.enableRepairList}
-          enableCustomerRepairExport={branding.enableCustomerRepairExport}
-        />
+        <ReportFeaturesPanel enableCustomerRepairExport={branding.enableCustomerRepairExport} />
 
         <ReportPdfPanel
           addressField={fields.companyAddress}
