@@ -425,13 +425,12 @@ const publishRoutes = createApiRouter()
         // `inspection_results.data`, which the DO writes on a 1 s debounce.
         // resolvePublishTargetReport is asked here as well as inside the service
         // because the DO is addressed by report id: one indexed lookup, against
-        // a gate that would otherwise answer about a stale document.
-        await flushCollabDocForPublish(
-            c.env.INSPECTION_DOC,
-            tenantId,
-            id,
-            await resolvePublishTargetReport(getDrizzle(c), tenantId, id, body.reportId),
-        );
+        // a gate that would otherwise answer about a stale document — and only
+        // with a namespace: without one the helper returns before using the id.
+        const collabDocs = c.env.INSPECTION_DOC;
+        await flushCollabDocForPublish(collabDocs, tenantId, id, collabDocs
+            ? await resolvePublishTargetReport(getDrizzle(c), tenantId, id, body.reportId)
+            : null);
 
         const result = await service.publishInspection(id, tenantId, publishOptions);
 

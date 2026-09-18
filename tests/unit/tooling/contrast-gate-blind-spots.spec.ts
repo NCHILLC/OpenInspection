@@ -73,7 +73,7 @@ describe('an @theme alias whose target is never declared (F33)', () => {
         const failures = gate.checkAliasDefinitions(css);
         expect(failures).toHaveLength(1);
         expect(failures[0].prop).toBe('--ih-primary-fg');
-        expect(failures[0].themes).toEqual(['light', 'dark', 'field']);
+        expect(failures[0].themes).toEqual(gate.THEMES.map((t: { name: string }) => t.name));
         // The fallback is surfaced, because it is what the browser actually paints.
         expect(failures[0].fallback).toBe('#ffffff');
     });
@@ -131,10 +131,11 @@ describe('colours set in the stylesheet itself (F34, .ih-eyebrow)', () => {
         const css = `${sheet({})}\n.ih-eyebrow { font-size: 9px; color: var(--ih-fg-4); }\n`;
         const r = gate.findCssRuleViolations(css);
         const themes = r.failures.map((f: { theme: string }) => f.theme);
-        // All three here: this synthetic sheet lets field inherit the dark fg-4.
-        // The REAL sheet restates field's fg-4 brighter, so it fails light + dark
-        // only — which is what the walkthrough measured in the browser.
-        expect(themes).toEqual(['light', 'dark', 'field']);
+        // Every theme here: this synthetic sheet restates nothing for field or sun,
+        // so both inherit the dark fg-4. The REAL sheet restates field's fg-4
+        // brighter, so it fails light + dark only — which is what the walkthrough
+        // measured in the browser.
+        expect(themes).toEqual(gate.THEMES.map((t: { name: string }) => t.name));
         expect(r.failures[0].selector).toBe('.ih-eyebrow');
         expect(r.failures[0].sizePx).toBe(9);
     });
@@ -273,15 +274,16 @@ describe('surface precedence and the literal-hex annotation', () => {
     });
 
     it('a hex annotation is the surface in EVERY theme — a fixed chrome has one colour', () => {
-        // fg-1 flips with the theme (#0f172a light, #f1f5f9 dark, #fff field), so a
-        // fixed chrome fails in exactly one of them. That asymmetry IS the point:
+        // fg-1 flips with the theme (#0f172a light, #000 sun, #f1f5f9 dark, #fff
+        // field), so a fixed chrome fails only where it is dark: light and sun.
+        // That asymmetry IS the point:
         // the surface stayed put while the foreground moved, which is the defect
         // shape in the photo-studio toolbar.
         const src = '// contrast-surface: #0f172a\n' + 'const c = "text-[11px] text-ih-fg-1";\n';
         const r = scan(src);
         expect(r.violations).toHaveLength(1);
         expect(r.violations[0].surface).toBe('#0f172a');
-        expect(r.violations[0].failures.map((f: { theme: string }) => f.theme)).toEqual(['light']);
+        expect(r.violations[0].failures.map((f: { theme: string }) => f.theme)).toEqual(['light', 'sun']);
         expect(r.violations[0].failures.every((f: { bg: string }) => f.bg === '#0f172a')).toBe(true);
 
         // And a foreground that is dark in ALL themes fails on it in all three.

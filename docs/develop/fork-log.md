@@ -116,8 +116,8 @@ upstream's adapted version of the same fix.
 
 **Gates.** File-size baseline re-snapshotted. Four files grew *because of the
 merge* (both sides added lines) and were bumped as a reviewed decision:
-`NewInspectionWizard.tsx` 561, `template-edit.tsx` 733,
-`server/api/inspections/publish.ts` 590, `inspection-doc.ts` 1050. Middleware
+`NewInspectionWizard.tsx` 562, `template-edit.tsx` 734,
+`server/api/inspections/publish.ts` 591, `inspection-doc.ts` 1051. Middleware
 budget re-baselined: `template-edit.tsx`'s fourth call is the fork's
 `contractorTypes.$get`, as on 09-07, and ten agent routes left it. The
 submit-guard baseline is upstream's plus the fork's reviewed exemption for the
@@ -126,6 +126,19 @@ contrast gate failed 26 times on one cause: the sun theme overrides
 `--ih-primary` but had not restated `--ih-primary-fg`, which upstream's
 `5e36d526` made a per-theme token with no fallback. The sun block now restates
 it as white, the value a browser already gave it, so nothing renders differently.
+
+**Two upstream specs the fork's code broke, found by CI and not locally** (the
+local run picked spec files by keyword and missed both; run whole directories):
+
+- `publish-audit-notify-flags.spec.ts` (new upstream) stubs the database as
+  `DB: {}`, and the fork's publish route read it unconditionally to resolve the
+  report id for the collab flush, so every publish answered 500. The lookup now
+  runs only when the `INSPECTION_DOC` namespace exists: the helper returns
+  before using the id otherwise, and the service resolves the report again.
+- `contrast-gate-blind-spots.spec.ts` hard-codes three themes; the fork's
+  `sun` theme (in the gate's `THEMES`, which caught the 26 failures above) is a
+  fourth. Its "every theme" expectations now follow `gate.THEMES`, and the one
+  case that is genuinely light-polarity expects `light` and `sun`.
 
 **Unverified.** `RatingSegment` keeps upstream's `6.5rem` container-query
 threshold, pinned by upstream's own test and sized for 13 px text. The fork's md
