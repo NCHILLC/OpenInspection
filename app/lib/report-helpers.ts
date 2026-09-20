@@ -71,10 +71,16 @@ export interface FilterableSection {
  *                  "include in summary" switch on the FINDING, read through
  *                  itemDrivesSummary above.
  *
- * `defects` narrows on both. `summary` used to narrow NEITHER: it rendered a
- * per-section count card and hid every finding, so the switch a tenant sets to
- * choose what reaches the Summary drove the Defects view and never the Summary.
- * A recipient who opened "Summary" read "Roof: 3 defects" and no finding text.
+ * `defects` narrows on BOTH — it is the rating-led view. `summary` narrows on
+ * the CATEGORY axis ONLY, so a section rated clean still reaches the Summary
+ * when it carries a summary-driving finding, and a section full of `defect`
+ * ratings does not when none of them do. They are not the same list, and the
+ * fixture in report-helpers.test.ts is built so they disagree on every section.
+ *
+ * `summary` used to narrow NEITHER: it rendered a per-section count card and
+ * hid every finding, so the switch a tenant sets to choose what reaches the
+ * Summary drove the Defects view and never the Summary. A recipient who opened
+ * "Summary" read "Roof: 3 defects" and no finding text.
  */
 export function sectionsForFilter<S extends FilterableSection>(
   sections: readonly S[],
@@ -83,13 +89,18 @@ export function sectionsForFilter<S extends FilterableSection>(
   if (filter === "all") return [...sections];
   const summaryDriving = (s: S): S => ({ ...s, items: s.items.filter((i) => itemDrivesSummary(i)) });
   if (filter === "defects") return sections.filter((s) => s.defectCount > 0).map(summaryDriving);
-  // TODO(human): the `summary` branch — see the Learn by Doing note.
+  // A section with nothing to report stays OUT of the summary. It does not
+  // appear saying "All clear" — the summary is the list of what was found, and
+  // a heading with no finding under it is noise in the document someone reads
+  // standing at a front door.
   //
-  // Today this mirrors `defects`, which is a safe default (it shows findings
-  // rather than counts) but it means Summary and Defects render identically.
-  // The open question is the SECTION rule: a section whose findings are all
-  // non-summary-driving — does it disappear, or stay and say "All clear"?
-  return sections.filter((s) => s.defectCount > 0).map(summaryDriving);
+  // Narrowed on the CATEGORY axis alone, deliberately: `defectCount` is the
+  // rating axis, so gating on it would drop a section whose findings ARE
+  // summary-driving but whose items never took a rating in the `defect` bucket.
+  // The tenant's own switch decides what reaches the Summary; nothing else does.
+  // This is the one place the two axes must not be mixed, and it is why the
+  // section test is the narrowed list being empty rather than a count.
+  return sections.map(summaryDriving).filter((s) => s.items.length > 0);
 }
 
 /**

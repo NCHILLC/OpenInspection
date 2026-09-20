@@ -53,27 +53,48 @@ describe('sectionsForFilter', () => {
     id,
     resolvedTabs: { defects: [{ drivesSummary: drives }] },
   });
+  // The fixture is built so the two axes DISAGREE on every section — that is the
+  // only way these tests can tell them apart:
+  //   roof   rating says defect, and has a summary-driving finding
+  //   attic  rating says clean, but HAS a summary-driving finding
+  //   garage rating says defect, but every finding is non-driving (e.g. Minor)
   const sections = [
     { id: 'roof', defectCount: 2, items: [item('a', true), item('b', false)] },
     { id: 'attic', defectCount: 0, items: [item('c', true)] },
+    { id: 'garage', defectCount: 1, items: [item('d', false)] },
   ];
 
   it('"all" passes every section and every item through', () => {
     const out = sectionsForFilter(sections, 'all');
-    expect(out.map((s) => s.id)).toEqual(['roof', 'attic']);
+    expect(out.map((s) => s.id)).toEqual(['roof', 'attic', 'garage']);
     expect(out[0].items.map((i) => i.id)).toEqual(['a', 'b']);
   });
 
-  it('"defects" drops clean sections and non-driving items', () => {
+  it('"defects" gates sections on the RATING axis', () => {
     const out = sectionsForFilter(sections, 'defects');
-    expect(out.map((s) => s.id)).toEqual(['roof']);
+    // attic is dropped despite carrying a summary-driving finding, because its
+    // rating bucket is clean. garage survives the section test on its rating
+    // and is left with no items; <ReportSectionBlock> drops it at render.
+    expect(out.map((s) => s.id)).toEqual(['roof', 'garage']);
     expect(out[0].items.map((i) => i.id)).toEqual(['a']);
+    expect(out[1].items).toEqual([]);
   });
 
-  it('"summary" yields findings, not an untouched section list', () => {
+  it('"summary" gates sections on the CATEGORY axis, and never on the rating', () => {
     const out = sectionsForFilter(sections, 'summary');
-    expect(out).not.toEqual(sections);
+    // attic KEPT: the tenant's switch, not the rating, decides what reaches the
+    // Summary. garage DROPPED: nothing in it drives the summary.
+    expect(out.map((s) => s.id)).toEqual(['roof', 'attic']);
     expect(out[0].items.map((i) => i.id)).toEqual(['a']);
+    expect(out[1].items.map((i) => i.id)).toEqual(['c']);
+  });
+
+  // Aaron's call, 2026-09-20: a section with nothing to report stays OUT of the
+  // summary rather than appearing to say "All clear".
+  it('"summary" never returns an empty section', () => {
+    const out = sectionsForFilter(sections, 'summary');
+    expect(out.every((s) => s.items.length > 0)).toBe(true);
+    expect(sectionsForFilter([sections[2]], 'summary')).toEqual([]);
   });
 
   it('never mutates its input', () => {
