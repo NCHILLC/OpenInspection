@@ -53,13 +53,16 @@ describe('sectionsForFilter', () => {
     id,
     resolvedTabs: { defects: [{ drivesSummary: drives }] },
   });
-  // The fixture is built so the two axes DISAGREE on every section — that is the
-  // only way these tests can tell them apart:
-  //   roof   rating says defect, and has a summary-driving finding
-  //   attic  rating says clean, but HAS a summary-driving finding
-  //   garage rating says defect, but every finding is non-driving (e.g. Minor)
+  /** An item the inspector answered with nothing wrong. */
+  const clean = (id: string) => ({ id, resolvedTabs: { defects: [] as Array<{ drivesSummary: boolean }> } });
+  // Every category a tenant defines is a defect, so `drives` here is NOT
+  // "is this a defect" — it is "does this category reach the Summary".
+  // Read `item('b', false)` as a Minor finding with Minor switched off.
+  //   roof   two findings, one driving one not, plus an item with nothing found
+  //   attic  rated clean, carries a driving finding
+  //   garage rated defective, every finding non-driving (all Minor, Minor off)
   const sections = [
-    { id: 'roof', defectCount: 2, items: [item('a', true), item('b', false)] },
+    { id: 'roof', defectCount: 2, items: [item('a', true), item('b', false), clean('r-ok')] },
     { id: 'attic', defectCount: 0, items: [item('c', true)] },
     { id: 'garage', defectCount: 1, items: [item('d', false)] },
   ];
@@ -67,17 +70,18 @@ describe('sectionsForFilter', () => {
   it('"all" passes every section and every item through', () => {
     const out = sectionsForFilter(sections, 'all');
     expect(out.map((s) => s.id)).toEqual(['roof', 'attic', 'garage']);
-    expect(out[0].items.map((i) => i.id)).toEqual(['a', 'b']);
+    expect(out[0].items.map((i) => i.id)).toEqual(['a', 'b', 'r-ok']);
   });
 
-  it('"defects" gates sections on the RATING axis', () => {
+  // The Summary switch must NOT reach this view. Unticking Minor is a delivery
+  // choice; it cannot change what the report says is wrong with the house.
+  it('"defects" keeps every finding, including ones switched out of the Summary', () => {
     const out = sectionsForFilter(sections, 'defects');
-    // attic is dropped despite carrying a summary-driving finding, because its
-    // rating bucket is clean. garage survives the section test on its rating
-    // and is left with no items; <ReportSectionBlock> drops it at render.
+    // attic is dropped on its rating. roof keeps 'b' and garage keeps 'd' even
+    // though neither drives the summary; 'r-ok' goes, having nothing found.
     expect(out.map((s) => s.id)).toEqual(['roof', 'garage']);
-    expect(out[0].items.map((i) => i.id)).toEqual(['a']);
-    expect(out[1].items).toEqual([]);
+    expect(out[0].items.map((i) => i.id)).toEqual(['a', 'b']);
+    expect(out[1].items.map((i) => i.id)).toEqual(['d']);
   });
 
   it('"summary" gates sections on the CATEGORY axis, and never on the rating', () => {
@@ -99,6 +103,6 @@ describe('sectionsForFilter', () => {
 
   it('never mutates its input', () => {
     sectionsForFilter(sections, 'summary');
-    expect(sections[0].items.map((i) => i.id)).toEqual(['a', 'b']);
+    expect(sections[0].items.map((i) => i.id)).toEqual(['a', 'b', 'r-ok']);
   });
 });
