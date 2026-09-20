@@ -5,6 +5,9 @@ import { m } from "~/paraglide/messages";
 export interface PreviewMenuProps {
   /** Open the full web report in a new tab. Null when the tenant slug is unknown. */
   onPreviewReport: (() => void) | null;
+  /** Open the same report on its summary filter — the findings, without the
+   *  clean items. Null when the tenant slug is unknown. */
+  onPreviewSummary: (() => void) | null;
   /** Render and open the server-side PDF — the exact client deliverable. */
   onPreviewPdf: () => void;
   /** A PDF render is in flight. */
@@ -23,11 +26,16 @@ export interface PreviewMenuProps {
  * state where Publish was reachable but neither preview was. A header is a
  * commit bar, and the rehearsal must never be less reachable than the
  * performance, so the fix is not to widen the breakpoints but to spend one
- * control where two were spent: web report and PDF are one intent at two
- * fidelities, never two decisions.
+ * control where two were spent: web report, summary and PDF are one intent at
+ * three fidelities, never three decisions.
+ *
+ * Summary is the inspector's on-site read: it opens `?summary=1`, which is the
+ * same page the client gets, so what he talks a buyer through at the door and
+ * what they open that evening cannot drift apart.
  */
 export function PreviewMenu({
   onPreviewReport,
+  onPreviewSummary,
   onPreviewPdf,
   pdfBusy,
   pdfError,
@@ -74,6 +82,17 @@ export function PreviewMenu({
                 title={m.editor_header_preview_full_title()}
               >
                 {m.editor_header_preview_report()}
+              </MenuItem>
+            </li>
+          )}
+          {onPreviewSummary && (
+            <li role="none">
+              <MenuItem
+                data-testid="preview-summary-btn"
+                onClick={() => run(onPreviewSummary)}
+                title={m.editor_header_preview_summary_title()}
+              >
+                {m.editor_header_preview_summary()}
               </MenuItem>
             </li>
           )}
