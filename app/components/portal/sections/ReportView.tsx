@@ -28,7 +28,7 @@ import { useState } from "react";
 import { usePdfExport } from "~/hooks/usePdfExport";
 import { brandTokens } from "~/lib/brand";
 import { presetTokens } from "~/lib/report-style/preset-tokens";
-import { itemDrivesSummary } from "~/lib/report-helpers";
+import { sectionsForFilter } from "~/lib/report-helpers";
 import { ReportMediaTile } from "./report/ReportMediaTile";
 import { mediaTileKey } from "./report/media-tile-key";
 import { ReportFilterChips } from "./report/ReportFilterChips";
@@ -176,15 +176,7 @@ function ReportHalf(props: ReportViewProps & { forcedHalf?: "en" | "translated" 
     .flatMap((s) => s.items)
     .filter((item) => repairItems[item.id]);
 
-  const filteredSections =
-    filter === "defects"
-      ? data.sections
-          .filter((s) => s.defectCount > 0)
-          .map((s) => ({
-            ...s,
-            items: s.items.filter((i) => itemDrivesSummary(i)),
-          }))
-      : data.sections;
+  const filteredSections = sectionsForFilter(data.sections, filter);
 
   return (
     <ReportHalfScope

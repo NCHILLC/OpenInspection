@@ -52,6 +52,46 @@ export function itemDrivesSummary(item: {
   return (item.resolvedTabs?.defects ?? []).some((d) => d.drivesSummary !== false);
 }
 
+/** The shape every filter narrows — structural, so this file stays free of the
+ *  report's component types (the rest of the module is written the same way). */
+export interface FilterableSection {
+  defectCount: number;
+  items: Array<{ resolvedTabs?: { defects?: Array<{ drivesSummary?: boolean }> } }>;
+}
+
+/**
+ * The sections a report filter shows, narrowed on the axis that filter means.
+ *
+ * TWO INDEPENDENT SEVERITY AXES EXIST, and that is the whole reason this is a
+ * named function rather than a ternary at the call site:
+ *
+ *   RATING axis    `section.defectCount` — server-derived from getRatingBucket,
+ *                  i.e. the rating level the inspector gave the ITEM.
+ *   CATEGORY axis  `defect_categories.drivesSummary` — the tenant's own
+ *                  "include in summary" switch on the FINDING, read through
+ *                  itemDrivesSummary above.
+ *
+ * `defects` narrows on both. `summary` used to narrow NEITHER: it rendered a
+ * per-section count card and hid every finding, so the switch a tenant sets to
+ * choose what reaches the Summary drove the Defects view and never the Summary.
+ * A recipient who opened "Summary" read "Roof: 3 defects" and no finding text.
+ */
+export function sectionsForFilter<S extends FilterableSection>(
+  sections: readonly S[],
+  filter: "all" | "defects" | "summary",
+): S[] {
+  if (filter === "all") return [...sections];
+  const summaryDriving = (s: S): S => ({ ...s, items: s.items.filter((i) => itemDrivesSummary(i)) });
+  if (filter === "defects") return sections.filter((s) => s.defectCount > 0).map(summaryDriving);
+  // TODO(human): the `summary` branch — see the Learn by Doing note.
+  //
+  // Today this mirrors `defects`, which is a safe default (it shows findings
+  // rather than counts) but it means Summary and Defects render identically.
+  // The open question is the SECTION rule: a section whose findings are all
+  // non-summary-driving — does it disappear, or stay and say "All clear"?
+  return sections.filter((s) => s.defectCount > 0).map(summaryDriving);
+}
+
 /**
  * An item the inspector never answered.
  *

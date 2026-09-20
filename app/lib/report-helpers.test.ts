@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatEpochMs, formatUnixSeconds, itemDrivesSummary } from './report-helpers';
+import { formatEpochMs, formatUnixSeconds, itemDrivesSummary, sectionsForFilter } from './report-helpers';
 
 // IA-66 — "Defects Only" filter + "Add to repair request" checkbox must agree,
 // and both must honour the tenant's per-category drivesSummary switch (not a
@@ -41,5 +41,43 @@ describe('report-helpers timezone', () => {
   it('returns empty string on null/invalid', () => {
     expect(formatEpochMs(null)).toBe('');
     expect(formatEpochMs(undefined)).toBe('');
+  });
+});
+
+// #13 — the Summary filter narrowed NOTHING and the renderer hid every item, so
+// a recipient who opened "Summary" got section totals and no finding text. These
+// pin that it narrows, and that it narrows on the tenant's own drivesSummary
+// switch rather than a severity guess.
+describe('sectionsForFilter', () => {
+  const item = (id: string, drives: boolean) => ({
+    id,
+    resolvedTabs: { defects: [{ drivesSummary: drives }] },
+  });
+  const sections = [
+    { id: 'roof', defectCount: 2, items: [item('a', true), item('b', false)] },
+    { id: 'attic', defectCount: 0, items: [item('c', true)] },
+  ];
+
+  it('"all" passes every section and every item through', () => {
+    const out = sectionsForFilter(sections, 'all');
+    expect(out.map((s) => s.id)).toEqual(['roof', 'attic']);
+    expect(out[0].items.map((i) => i.id)).toEqual(['a', 'b']);
+  });
+
+  it('"defects" drops clean sections and non-driving items', () => {
+    const out = sectionsForFilter(sections, 'defects');
+    expect(out.map((s) => s.id)).toEqual(['roof']);
+    expect(out[0].items.map((i) => i.id)).toEqual(['a']);
+  });
+
+  it('"summary" yields findings, not an untouched section list', () => {
+    const out = sectionsForFilter(sections, 'summary');
+    expect(out).not.toEqual(sections);
+    expect(out[0].items.map((i) => i.id)).toEqual(['a']);
+  });
+
+  it('never mutates its input', () => {
+    sectionsForFilter(sections, 'summary');
+    expect(sections[0].items.map((i) => i.id)).toEqual(['a', 'b']);
   });
 });
