@@ -240,6 +240,7 @@
   "report_view_all_clear": "Todo en orden",
   "report_view_disclaimer": "Aviso legal",
   "report_view_download_pdf": "Descargar el PDF",
+  "report_view_download_summary_pdf": "PDF de resumen",
   "portal_payment_no_invoice_title": "Aún no hay factura",
   "portal_payment_no_invoice_body": "Todavía no hay una factura para esta inspección.",
   "portal_payment_download_pdf": "Descargar el PDF",

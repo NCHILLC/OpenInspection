@@ -30,8 +30,11 @@ export interface ReportExportBarProps {
   /** Whether the report carries at least one cost-table row. */
   hasCostTables: boolean;
   pdf: PdfExportState;
-  /** The report's own fetch→blob download handler. */
-  onDownload: () => void;
+  /** The report's own fetch→blob download handler. `summary` renders the same
+   *  page on its findings filter — both types are rendered on demand by the
+   *  owner/public PDF endpoints, so the condensed one needs no extra plumbing
+   *  and fails only where the full one already fails (no Browser Rendering). */
+  onDownload: (type: "summary" | "full") => void;
 }
 
 export function ReportExportBar({
@@ -62,7 +65,15 @@ export function ReportExportBar({
         ) : null}
         <button
           type="button"
-          onClick={onDownload}
+          onClick={() => onDownload("summary")}
+          disabled={pdf.busy}
+          className="px-4 py-2 rounded-full bg-ih-bg-card border border-ih-border text-ih-fg-1 text-[11px] font-bold uppercase tracking-widest shadow-ih-popover hover:bg-ih-bg-muted transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {m.report_view_download_summary_pdf()}
+        </button>
+        <button
+          type="button"
+          onClick={() => onDownload("full")}
           disabled={pdf.busy}
           className="px-5 py-3 rounded-full bg-ih-bg-inverse text-ih-fg-inverse text-xs font-bold uppercase tracking-widest shadow-ih-popover hover:bg-ih-primary transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
         >

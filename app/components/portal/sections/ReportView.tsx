@@ -150,11 +150,11 @@ function ReportHalf(props: ReportViewProps & { forcedHalf?: "en" | "translated" 
   /** A media entry is "visible" when it is a video OR a photo whose thumb hasn't failed. */
   const mediaVisible = (p: ReportPhoto) => p.media?.kind === "video-player" || p.media?.kind === "video-poster" || p.media?.kind === "r2-video-player" || p.media?.kind === "r2-video-poster" || !failedPhotos.has(p.key);
 
-  const downloadPdf = () => {
+  const downloadPdf = (type: "summary" | "full" = "full") => {
     const url = urlToken
-      ? `/api/public/report/${tenant}/${id}/pdf?type=full&token=${encodeURIComponent(urlToken)}`
-      : `/api/inspections/${id}/pdf?type=full`;
-    void pdf.exportPdf(url, { filename: `report-${id}.pdf` });
+      ? `/api/public/report/${tenant}/${id}/pdf?type=${type}&token=${encodeURIComponent(urlToken)}`
+      : `/api/inspections/${id}/pdf?type=${type}`;
+    void pdf.exportPdf(url, { filename: `report-${id}${type === "summary" ? "-summary" : ""}.pdf` });
   };
 
   if (data.error) {
