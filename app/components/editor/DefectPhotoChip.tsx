@@ -11,10 +11,14 @@ const photoIcon = (
     </svg>
 );
 
+/** Border and colour shared by every control in the defect row, height left to
+ *  the caller: the multi-photo chip has to grow when its thumbnails wrap. */
+const defectRowChrome =
+    "inline-flex items-center gap-1 px-2 rounded-md border border-ih-border-strong text-ih-fg-3 hover:border-ih-primary hover:text-ih-primary-text";
+
 /** Matches the bordered Edit/Flag buttons this chip sits beside (CannedCommentTabs).
  *  h-11 is the 44px touch floor (field eval P1 — these measured 24-28px). */
-export const defectRowButtonClass =
-    "inline-flex items-center gap-1 px-2 h-11 rounded-md border border-ih-border-strong text-ih-fg-3 hover:border-ih-primary hover:text-ih-primary-text";
+export const defectRowButtonClass = `${defectRowChrome} h-11`;
 
 type DefectChipPhoto = { key: string; annotatedKey?: string; croppedKey?: string };
 
@@ -68,14 +72,15 @@ export function makeDefectPhotoChip(
             );
         }
         return (
-            <span className={defectRowButtonClass}>
-                {/* h-full stretches this to the chip's now-44px height (field
-                    eval P1) — the label button is the PRIMARY way into a
-                    defect's photos, so it gets the full touch floor. */}
+            <span className={`${defectRowChrome} min-h-11 max-w-full`}>
+                {/* self-stretch fills the chip's height (44px+, field eval P1) —
+                    the label button is the PRIMARY way into a defect's photos,
+                    so it keeps the full touch floor however many rows the
+                    thumbnails wrap to. flex-shrink-0 keeps "6 photos" on one line. */}
                 <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenDefectPhoto?.(target, 0); }}
-                    className="inline-flex items-center gap-1 h-full"
+                    className="inline-flex items-center gap-1 self-stretch flex-shrink-0"
                 >
                     {photoIcon}
                     <span className="text-[12px] font-medium">
@@ -83,12 +88,12 @@ export function makeDefectPhotoChip(
                     </span>
                 </button>
                 {/* ponytail: per-thumbnail targets stop at 32px (24px measured
-                    in the eval), not the full 44px floor — several side by
-                    side in this inline chip would spread a multi-photo defect
-                    row well past 375px. Upgrade path if that turns out to
-                    matter more than density: wrap this strip onto its own row
-                    below the label instead of packing it inline. */}
-                <span className="inline-flex items-center gap-1 ml-1">
+                    in the eval), not the full 44px floor — a full-size target
+                    each would wrap a multi-photo defect onto many rows.
+                    The strip wraps within the chip (min-w-0 lets it shrink
+                    below its content, max-w-full on the chip caps it at the
+                    column) — packed inline it ran past the card at ~6 photos. */}
+                <span className="inline-flex flex-wrap items-center gap-1 ml-1 py-1 min-w-0">
                     {photos.map((p, i) => (
                         <button
                             key={p.key}
