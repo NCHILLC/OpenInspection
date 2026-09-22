@@ -64,8 +64,9 @@ export async function action({ request, context }: Route.ActionArgs) {
                 json: { email, role, permissionOverrides, notify } as Parameters<typeof api.team.invite.$post>[0]["json"],
             });
             if (!res.ok) {
-                const body = await res.json().catch(() => ({})) as { error?: string };
-                return { ok: false, intent, error: body?.error ?? `HTTP ${res.status}`, url: null };
+                const body = await res.json().catch(() => ({})) as { error?: { message?: string } | string };
+                const message = typeof body?.error === "string" ? body.error : body?.error?.message;
+                return { ok: false, intent, error: message ?? `HTTP ${res.status}`, url: null };
             }
             // The invite link, which the server has always returned and nothing
             // has ever shown. It matters most when notify is false: that is the
