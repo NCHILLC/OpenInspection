@@ -110,6 +110,7 @@ export class TeamService {
         permissionOverrides?: RequestedOverrides | null;
     }) {
         const db = this.getDB();
+        const email = params.email.trim().toLowerCase();
 
         // Seat-quota enforcement now lives in features/seat-quota/middleware
         // (mounted on POST /api/team/invite). The service only needs to
@@ -117,9 +118,15 @@ export class TeamService {
         // soft-deleted (removed) row must not block a re-invite, since
         // AuthService.joinTeam reactivates it rather than inserting a new one.
         const existing = await db.select({ id: users.id }).from(users)
-            .where(and(eq(users.tenantId, params.tenantId), eq(users.email, params.email), isNull(users.deletedAt))).limit(1);
+            .where(and(eq(users.tenantId, params.tenantId), eq(users.email, email), isNull(users.deletedAt))).limit(1);
 
         if (existing.length > 0) throw Errors.Conflict('User is already a member');
+
+        const pending = await db.select({ id: tenantInvites.id }).from(tenantInvites)
+            .where(and(eq(tenantInvites.tenantId, params.tenantId), eq(tenantInvites.email, email), eq(tenantInvites.status, 'pending')))
+            .limit(1);
+
+        if (pending.length > 0) throw Errors.Conflict('Invitation is already pending');
 
         // Only persist toggles that DIFFER from the role template, so an
         // all-default invite stores null (single source of truth = the role).
@@ -132,7 +139,7 @@ export class TeamService {
         await db.insert(tenantInvites).values({
             id: inviteToken,
             tenantId: params.tenantId,
-            email: params.email,
+            email,
             role: params.role,
             status: 'pending',
             expiresAt,

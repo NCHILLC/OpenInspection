@@ -10,6 +10,7 @@ import { ConfirmDialog } from "~/components/ConfirmDialog";
 import { InviteLinkModal, type InviteLinkTarget } from "~/components/modals/InviteLinkModal";
 import { ResetTwoFactorDialog, type ResetTwoFactorTarget } from "~/components/modals/ResetTwoFactorDialog";
 import { resetMemberTwoFactor } from "./team.reset-two-factor.server";
+import { resendTeamInvite } from "./team.resend-invite.server";
 import { useDisplayLocale, useSessionContext } from "~/hooks/useSessionContext";
 import { importEntryHref } from "~/lib/import-entry-points";
 import { Breadcrumb } from "~/components/Breadcrumb";
@@ -96,11 +97,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (intent === "reset-two-factor") {
     return resetMemberTwoFactor(api, form.get("id") as string);
   }
-  if (intent === "resend-invite") {
-    const inviteToken = form.get("token") as string;
-    const res = await api.team.invites[":token"].resend.$post({ param: { token: inviteToken } });
-    return { ok: res.ok, resent: res.ok };
-  }
+  if (intent === "resend-invite") return resendTeamInvite(() => api.team.invites[":token"].resend.$post({ param: { token: form.get("token") as string } }));
   return { ok: false };
 }
 
@@ -119,7 +116,7 @@ export default function TeamPage() {
   // a reset that silently rode a cancel's in-flight guard would be dropped.
   const { submit: submitResetTwoFactor, busy: resetTwoFactorBusy } = useGuardedSubmit<{ ok?: boolean }>();
   const [pendingReset, setPendingReset] = useState<ResetTwoFactorTarget | null>(null);
-  const resendFetcher = useFetcher<{ ok?: boolean; resent?: boolean }>();
+  const resendFetcher = useFetcher<{ ok?: boolean; resent?: boolean; error?: string }>();
   const [pendingCancel, setPendingCancel] = useState<{ token: string; email: string } | null>(null);
 
   // Which pending invite's link is on screen. The dialog itself is
@@ -199,6 +196,9 @@ export default function TeamPage() {
           </div>
         }
       />
+
+      {resendFetcher.state === "idle" && resendFetcher.data?.resent && <Banner tone="success">{m.settings_team_resend_success()}</Banner>}
+      {resendFetcher.state === "idle" && resendFetcher.data?.ok === false && <Banner tone="danger">{resendFetcher.data.error ?? "Failed to resend invitation"}</Banner>}
 
       <InviteSeatDrawer open={inviteOpen} onClose={() => setInviteOpen(false)} seatLimitAtOpen={atCapSeatUsage} />
       <EditMemberDrawer open={editMember !== null} onClose={() => setEditMember(null)} member={editMember} />

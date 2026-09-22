@@ -13,6 +13,14 @@ interface LogContext {
     [key: string]: unknown;
 }
 
+function sanitizeErrorText(value: string | undefined): string | undefined {
+    return value
+        ?.replace(/(^|\n)(\s*params?:)\s*[^\n]*/gi, '$1$2 [REDACTED]')
+        .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[REDACTED_EMAIL]')
+        .replace(/\b(authorization\s*:\s*bearer|bearer)\s+[^\s,;]+/gi, '$1 [REDACTED]')
+        .replace(/\b((?:api[_-]?key|token|password|secret)\s*[:=]\s*)[^\s,;]+/gi, '$1[REDACTED]');
+}
+
 /**
  * Structured Logger for Cloudflare Workers.
  * Outputs JSON for easy ingestion by log aggregators.
@@ -56,10 +64,12 @@ class Logger {
     error(message: string, data?: Record<string, unknown>, error?: Error) {
         this.log(LogLevel.ERROR, message, {
             ...(data || {}),
-            error: error ? {
-                message: error.message,
-                stack: error.stack,
-            } : undefined,
+            ...(error ? {
+                error: {
+                    message: sanitizeErrorText(error.message),
+                    stack: sanitizeErrorText(error.stack),
+                },
+            } : {}),
         });
     }
 }
