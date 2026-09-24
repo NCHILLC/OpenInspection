@@ -1,12 +1,16 @@
 /**
  * <ReportSectionBlock> — one section of the report body: its numbered heading,
- * the item cards under it, the collapsed summary card that replaces them in
- * "summary" filter mode, and the section disclaimer.
+ * the item cards under it, and the section disclaimer.
  *
- * These four belong together because the active `filter` decides among them:
- * "defects" drops empty sections entirely, "summary" swaps the item list for a
- * single count card AND suppresses the disclaimer. Reading any one of them
- * without the others tells you the wrong thing about what the client sees.
+ * WHICH items appear is not decided here. `sectionsForFilter` (app/lib/
+ * report-helpers) narrows the list upstream and this renders what survives, so
+ * a filter is one rule in one place rather than a narrowing here and a second,
+ * differently-worded one there. All this block still asks of `filter` is
+ * whether an emptied section should disappear — and only "all" keeps it.
+ *
+ * It used to ask far more: "summary" replaced the whole item list with a single
+ * count card and suppressed the disclaimer, so the Summary a client opened
+ * carried section totals and no finding text. See #13.
  *
  * Extracted verbatim from <ReportView>'s `filteredSections.map`. Presentational
  * — the report owns the filter, the failed-photo Set and the repair selection.
@@ -83,7 +87,10 @@ export function ReportSectionBlock({
     const ids = new Set(subtreeOf(section.items, id).slice(1));
     return section.items.filter((i) => ids.has(i.id));
   };
-  if (filter === "defects" && section.items.length === 0) return null;
+  // A narrowed filter emptied this section, so there is nothing to head. "all"
+  // is excluded because an empty section there is a real statement: the
+  // inspector had nothing to record under a heading the template still carries.
+  if (filter !== "all" && section.items.length === 0) return null;
   return (
     <div id={anchorId(section.id)} className="mb-6 group/section relative scroll-mt-4" style={section.alwaysPageBreak ? { breakBefore: "page" } : undefined}>
       <div className={`flex items-center gap-3 mb-4 ${PRINT_SECTION_HEADING_CLASS}`}>
@@ -100,72 +107,52 @@ export function ReportSectionBlock({
         </span>
       </div>
 
-      {/* Items (hidden in summary mode) */}
-      {filter !== "summary" && (
-        <div className="space-y-3">
-          {topLevel.map((item) => (
-            <div key={item.id} data-report-item>
-              <ReportItemCard
-                item={item}
-                showEstimates={showEstimates}
-                showPhotos={showPhotos}
-                mediaVisible={mediaVisible}
-                renderMediaTile={renderMediaTile}
-                selectedForRepair={!!repairItems[item.id]}
-                onToggleRepairItem={onToggleRepairItem}
-              />
-              {descendantsOf(item.id).map((child) => (
-                <div
-                  key={child.id}
-                  data-report-subitem
-                  /* Logical inline start, so a right-to-left report indents from
-                     the right with no second code path. Inline rather than a
-                     utility: the wrapper's own classes already set spacing, and
-                     two utilities of equal specificity resolve by stylesheet
-                     order rather than by the order written here. */
-                  style={{ marginInlineStart: (depths.get(child.id) ?? 1) * 16 }}
-                  className="mt-2"
-                >
-                  <ReportItemCard
-                    item={child}
-                    nested
-                    showEstimates={showEstimates}
-                    showPhotos={showPhotos}
-                    mediaVisible={mediaVisible}
-                    renderMediaTile={renderMediaTile}
-                    selectedForRepair={!!repairItems[child.id]}
-                    onToggleRepairItem={onToggleRepairItem}
-                  />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Summary card */}
-      {filter === "summary" && (
-        <div className="bg-ih-bg-card border border-ih-border rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-ih-fg-1">
-              {m.report_view_items_inspected({ count: section.items.length })}
-            </span>
-            <span
-              className="text-sm font-semibold"
-              style={{
-                color: section.defectCount > 0 ? "#f43f5e" : "#22c55e",
-              }}
-            >
-              {section.defectCount > 0
-                ? m.report_view_defect_count({ count: section.defectCount, plural: section.defectCount > 1 ? "s" : "" })
-                : m.report_view_all_clear()}
-            </span>
+      {/* Items — every filter renders findings; the filter chose WHICH ones
+          upstream in sectionsForFilter. "summary" used to swap this whole list
+          for a count card, which is why a recipient reading the Summary saw no
+          finding text at all. */}
+      <div className="space-y-3">
+        {topLevel.map((item) => (
+          <div key={item.id} data-report-item>
+            <ReportItemCard
+              item={item}
+              showEstimates={showEstimates}
+              showPhotos={showPhotos}
+              mediaVisible={mediaVisible}
+              renderMediaTile={renderMediaTile}
+              selectedForRepair={!!repairItems[item.id]}
+              onToggleRepairItem={onToggleRepairItem}
+            />
+            {descendantsOf(item.id).map((child) => (
+              <div
+                key={child.id}
+                data-report-subitem
+                /* Logical inline start, so a right-to-left report indents from
+                   the right with no second code path. Inline rather than a
+                   utility: the wrapper's own classes already set spacing, and
+                   two utilities of equal specificity resolve by stylesheet
+                   order rather than by the order written here. */
+                style={{ marginInlineStart: (depths.get(child.id) ?? 1) * 16 }}
+                className="mt-2"
+              >
+                <ReportItemCard
+                  item={child}
+                  nested
+                  showEstimates={showEstimates}
+                  showPhotos={showPhotos}
+                  mediaVisible={mediaVisible}
+                  renderMediaTile={renderMediaTile}
+                  selectedForRepair={!!repairItems[child.id]}
+                  onToggleRepairItem={onToggleRepairItem}
+                />
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
       {/* Disclaimer */}
-      {section.disclaimerText && filter !== "summary" && (
+      {section.disclaimerText && (
         <div className="mt-4 px-4 py-3 rounded-md border border-ih-border bg-ih-watch-bg/40 text-[12px] leading-relaxed text-ih-fg-3">
           <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-ih-watch-fg mb-1">
             {m.report_view_disclaimer()}

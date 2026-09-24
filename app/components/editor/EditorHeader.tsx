@@ -292,15 +292,23 @@ export function EditorHeader({
   canUpdateSource={canUpdateSourceTemplate}
  />
 
- {/* Preview [CHECK tier] — the report's two fidelities behind one control.
+ {/* Preview [CHECK tier] — the report's three fidelities behind one control.
      Never hides: it is the rehearsal for Publish, and Publish never hides.
      The web report is the owner preview (works on drafts, tokenless via the
-     report-view loader); the PDF is the real server-rendered deliverable
-     (owner on-demand pre-publish via the JWT-authed endpoint). */}
+     report-view loader); the summary is that same preview on its findings
+     filter, which is what the inspector reads back to a client on site; the
+     PDF is the real server-rendered deliverable (owner on-demand pre-publish
+     via the JWT-authed endpoint). */}
  <PreviewMenu
   onPreviewReport={
    tenantSlug
     ? () => window.open(`/report-view/${tenantSlug}/${state.inspection.id}`, "_blank", "noopener")
+    : null
+  }
+  onPreviewSummary={
+   // The Summary is residential-only; commercial reports have no Summary mode.
+   tenantSlug && (state.inspection as Record<string, unknown>).propertyType !== "commercial"
+    ? () => window.open(`/report-view/${tenantSlug}/${state.inspection.id}?summary=1`, "_blank", "noopener")
     : null
   }
   onPreviewPdf={() => pdf.exportPdf(`/api/inspections/${state.inspection.id}/pdf?type=full`, { mode: "view", filename: `report-${state.inspection.id}.pdf` })}

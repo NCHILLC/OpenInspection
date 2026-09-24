@@ -19,7 +19,14 @@ export const reportPdfs = sqliteTable('report_pdfs', {
     tenantId:      text('tenant_id').notNull().references(() => tenants.id),
     inspectionId:  text('inspection_id').notNull(),
     // Selects the RENDER, not just a label: 'summary' appends `&summary=1` to
-    // the report URL so print-mode CSS drops everything but defects + safety.
+    // the report URL, which the report loader reads into `initialFilter`, so the
+    // page renders on its summary filter — the findings, narrowed by each
+    // tenant's own `defect_categories.drives_summary` switch. That is a
+    // render-time decision in React, NOT print-mode CSS: `&print=1` is a
+    // separate flag and only forces eager image loading. (This comment used to
+    // say CSS did the filtering, and separately that the result was "defects +
+    // safety"; neither was true — until #13 the summary render was per-section
+    // count cards carrying no findings at all.)
     // Also prefixes the R2 key and joins (inspection, version_number) in the
     // uniqueness below, so one summary and one full archive coexist per version.
     type:          text('type', { enum: ['summary', 'full'] }).notNull(),

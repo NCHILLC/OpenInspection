@@ -240,6 +240,7 @@
   "report_view_all_clear": "All clear",
   "report_view_disclaimer": "Disclaimer",
   "report_view_download_pdf": "Download PDF",
+  "report_view_download_summary_pdf": "Summary PDF",
   "portal_payment_no_invoice_title": "No invoice yet",
   "portal_payment_no_invoice_body": "There is no invoice for this inspection yet.",
   "portal_payment_download_pdf": "Download PDF",

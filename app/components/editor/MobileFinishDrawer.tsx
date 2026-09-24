@@ -17,6 +17,9 @@ export interface MobileFinishDrawerProps {
   finishingFieldwork: boolean;
   /** Opens the full web report in a new tab; null when the slug is unknown. */
   onPreviewReport: (() => void) | null;
+  /** Opens that same report on its findings filter — the on-site read-back.
+   *  Null when the slug is unknown. */
+  onPreviewSummary: (() => void) | null;
   /** Auto/light/dark/field. Moved here off the bottom nav — see below. */
   onOpenTheme: () => void;
 }
@@ -47,6 +50,7 @@ export function MobileFinishDrawer({
   onFinishFieldwork,
   finishingFieldwork,
   onPreviewReport,
+  onPreviewSummary,
   onOpenTheme,
 }: MobileFinishDrawerProps) {
   const run = (fn: () => void) => {
@@ -54,11 +58,12 @@ export function MobileFinishDrawer({
     fn();
   };
   // Short, unlike the section/item drawers this shares a component with: those
-  // are scrollable lists that want the height, this is five buttons. At the 0.7
+  // are scrollable lists that want the height, this is six buttons. At the 0.7
   // default the sheet covered most of the screen with dead space below the last
-  // button, which reads as a list that failed to load.
+  // button, which reads as a list that failed to load. The fraction is sized to
+  // the button count, so it moved with the summary row rather than clipping it.
   return (
-    <MobileBottomDrawer open={open} onClose={onClose} title={m.editor_mobile_more()} heightFraction={0.42}>
+    <MobileBottomDrawer open={open} onClose={onClose} title={m.editor_mobile_more()} heightFraction={0.5}>
       <div className="p-4 space-y-2">
         <Button variant="primary" className="w-full" onClick={() => run(onPublish)}>
           {m.editor_header_publish()}
@@ -69,6 +74,11 @@ export function MobileFinishDrawer({
         {onPreviewReport && (
           <Button variant="secondary" className="w-full" onClick={() => run(onPreviewReport)}>
             {m.editor_header_preview_report()}
+          </Button>
+        )}
+        {onPreviewSummary && (
+          <Button variant="secondary" className="w-full" onClick={() => run(onPreviewSummary)}>
+            {m.editor_header_preview_summary()}
           </Button>
         )}
         <Button variant="secondary" className="w-full" onClick={() => run(onOpenSettings)}>

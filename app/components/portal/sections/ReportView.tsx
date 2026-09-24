@@ -28,7 +28,7 @@ import { useState } from "react";
 import { usePdfExport } from "~/hooks/usePdfExport";
 import { brandTokens } from "~/lib/brand";
 import { presetTokens } from "~/lib/report-style/preset-tokens";
-import { itemDrivesSummary } from "~/lib/report-helpers";
+import { sectionsForFilter } from "~/lib/report-helpers";
 import { ReportMediaTile } from "./report/ReportMediaTile";
 import { mediaTileKey } from "./report/media-tile-key";
 import { ReportFilterChips } from "./report/ReportFilterChips";
@@ -112,7 +112,13 @@ function ReportHalf(props: ReportViewProps & { forcedHalf?: "en" | "translated" 
   // header and address, so we drop the page shell + duplicate address title.
   const standalone = props.showStandaloneChrome ?? false;
 
-  const [filter, setFilter] = useState<FilterKey>(data.initialFilter ?? "all");
+  // The Summary is a residential deliverable. A commercial report (reportTier
+  // set) has its own PCA Executive Summary and never enters Summary mode, so a
+  // `?summary=1` link or summary PDF render of one shows the full report.
+  const summaryAvailable = !data.reportTier;
+  const [filter, setFilter] = useState<FilterKey>(
+    !summaryAvailable && data.initialFilter === "summary" ? "all" : data.initialFilter ?? "all",
+  );
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [repairPanel, setRepairPanel] = useState(false);
   const [repairItems, setRepairItems] = useState<Record<string, boolean>>({});
@@ -150,11 +156,11 @@ function ReportHalf(props: ReportViewProps & { forcedHalf?: "en" | "translated" 
   /** A media entry is "visible" when it is a video OR a photo whose thumb hasn't failed. */
   const mediaVisible = (p: ReportPhoto) => p.media?.kind === "video-player" || p.media?.kind === "video-poster" || p.media?.kind === "r2-video-player" || p.media?.kind === "r2-video-poster" || !failedPhotos.has(p.key);
 
-  const downloadPdf = () => {
+  const downloadPdf = (type: "summary" | "full" = "full") => {
     const url = urlToken
-      ? `/api/public/report/${tenant}/${id}/pdf?type=full&token=${encodeURIComponent(urlToken)}`
-      : `/api/inspections/${id}/pdf?type=full`;
-    void pdf.exportPdf(url, { filename: `report-${id}.pdf` });
+      ? `/api/public/report/${tenant}/${id}/pdf?type=${type}&token=${encodeURIComponent(urlToken)}`
+      : `/api/inspections/${id}/pdf?type=${type}`;
+    void pdf.exportPdf(url, { filename: `report-${id}${type === "summary" ? "-summary" : ""}.pdf` });
   };
 
   if (data.error) {
@@ -176,15 +182,7 @@ function ReportHalf(props: ReportViewProps & { forcedHalf?: "en" | "translated" 
     .flatMap((s) => s.items)
     .filter((item) => repairItems[item.id]);
 
-  const filteredSections =
-    filter === "defects"
-      ? data.sections
-          .filter((s) => s.defectCount > 0)
-          .map((s) => ({
-            ...s,
-            items: s.items.filter((i) => itemDrivesSummary(i)),
-          }))
-      : data.sections;
+  const filteredSections = sectionsForFilter(data.sections, filter);
 
   return (
     <ReportHalfScope
@@ -251,7 +249,7 @@ function ReportHalf(props: ReportViewProps & { forcedHalf?: "en" | "translated" 
         <BuildingProfile rows={data.buildingProfile ?? []} />
       </div>
 
-      <ReportFilterChips filter={filter} onChange={setFilter} />
+      <ReportFilterChips filter={filter} onChange={setFilter} showSummary={summaryAvailable} />
 
       {/* Sections */}
       {/* `data-report-body` marks where the report's own content starts. The

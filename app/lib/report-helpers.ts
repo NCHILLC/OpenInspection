@@ -37,19 +37,81 @@ export function getSectionIcon(title: string): string {
 /* ------------------------------------------------------------------ */
 
 /**
- * IA-66 — whether an item belongs in the "Defects Only" filter and shows the
- * "Add to repair request" checkbox. Both used to disagree (the filter ran a
- * severityBucket regex `/defect|safety|major/i` that dropped 'monitor' and never
- * matched a tenant custom category; the checkbox showed for defect OR monitor).
- * Now both read the same first-class, per-category switch the tenant configures:
- * defect_categories.drivesSummary, resolved server-side onto each ResolvedDefect.
- * An item drives the summary when it has at least one included defect whose
- * category drives the summary (unset → the server default of true).
+ * Whether an item reaches the Summary. Reads the first-class, per-category switch
+ * the tenant configures: defect_categories.drivesSummary, resolved server-side
+ * onto each ResolvedDefect. An item drives the summary when it has at least one
+ * included defect whose category drives the summary (unset → default true).
+ *
+ * It used to gate the "Defects Only" filter and repair-request checkbox, which made them
+ * disappear for real defects: every category a tenant defines IS a defect (Minor,
+ * Moderate and Safety/Major alike), so switching one out of the Summary was
+ * also switching it out of the only view that claimed to list defects, leaving
+ * no view that showed them all. Spectora, whose model this follows, scopes the
+ * same setting to "the summary web report and the summary PDF". The filter now
+ * asks itemHasDefect instead; this answers only the Summary question.
  */
 export function itemDrivesSummary(item: {
-  resolvedTabs?: { defects?: Array<{ drivesSummary?: boolean }> };
+  resolvedTabs?: { defects?: Array<{ included: boolean; drivesSummary?: boolean }> };
 }): boolean {
-  return (item.resolvedTabs?.defects ?? []).some((d) => d.drivesSummary !== false);
+  return (item.resolvedTabs?.defects ?? []).some((d) => d.included && d.drivesSummary !== false);
+}
+
+/**
+ * Whether anything was found on this item at all, whatever category it was
+ * filed under. This is the "Defects Only" question, and it is deliberately
+ * blind to `drivesSummary`: which categories reach the Summary is a delivery
+ * choice, and it must not change what the report says is wrong with the house.
+ * It also gates the "add to repair request" checkbox: any finding can go on a
+ * repair request, not only the ones that reach the Summary.
+ */
+export function itemHasDefect(item: {
+  resolvedTabs?: { defects?: Array<{ included: boolean }> };
+}): boolean {
+  return (item.resolvedTabs?.defects ?? []).some((d) => d.included);
+}
+
+/** The shape every filter narrows — structural, so this file stays free of the
+ *  report's component types (the rest of the module is written the same way). */
+export interface FilterableSection {
+  items: Array<{ resolvedTabs?: { defects?: Array<{ included: boolean; drivesSummary?: boolean }> } }>;
+}
+
+/**
+ * The sections a report filter shows, narrowed on the axis that filter means.
+ *
+ * `defects` lists every included finding, whatever its rating or category.
+ * `summary` lists only included findings from categories selected for delivery.
+ * A mixed-category item must lose its excluded findings in the Summary too.
+ *
+ * `summary` used to narrow NEITHER: it rendered a per-section count card and
+ * hid every finding, so the switch a tenant sets to choose what reaches the
+ * Summary drove the Defects view and never the Summary — both halves of one
+ * mix-up, and this fixes the second.
+ */
+export function sectionsForFilter<S extends FilterableSection>(
+  sections: readonly S[],
+  filter: "all" | "defects" | "summary",
+): S[] {
+  if (filter === "all") return [...sections];
+  const summaryDriving = (s: S): S => ({
+    ...s,
+    items: s.items.filter(itemDrivesSummary).map((item) => ({
+      ...item,
+      resolvedTabs: {
+        ...item.resolvedTabs,
+        defects: item.resolvedTabs?.defects?.filter((d) => d.included && d.drivesSummary !== false),
+      },
+    })),
+  });
+  if (filter === "defects") {
+    return sections.map((s) => ({ ...s, items: s.items.filter(itemHasDefect) })).filter((s) => s.items.length > 0);
+  }
+  // A section with nothing to report stays OUT of the summary. It does not
+  // appear saying "All clear" — the summary is the list of what was found, and
+  // a heading with no finding under it is noise in the document someone reads
+  // standing at a front door. The section's rating-derived `defectCount` is not
+  // consulted by any filter: it can be zero while an unrated item has a finding.
+  return sections.map(summaryDriving).filter((s) => s.items.length > 0);
 }
 
 /**

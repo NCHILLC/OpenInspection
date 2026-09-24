@@ -18,7 +18,7 @@ import type { ReportLoaderResult, ReportSection } from './report/types';
  */
 describe('ReportView extraction', () => {
   it('carries populated loader fields through by value (not just presence/type)', () => {
-    const sections: ReportSection[] = [{ id: 's1', title: 'Roof', defectCount: 0, items: [] }];
+    const sections: ReportSection[] = [{ id: 's1', title: 'Roof', items: [] }];
     const stats = { total: 3, satisfactory: 1, monitor: 1, defect: 1 };
     const data: Partial<ReportLoaderResult> = {
       sections, stats, signature: null, verification: null,

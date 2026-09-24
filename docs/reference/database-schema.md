@@ -2021,7 +2021,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `tenant_id` | text | NN IX FK→`tenants.id` |  |  | *Tenant isolation key. Every read and write must filter on it.* |
 | `inspection_id` | text | NN UQ IX |  |  | *The inspection (order) this belongs to. App-layer reference.* |
-| `type` | text | NN UQ IX |  | `summary, full` | Selects the RENDER, not just a label: 'summary' appends `&summary=1` to the report URL so print-mode CSS drops everything but defects + safety. |
+| `type` | text | NN UQ IX |  | `summary, full` | Selects the RENDER, not just a label: 'summary' appends `&summary=1` to the report URL, which the report loader reads into `initialFilter`, so the page renders on its summary filter — the findings, narrowed by each tenant's own `defect_categories.drives_summary` switch. **[more]** |
 | `r2_key` | text | NN |  |  | *Object key in the R2 bucket.* |
 | `rendered_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `source_version` | integer | NN |  |  | inspection.updatedAt timestamp at render time |

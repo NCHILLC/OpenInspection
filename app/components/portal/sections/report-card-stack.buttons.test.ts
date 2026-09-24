@@ -10,8 +10,10 @@
 //   3. The component has a `generating` state that disables and relabels the
 //      FAB while the download is in flight.
 //   4. Owner vs. client URL selection is correct:
-//        - token present  → /api/public/report/:tenant/:id/pdf?type=full&token=…
-//        - no token       → /api/inspections/:id/pdf?type=full
+//        - token present  → /api/public/report/:tenant/:id/pdf?type=${type}&token=…
+//        - no token       → /api/inspections/:id/pdf?type=${type}
+//      `type` is a parameter, not a constant, since the bar offers both the
+//      full report and the condensed summary; both endpoints render on demand.
 //   5. No native dialogs (window.alert/confirm/prompt) are used in the
 //      download handler.
 //
@@ -121,7 +123,10 @@ describe('report-card-stack buttons (Task 9)', () => {
     const text = await source();
 
     expect(text).toContain('/api/inspections/');
-    expect(text).toContain('/pdf?type=full');
+    // `type` is interpolated, not literal: the same closure serves the full
+    // report and the summary. Asserting the literal `?type=full` would pass
+    // again the moment someone hard-coded one of them back.
+    expect(text).toContain('/pdf?type=${type}');
   });
 
   it('client URL path: /api/public/report/:tenant/:id/pdf with token', async () => {
@@ -139,7 +144,18 @@ describe('report-card-stack buttons (Task 9)', () => {
     // are asserted, the same way the image-robustness spec verifies
     // onPhotoFailed across the ReportView/ReportMediaTile boundary.
     expect(text).toContain('onDownload={downloadPdf}');
-    expect(text).toContain('onClick={onDownload}');
+    expect(text).toContain('onClick={() => onDownload("full")}');
+  });
+
+  // #13 — the summary PDF has been rendered and stored at publish since the
+  // pipeline landed, and nothing in the product ever linked to it. This pins
+  // the link, so a refactor that drops the second button is a red test rather
+  // than a silently unreachable artifact again.
+  it('the bar offers the summary PDF as well as the full one', async () => {
+    const text = await source();
+
+    expect(text).toContain('onClick={() => onDownload("summary")}');
+    expect(text).toContain('report_view_download_summary_pdf');
   });
 
   it('no native alert/confirm/prompt in downloadPdf handler', async () => {
