@@ -90,4 +90,15 @@ describe("inviting a member — what reaches the API", () => {
         const out = await submit({ intent: "invite", email: "a@b.test", role: "inspector" });
         expect(out).toMatchObject({ ok: false, url: null });
     });
+
+    it("returns a structured API error as displayable text", async () => {
+        invitePost.mockResolvedValue(json({
+            success: false,
+            error: { code: "SERVICE_UNAVAILABLE", message: "Email delivery failed" },
+        }, 502));
+
+        const out = await submit({ intent: "invite", email: "a@b.test", role: "inspector" });
+
+        expect(out).toMatchObject({ ok: false, error: "Email delivery failed", url: null });
+    });
 });
