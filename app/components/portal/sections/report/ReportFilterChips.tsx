@@ -23,14 +23,17 @@ function labelFor(f: FilterKey): string {
 export function ReportFilterChips({
   filter,
   onChange,
+  showSummary,
 }: {
   filter: FilterKey;
   onChange: (next: FilterKey) => void;
+  /** False on commercial reports: the Summary is residential-only. */
+  showSummary: boolean;
 }) {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-8 print:hidden">
       <div className="flex gap-2">
-        {FILTERS.map((f) => (
+        {FILTERS.filter((f) => showSummary || f !== "summary").map((f) => (
           <button
             key={f}
             type="button"

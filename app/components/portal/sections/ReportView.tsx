@@ -112,7 +112,13 @@ function ReportHalf(props: ReportViewProps & { forcedHalf?: "en" | "translated" 
   // header and address, so we drop the page shell + duplicate address title.
   const standalone = props.showStandaloneChrome ?? false;
 
-  const [filter, setFilter] = useState<FilterKey>(data.initialFilter ?? "all");
+  // The Summary is a residential deliverable. A commercial report (reportTier
+  // set) has its own PCA Executive Summary and never enters Summary mode, so a
+  // `?summary=1` link or summary PDF render of one shows the full report.
+  const summaryAvailable = !data.reportTier;
+  const [filter, setFilter] = useState<FilterKey>(
+    !summaryAvailable && data.initialFilter === "summary" ? "all" : data.initialFilter ?? "all",
+  );
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [repairPanel, setRepairPanel] = useState(false);
   const [repairItems, setRepairItems] = useState<Record<string, boolean>>({});
@@ -243,7 +249,7 @@ function ReportHalf(props: ReportViewProps & { forcedHalf?: "en" | "translated" 
         <BuildingProfile rows={data.buildingProfile ?? []} />
       </div>
 
-      <ReportFilterChips filter={filter} onChange={setFilter} />
+      <ReportFilterChips filter={filter} onChange={setFilter} showSummary={summaryAvailable} />
 
       {/* Sections */}
       {/* `data-report-body` marks where the report's own content starts. The

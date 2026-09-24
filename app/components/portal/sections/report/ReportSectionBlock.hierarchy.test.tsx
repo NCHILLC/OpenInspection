@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { render, screen } from '@testing-library/react';
+import { sectionsForFilter } from '~/lib/report-helpers';
 import { ReportSectionBlock } from './ReportSectionBlock';
-import type { ReportItem, ReportSection } from './types';
+import type { FilterKey, ReportItem, ReportSection } from './types';
 
 const item = (id: string, label: string, parentId: string | null): ReportItem => ({
   id, label, parentId,
@@ -10,7 +11,7 @@ const item = (id: string, label: string, parentId: string | null): ReportItem =>
 });
 
 const sectionOf = (items: ReportItem[]): ReportSection => ({
-  id: 's1', title: 'Roof', icon: null, defectCount: 0,
+  id: 's1', title: 'Roof', icon: null,
   disclaimerText: null, alwaysPageBreak: false, items,
 });
 
@@ -19,8 +20,8 @@ const nested = sectionOf([
   item('a1', 'Fully adhered', 'a'),
 ]);
 
-const renderBlock = (section: ReportSection) => render(
-  <ReportSectionBlock section={section} sectionIdx={0} filter="all"
+const renderBlock = (section: ReportSection, filter: FilterKey = 'all') => render(
+  <ReportSectionBlock section={section} sectionIdx={0} filter={filter}
                       showEstimates={false} showPhotos={false} mediaVisible={() => true}
                       renderMediaTile={() => null} repairItems={{}} onToggleRepairItem={() => {}} />,
 );
@@ -81,4 +82,43 @@ test('every item in the section reaches the page exactly once', () => {
     item('b', 'Roof covering', null),
   ]));
   expect(screen.getAllByTestId('report-item-card')).toHaveLength(4);
+});
+
+test('Summary renders only selected findings and keeps a surviving nested item', () => {
+  const parent = item('parent', 'Roof covering', null);
+  const child = item('child', 'Flashing', 'parent');
+  child.resolvedTabs = { defects: [
+    { id: 'safety', title: 'Loose flashing', included: true, drivesSummary: true, effectiveComment: 'Repair flashing.' },
+    { id: 'minor', title: 'Faded coating', included: true, drivesSummary: false, effectiveComment: 'Monitor coating.' },
+    { id: 'unused', title: 'Unused canned finding', included: false, drivesSummary: true, effectiveComment: '' },
+  ] };
+  const [filtered] = sectionsForFilter([sectionOf([parent, child])], 'summary');
+  renderBlock(filtered, 'summary');
+  expect(screen.getByText('Flashing')).toBeTruthy();
+  expect(screen.getByText('Loose flashing')).toBeTruthy();
+  expect(screen.queryByText('Roof covering')).toBeNull();
+  expect(screen.queryByText('Faded coating')).toBeNull();
+  expect(screen.queryByText('Unused canned finding')).toBeNull();
+  expect(screen.getAllByTestId('report-item-card')).toHaveLength(1);
+});
+
+test('the repair-request checkbox follows itemHasDefect, not the Summary switch', () => {
+  // Gutter's only defect is switched OUT of the Summary (drivesSummary: false)
+  // but is still an included finding, so the checkbox must show — the
+  // checkbox is no longer gated on the tenant's Summary switch (rule 2).
+  const gutter = item('a', 'Gutter', null);
+  gutter.resolvedTabs = { defects: [
+    { id: 'd1', title: 'Clogged gutter', included: true, drivesSummary: false, effectiveComment: 'Clean gutter.' },
+  ] };
+  // Downspout's only "defect" is an unselected canned comment (included:
+  // false) -- nothing was actually found, so no checkbox.
+  const downspout = item('b', 'Downspout', null);
+  downspout.resolvedTabs = { defects: [
+    { id: 'd2', title: 'Unselected finding', included: false, drivesSummary: true, effectiveComment: '' },
+  ] };
+  renderBlock(sectionOf([gutter, downspout]));
+  const gutterCard = screen.getByText('Gutter').closest('[data-report-item]') as HTMLElement;
+  const downspoutCard = screen.getByText('Downspout').closest('[data-report-item]') as HTMLElement;
+  expect(gutterCard.querySelector('input[type="checkbox"]')).toBeTruthy();
+  expect(downspoutCard.querySelector('input[type="checkbox"]')).toBeNull();
 });

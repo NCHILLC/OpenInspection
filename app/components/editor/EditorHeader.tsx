@@ -306,7 +306,8 @@ export function EditorHeader({
     : null
   }
   onPreviewSummary={
-   tenantSlug
+   // The Summary is residential-only; commercial reports have no Summary mode.
+   tenantSlug && (state.inspection as Record<string, unknown>).propertyType !== "commercial"
     ? () => window.open(`/report-view/${tenantSlug}/${state.inspection.id}?summary=1`, "_blank", "noopener")
     : null
   }

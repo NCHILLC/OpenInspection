@@ -5,8 +5,8 @@ import { UnitConditionMatrix } from '~/components/portal/sections/report/UnitCon
 import type { ReportSection, UnitMatrixRow } from '~/components/portal/sections/report/types';
 
 const sections = [
-  { id: 'roof', title: 'Roof', defectCount: 0, items: [] },
-  { id: 'hvac', title: 'HVAC', defectCount: 0, items: [] },
+  { id: 'roof', title: 'Roof', items: [] },
+  { id: 'hvac', title: 'HVAC', items: [] },
 ] as ReportSection[];
 
 const rows: UnitMatrixRow[] = [

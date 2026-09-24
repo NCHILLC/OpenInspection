@@ -63,14 +63,17 @@ export function ReportExportBar({
             {pdf.error ?? pdfBusyHint()}
           </div>
         ) : null}
-        <button
-          type="button"
-          onClick={() => onDownload("summary")}
-          disabled={pdf.busy}
-          className="px-4 py-2 rounded-full bg-ih-bg-card border border-ih-border text-ih-fg-1 text-[11px] font-bold uppercase tracking-widest shadow-ih-popover hover:bg-ih-bg-muted transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {m.report_view_download_summary_pdf()}
-        </button>
+        {/* The Summary is residential-only; a commercial report has no summary PDF. */}
+        {!reportTier ? (
+          <button
+            type="button"
+            onClick={() => onDownload("summary")}
+            disabled={pdf.busy}
+            className="px-4 py-2 rounded-full bg-ih-bg-card border border-ih-border text-ih-fg-1 text-[11px] font-bold uppercase tracking-widest shadow-ih-popover hover:bg-ih-bg-muted transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {m.report_view_download_summary_pdf()}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => onDownload("full")}

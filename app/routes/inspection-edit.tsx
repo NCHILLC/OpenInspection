@@ -1847,7 +1847,7 @@ export default function InspectionEditPage() {
   finishingFieldwork={completeBusy}
   onOpenTheme={() => setMobileDrawer("theme")}
   onPreviewReport={loaderData.tenantSlug ? () => window.open(`/report-view/${loaderData.tenantSlug}/${state.inspection.id}`, "_blank", "noopener") : null}
-  onPreviewSummary={loaderData.tenantSlug ? () => window.open(`/report-view/${loaderData.tenantSlug}/${state.inspection.id}?summary=1`, "_blank", "noopener") : null} />
+  onPreviewSummary={loaderData.tenantSlug && (state.inspection as Record<string, unknown>).propertyType !== "commercial" ? () => window.open(`/report-view/${loaderData.tenantSlug}/${state.inspection.id}?summary=1`, "_blank", "noopener") : null} />
   {finishActionsEl}
  </>}
  >

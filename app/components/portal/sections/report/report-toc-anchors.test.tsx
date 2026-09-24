@@ -4,6 +4,7 @@ import { render } from '@testing-library/react';
 import { createRoutesStub } from 'react-router';
 import { ReportView, reportViewProps } from '~/components/portal/sections/ReportView';
 import { EMPTY_BRAND } from '~/lib/brand';
+import { m } from '~/paraglide/messages';
 import type { ReportOutlineEntry, PcaReportData, ReportLoaderResult } from '~/components/portal/sections/report/types';
 
 // Every entry the tier-gated PCA registry projects into the TOC (Commercial
@@ -105,5 +106,49 @@ describe('ReportView TOC anchors (Commercial PCA Phase O5)', () => {
   it('omits the TOC when outline is empty', () => {
     const { container } = renderReport(baseProps({ outline: [] }));
     expect(container.querySelector('#report-toc')).toBeNull();
+  });
+
+  // The Summary is a residential deliverable (ReportView.tsx: `summaryAvailable
+  // = !data.reportTier`). A commercial report never enters Summary mode — even
+  // a `?summary=1` link renders the full report, cost tables and photo
+  // appendix included, and has neither the Summary chip nor the summary-PDF
+  // button. A residential report gets both.
+  const costTables: NonNullable<ReportLoaderResult['costTables']> = {
+    table1: {
+      immediate: [{ item: {
+        id: 'cost-1', system: 'roof', component: 'Unique roof membrane', location: '',
+        action: 'replace', costMethod: 'lump_sum', quantity: null, uom: null,
+        unitCostCents: null, lumpSumCents: 500000, eul: null, effAge: null,
+        rul: null, suggestedRemedy: 'Replace', bucket: 'immediate',
+        sectionRef: null, photoRef: null, sortOrder: 0,
+      }, total: 500000 }],
+      shortTerm: [], immediateTotalCents: 500000, shortTermTotalCents: 0,
+    },
+    reserveSchedule: null,
+    rollup: { immediateCents: 500000, shortTermCents: 0, reserveCents: 0 },
+    droppedCount: 0,
+  };
+  const photoAppendix: NonNullable<ReportLoaderResult['photoAppendix']> = [{
+    photoNo: 1, key: 'photo-1', url: '/p/1', caption: 'Unique roof photo',
+    sectionId: 'roofing', sectionTitle: 'Roofing', itemId: 'item-1', itemLabel: 'Roof',
+  }];
+
+  it('commercial: ?summary=1 renders the full report, with no Summary chip and no summary-PDF button', () => {
+    const { getByText, queryByRole } = renderReport(baseProps({
+      costTables, photoAppendix, photoMode: 'appendix', showEstimates: true,
+      initialFilter: 'summary',
+    }));
+    expect(getByText('Unique roof membrane')).toBeTruthy();
+    expect(getByText('Unique roof photo')).toBeTruthy();
+    expect(queryByRole('button', { name: m.report_view_filter_summary() })).toBeNull();
+    expect(queryByRole('button', { name: m.report_view_download_summary_pdf() })).toBeNull();
+  });
+
+  it('residential: the Summary chip and the summary-PDF button are present', () => {
+    const { getByRole } = renderReport(baseProps({
+      reportTier: null, costTables: null, photoMode: 'inline',
+    }));
+    expect(getByRole('button', { name: m.report_view_filter_summary() })).toBeTruthy();
+    expect(getByRole('button', { name: m.report_view_download_summary_pdf() })).toBeTruthy();
   });
 });

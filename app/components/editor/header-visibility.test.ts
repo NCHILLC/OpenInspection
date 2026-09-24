@@ -77,3 +77,20 @@ describe('Preview is never width-gated', () => {
     expect(PREVIEW_SRC).toContain('preview-pdf-btn');
   });
 });
+
+describe('onPreviewSummary is residential-only', () => {
+  /**
+   * The Summary is a residential deliverable (ReportView.tsx's
+   * `summaryAvailable = !data.reportTier`). EditorHeader mirrors that at the
+   * source: a commercial inspection gets no "preview summary" entry point at
+   * all, rather than one that opens a link the report then upgrades to the
+   * full report behind the editor's back.
+   */
+  it('nulls the handler for a commercial inspection instead of opening ?summary=1', () => {
+    const start = HEADER_SRC.indexOf('onPreviewSummary={');
+    expect(start).toBeGreaterThan(-1);
+    const prop = HEADER_SRC.slice(start, start + 300);
+    expect(prop).toContain('propertyType !== "commercial"');
+    expect(prop).toContain('?summary=1');
+  });
+});

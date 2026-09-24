@@ -116,7 +116,6 @@ export interface ReportSection {
   id: string;
   title: string;
   icon?: string | null;
-  defectCount: number;
   items: ReportItem[];
   disclaimerText?: string | null;
   alwaysPageBreak?: boolean;

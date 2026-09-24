@@ -13,7 +13,7 @@
  */
 import type { ReactNode } from "react";
 import { m } from "~/paraglide/messages";
-import { itemDrivesSummary, itemIsUnrated } from "~/lib/report-helpers";
+import { itemHasDefect, itemIsUnrated } from "~/lib/report-helpers";
 import { ReportDefectCard } from "./ReportDefectCard";
 import { ITEM_PHOTO_GRID_CLASS, PRINT_CARD_CLASS, type ReportItem, type ReportPhoto } from "./types";
 
@@ -188,7 +188,7 @@ export function ReportItemCard({
           </div>
         )}
 
-        {itemDrivesSummary(item) && (
+        {itemHasDefect(item) && (
           <label className="print:hidden flex items-center gap-2 mt-3 cursor-pointer text-sm text-ih-fg-3">
             <input
               type="checkbox"
