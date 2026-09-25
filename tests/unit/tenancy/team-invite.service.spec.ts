@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { TeamService } from '../../../server/services/team.service';
+import { AppError } from '../../../server/lib/errors';
 import { createTestDb, setupSchema } from '../db';
 import * as schema from '../../../server/lib/db/schema';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
@@ -107,5 +108,26 @@ describe('TeamService.createInvite — canonical roles', () => {
         const row = await testDb.select().from(schema.tenantInvites)
             .where(eq(schema.tenantInvites.id, out.token)).get();
         expect(row?.permissionOverrides ?? null).toBeNull();
+    });
+
+    it('returns a conflict instead of inserting a second pending invite', async () => {
+        await svc.createInvite({
+            tenantId: TENANT,
+            email: 'Pending@Acme.Test',
+            role: 'inspector',
+        });
+
+        const duplicate = svc.createInvite({
+            tenantId: TENANT,
+            email: 'pending@acme.test',
+            role: 'inspector',
+        });
+
+        await expect(duplicate).rejects.toBeInstanceOf(AppError);
+        await expect(duplicate).rejects.toMatchObject({
+            status: 409,
+            message: 'Invitation is already pending',
+        });
+        expect(await testDb.select().from(schema.tenantInvites)).toHaveLength(1);
     });
 });
