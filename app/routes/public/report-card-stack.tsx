@@ -14,7 +14,9 @@ import { createApi } from "~/lib/api-client.server";
 import { getToken } from "~/lib/session.server";
 import { resolveTenantBrand } from "~/lib/tenant-brand.server";
 import { readViewTrackingObjected } from "~/lib/view-tracking.server";
+import { getCloudflareEnv } from "~/lib/load-context";
 import { EMPTY_BRAND } from "~/lib/brand";
+import { dddReviewLink } from "../../../server/ddd/link";
 import { m } from "~/paraglide/messages";
 import {
   ReportView,
@@ -149,6 +151,9 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
  // outside is what lets the span register stay a description of the payload.
  courtesyTranslation: ((body as Record<string, unknown>).courtesyTranslation
    ?? null) as ReportLoaderResult["courtesyTranslation"],
+ // Fork-only: the Summary's link into the client's Cost Clarity Review. Built here, after
+ // the API has let this reader see the report, and for residential reports only.
+ ccrLink: res.ok && !raw?.reportTier ? await dddReviewLink(getCloudflareEnv(context), params.id ?? "") : null,
  brand,
  error: res.ok ? null : "Report not found",
  notPublished: (res.status as number) === 403,

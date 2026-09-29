@@ -86,4 +86,11 @@ export type WorkerEnv = Env & {
    * deployment already supplies one.
    */
   QBO_ENV?: string;
+  /**
+   * Data Driven Direction, NCHI's client site (fork-only; docs/develop/fork-log.md). The report
+   * Summary links into the client's Cost Clarity Review only when BOTH are set: the site's
+   * origin (a var) and the secret its links are signed with (a secret shared with DDD).
+   */
+  DDD_SITE_URL?: string;
+  DDD_LINK_SECRET?: string;
 };

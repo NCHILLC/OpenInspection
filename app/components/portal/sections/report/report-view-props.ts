@@ -100,6 +100,7 @@ export function reportViewProps(
     // Null when absent, never undefined: the report page branches on it and
     // "not sent" and "none" are the same answer to a reader.
     courtesyTranslation: data.courtesyTranslation ?? null,
+    ccrLink: data.ccrLink ?? null,
     tenant: data.tenant ?? "",
     reportId,
     token: data.token,
