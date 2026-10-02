@@ -1,0 +1,10 @@
+# Search-only noise filter, honored by ripgrep, Claude Code's Grep tool and Codex
+# shell searches (Claude's Glob ignores it). Not access control: search or read
+# these by explicit path when a task needs them. Generated files and vendored
+# fixtures only; never list real source, tests or migrations here.
+server/lib/mcp/openapi-snapshot.json
+worker-configuration.d.ts
+docs/reference/database-schema.md
+migrations/meta/*_snapshot.json
+tests/contract/qbo/vendor/
+package-lock.json
