@@ -63,6 +63,30 @@ that is waste.
 When an upstream scope in the table below is decided as **take**, this branch is
 what you merge from.
 
+## Cherry-picks — 2026-10-02, upstream `62ae80f3..cf53eb76` (11 non-merge commits: 6 taken, 5 skipped)
+
+Taken as cherry-picks, not a merge: a dry-run merge conflicts on `package.json`,
+`scripts/file-size-baseline.json` and two agent-portal files the fork deleted.
+
+**Taken**
+
+- Dependency advisories: `5c270c7a`, `cfe07c22`, `d1a88a48` (PR #18). The pre-push
+  advisory gate rejected every push until `brace-expansion` and `undici` moved.
+  `5c270c7a`'s `file-size-baseline.json` change was **dropped**: its caps come from
+  upstream changes this fork does not have.
+- ISN report link: `acc1eb31`, `1d0b3513`. Both are this fork owner's own commits, merged
+  upstream. Outbound link and read-back only; `feat/isn-report-sync` is a separate
+  line and is not part of this.
+- Cron: `8384c149` acks on a self-continuation send failure instead of retrying;
+  `wrangler.jsonc` gains `retry_delay: 30` on the cron queue consumer.
+
+**Skipped, deliberately, for now**
+
+- Email provider refactor: `049731cf`, `59fc28e7`, `aba24b84`, `425f7cdb`, `cde57f32`
+  (about 50 files; adds a `delivery_failed` signer status and touches the agreement
+  schema). It conflicts on two files the fork deleted and wants its own review,
+  including whether it ships a migration.
+
 ## Merge — 2026-09-18, upstream `8ba7467b..0dece2f2` (67 commits, through PR #360)
 
 Taken as one merge, not the piece-2/piece-3 split the 09-13 entry planned;
