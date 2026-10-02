@@ -20,7 +20,8 @@ import type {
   ReportLoaderResult,
   FilterKey,
 } from "~/components/portal/sections/ReportView";
-import type { LoadContext } from "~/lib/load-context";
+import { getCloudflareEnv, type LoadContext } from "~/lib/load-context";
+import { dddReviewLink } from "../../server/ddd/link";
 
 export async function loadReportSection(
   context: LoadContext,
@@ -81,6 +82,9 @@ export async function loadReportSection(
       reportTimeZone: d?.reportTimeZone ?? "UTC",
       isDelivered: d?.isDelivered ?? false,
       viewTrackingObjected,
+      // Fork-only: the Summary's link into the client's Cost Clarity Review. Built here, after
+      // the API has let this reader see the report, and for residential reports only.
+      ccrLink: res.ok && !raw?.reportTier ? await dddReviewLink(getCloudflareEnv(context), inspectionId) : null,
       brand,
       error: res.ok ? null : m.helper_section_report_not_found(),
       notPublished: (res.status as number) === 403 && refusal !== "REPORT_GATED",

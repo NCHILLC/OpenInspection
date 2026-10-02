@@ -340,6 +340,8 @@ export interface ReportLoaderResult {
   viewTrackingObjected?: boolean;
   /** #23 — the courtesy translation, or null (see ~/lib/report-translation). */
   courtesyTranslation?: CourtesyTranslationPayload | null;
+  /** Fork-only: the link into the client's Cost Clarity Review, or null (server/ddd/link.ts). */
+  ccrLink?: string | null;
   styleProfile?: StyleProfileClient;
   inspectorCredentials?: Array<{ label: string; memberNumber: string | null; imageUrl: string | null }>;
   initialFilter: FilterKey;

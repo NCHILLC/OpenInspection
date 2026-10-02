@@ -83,6 +83,7 @@ dependency order.
 | Removal half of `d2e2ee84` | Trade, deadline, timeframe selects removed. Upstream *requires* trade at publish, so propose it upstream as optional if at all |
 | Measure half of `ba0b7efa` | Measure tool removed |
 | `87e3446f` | Transitive advisory pins, and `allowScripts` kept, both for this machine's npm |
+| `e947b751` | Data Driven Direction: the `DddFeed` findings feed and the Summary's link into the client's Cost Clarity Review |
 
 ## 6. Fork infrastructure: never upstream
 

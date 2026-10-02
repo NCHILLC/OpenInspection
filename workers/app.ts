@@ -346,3 +346,7 @@ export class InspectorMcp {
   }
 }
 export { SignCompletionWorkflow } from "../server/workflows/sign-completion-workflow";
+// Fork-only (docs/develop/fork-log.md): the private findings feed Data Driven Direction reads over
+// a service binding. Its module imports nothing but `cloudflare:workers` eagerly; the report
+// graph behind it loads on the first call.
+export { DddFeed } from "../server/ddd/feed";

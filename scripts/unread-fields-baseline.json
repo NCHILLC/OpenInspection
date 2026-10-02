@@ -250,5 +250,13 @@
   "server/services/agent/terms-acceptance.ts#AgentAcceptance.bodyAvailable": {
     "kind": "wire-shape",
     "reason": "Part of the agent terms API response (server/api/agent/terms.ts declares it in the Zod response schema). Upstream reads it in app/routes/agent/settings-legal.tsx; this fork removed the agent portal UI (2172d817) but keeps the API, so the field stays on the wire with no reader in this tree. Fork-only entry: drop it if the portal UI returns."
+  },
+  "server/ddd/summary.ts#DddFinding.defectKey": {
+    "kind": "wire-shape",
+    "reason": "Wire contract to Data Driven Direction (NCHILLC/data-driven-direction, SRS.md section 4), which consumes DddFeed over RPC from its own repository. defectKey (section::item::title, the canned-comment library key) is part of the shape that repository reads; nothing in this repository reads it back because the consumer is not here."
+  },
+  "server/ddd/summary.ts#DddSummary.isnOrderRef": {
+    "kind": "wire-shape",
+    "reason": "Wire contract to Data Driven Direction (NCHILLC/data-driven-direction, SRS.md section 4), which consumes DddFeed over RPC from its own repository. isnOrderRef (the ISN order the inspection belongs to) is part of the shape that repository reads; nothing in this repository reads it back because the consumer is not here."
   }
 }

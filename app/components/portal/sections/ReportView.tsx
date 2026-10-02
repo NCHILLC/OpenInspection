@@ -42,6 +42,7 @@ import { ReportExportBar } from "./report/ReportExportBar";
 import { ReportHeader } from "./report/ReportHeader";
 import { ReportCoverPhoto } from "./report/ReportCoverPhoto";
 import { ReportSummaryStats } from "./report/ReportSummaryStats";
+import { ReportReviewLink } from "./report/ReportReviewLink";
 import { ReportSectionBlock } from "./report/ReportSectionBlock";
 import { PhotoAppendix } from "./report/PhotoAppendix";
 import { ReportSignatureBlock } from "./report/ReportSignatureBlock";
@@ -269,6 +270,7 @@ function ReportHalf(props: ReportViewProps & { forcedHalf?: "en" | "translated" 
             Task 19a — `tocPages` (undefined on the web + PDF pass 1) fills the
             reserved page-ref slot with real page numbers on pass 2, resolved
             server-side by extractAnchorPages against the pass-1 render. */}
+        {filter === "summary" && <ReportReviewLink href={data.ccrLink} />}
         <ReportToc entries={data.outline ?? []} tocPages={data.tocPages} />
         <PcaSkeleton
           data={data.pcaReport ?? null}
