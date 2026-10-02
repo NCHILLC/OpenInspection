@@ -20,3 +20,9 @@ export class WorkflowEvent<T = unknown> {
 export class DurableObject<TEnv = unknown> {
     constructor(public ctx?: unknown, public env?: TEnv) {}
 }
+
+// `DddFeed` (server/ddd/feed.ts) extends this and workers/app.ts re-exports it, so every spec that
+// imports the worker entry evaluates the class body.
+export class WorkerEntrypoint<TEnv = unknown> {
+    constructor(public ctx?: unknown, public env?: TEnv) {}
+}
