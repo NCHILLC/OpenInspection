@@ -12,7 +12,7 @@
  *
  * A patch is the one kind of dependency change that leaves NO trace anywhere a
  * person normally looks. `npm ls` shows 4.129.0 either way; package.json shows
- * 4.129.0 either way; the lockfile shows 4.129.0 either way. If `patch-package`
+ * 4.129.0 either way; the lockfile shows 4.129.0 either way. If `apply-patches`
  * ever stops running -- a lost `postinstall`, an `--ignore-scripts` install, a
  * version bump that makes the patch no longer apply -- the tree silently
  * reverts to the broken behaviour and the only symptom is a CI job that starts
@@ -77,7 +77,7 @@ if (missing.length > 0) {
     console.error(
         '\nWithout it, one transient ProxyWorker error kills `wrangler dev` mid-run and every\n'
         + 'test after it fails with ECONNREFUSED — 40+ failures that are all one failure.\n\n'
-        + 'Fix: `npm install` (patch-package runs from postinstall). If the patch no longer\n'
+        + 'Fix: `npm install` (scripts/apply-patches.mjs runs from postinstall). If the patch no longer\n'
         + 'applies, wrangler moved: re-cut it against the new bundle, or drop it if upstream\n'
         + 'has fixed workers-sdk#15317 — and delete this gate in the same commit.\n',
     );

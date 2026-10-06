@@ -201,7 +201,7 @@ export const SCRIPT_GATES = [
     // or not. Without it, a lost postinstall silently restores the bug that
     // failed this repository's e2e job three times out of four.
     // ⚠️ `fix` is the DIAGNOSTIC, not the remedy: the remedy is `npm install`,
-    // which re-runs patch-package. The registry requires a real npm script here
+    // which re-runs apply-patches. The registry requires a real npm script here
     // and the lock is right to -- a fix line naming a command nobody can run is
     // worse than none. The script itself prints what to do.
     { key: 'wranglerpatch', label: 'wrangler patch present (workers-sdk#15317)', script: 'check-wrangler-patch.mjs', fix: 'npm run lint:wrangler-patch', rung: PUSH },
