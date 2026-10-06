@@ -42,11 +42,13 @@ export function ServicesStep({
               key={s.id}
               className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${selected ? "border-ih-primary bg-ih-primary-tint" : "border-ih-border"}`}
             >
-              {/* Checkbox + service name — clicking the left area toggles selection */}
+              {/* Checkbox + service name. The negative margins carry the button over
+                  the row's own padding, so the whole left of the row toggles — the
+                  label alone was a 179x18 target on a phone. */}
               <button
                 type="button"
                 onClick={() => toggleService(s.id)}
-                className={`flex-1 text-left text-[12px] font-medium flex items-center gap-1.5 ${selected ? "text-ih-primary-text" : "text-ih-fg-3"}`}
+                className={`flex-1 self-stretch -my-2 py-2 -ml-3 pl-3 pointer-coarse:min-h-11 text-left text-[12px] font-medium flex items-center gap-1.5 ${selected ? "text-ih-primary-text" : "text-ih-fg-3"}`}
               >
                 <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 text-[10px] font-bold ${selected ? "border-ih-primary bg-ih-primary text-ih-fg-inverse" : "border-ih-border"}`}>
                   {selected ? "✓" : ""}

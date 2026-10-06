@@ -141,6 +141,7 @@ export default function SetupPage() {
             id={fields.email.id}
             name={fields.email.name}
             type="email"
+            autoComplete="username"
             label={m.auth_setup_email_label()}
             aria-invalid={fields.email.errors ? true : undefined}
             error={fields.email.errors?.[0]}
@@ -149,6 +150,7 @@ export default function SetupPage() {
             id={fields.password.id}
             name={fields.password.name}
             type="password"
+            autoComplete="new-password"
             label={m.auth_login_password_label()}
             aria-invalid={fields.password.errors ? true : undefined}
             error={fields.password.errors?.[0]}

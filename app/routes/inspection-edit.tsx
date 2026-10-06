@@ -1805,7 +1805,7 @@ export default function InspectionEditPage() {
  return (
  <MobileDrillShell
  level={urlNav.level}
- inspectionId={String(state.inspection.id)}
+ inspectionId={String(state.inspection.id)} connection={presence.status}
  inspectionTitle={(state.inspection.propertyAddress as string) || m.editor_mobile_eyebrow_inspection()}
  sectionTitle={state.currentSection?.title ?? ""}
  itemLabel={((state.activeItem?.label || state.activeItem?.name) as string | undefined) ?? m.editor_route_select_an_item()}

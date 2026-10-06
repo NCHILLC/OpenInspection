@@ -134,8 +134,9 @@ export default function ContactDetailPage() {
   const archived = !!contact.archivedAt;
 
   return (
-    /* ds-allow: page bottom gutter (60px), bespoke page-shell spacing with no token */
-    <div className="max-w-[1080px] mx-auto pt-5 pb-[60px] px-9 space-y-ih-list">
+    /* No page shell here: `auth-layout` already wraps every route in the
+       max-width + gutter. A second copy left 231px of a 375px phone. */
+    <div className="space-y-ih-list">
       {/* Breadcrumb — Contacts > this contact */}
       <Breadcrumb
         items={[

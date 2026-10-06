@@ -77,7 +77,7 @@ export function NoticeBell({
         }}
         aria-expanded={open}
         aria-label={unread > 0 ? m.notice_bell_aria({ count: unread }) : m.notice_bell_aria_none()}
-        className="relative shrink-0 h-9 w-9 grid place-items-center rounded-lg border border-ih-border bg-ih-bg-card text-ih-fg-3 hover:text-ih-fg-1 hover:bg-ih-bg-muted transition-colors"
+        className="relative shrink-0 h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11 grid place-items-center rounded-lg border border-ih-border bg-ih-bg-card text-ih-fg-3 hover:text-ih-fg-1 hover:bg-ih-bg-muted transition-colors"
       >
         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
           <path d="M8 2a4 4 0 0 0-4 4v2.6L2.8 11h10.4L12 8.6V6a4 4 0 0 0-4-4z" strokeLinejoin="round" />

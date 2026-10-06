@@ -565,6 +565,47 @@ html[data-sidebar-collapsed="1"] .ih-sidebar { width: var(--width-sidebar-collap
   }
 }
 
+/* ── Phone ergonomics ──
+   Stated here, once, rather than as a class on every call site: forgetting one
+   is silent on the desk it was built at. Both blocks are UNLAYERED on purpose —
+   they have to beat the utilities the call sites already carry (`h-7`,
+   `text-[13px]`), and an unlayered rule outranks `@layer utilities` whatever
+   its specificity. Mouse density is unchanged: `pointer: coarse` does not
+   match a desktop. Buttons are not covered by a blanket rule (it would stretch
+   thumbnail overlays and chips); their floor lives on the shared-ui `Button` /
+   `IconButton` sizes as `pointer-coarse:min-h-11`. */
+@media (pointer: coarse) {
+  /* Under 16px, iOS Safari zooms the page when the control takes focus and
+     leaves it zoomed. 44px is the smallest target a thumb hits reliably.
+     `.ih-input` is named because its own 13px is a class rule, which a bare
+     `select` / `textarea` selector does not outrank. */
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"]),
+  select,
+  textarea,
+  .ih-input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+/* ponytail: a 12px floor for sub-12px text, phone width only. Same technique
+   as the field/sun type scale above (retarget the arbitrary-value utilities,
+   unlayered), for the same reason: eyebrows, badges and hints sized for a
+   monitor are not readable at arm's length. The upgrade path is a type-scale
+   token the call sites share, if a size ever has to differ by surface.
+   `:where()` keeps the utility half at zero specificity so the 16px form
+   control rule above still wins on a field that carries one of these classes,
+   and so the field/sun scale still wins in those modes. `text-[8px]` stops at
+   11px, the size the field scale already proved fits inside a thumbnail. */
+@media (max-width: 767px) {
+  :where(.text-\[8px\]) { font-size: 11px; }
+  :where(.text-\[9px\], .text-\[10px\], .text-\[11px\]) { font-size: 12px; }
+  .ih-eyebrow,
+  .ih-pill {
+    font-size: 12px;
+  }
+}
+
 /* ── Print layout (report PDF / browser print) ──
    Letter page with safe margins + exact color so rating chips/borders print.
    The page-break protection + dense photo grid live as Tailwind `print:`

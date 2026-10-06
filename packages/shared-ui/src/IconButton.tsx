@@ -20,8 +20,8 @@ const variantClasses: Record<IconButtonVariant, string> = {
 };
 
 const sizeClasses: Record<IconButtonSize, string> = {
-  sm: "w-7 h-7",
-  md: "w-9 h-9",
+  sm: "w-7 h-7 pointer-coarse:min-w-11 pointer-coarse:min-h-11",
+  md: "w-9 h-9 pointer-coarse:min-w-11 pointer-coarse:min-h-11",
   lg: "w-11 h-11",
 };
 

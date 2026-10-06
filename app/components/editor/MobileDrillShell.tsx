@@ -3,6 +3,7 @@ import { m } from "~/paraglide/messages";
 import { MobileAppBar } from "./MobileAppBar";
 import { MobileSyncPill } from "./MobileSyncPill";
 import type { EditorNavLevel } from "~/routes/inspection-edit/useEditorUrlNav";
+import type { PresenceStatus } from "~/hooks/usePresence";
 
 /**
  * The sheets that survive the drill-down. `sections` and `items` used to live
@@ -15,6 +16,8 @@ export interface MobileDrillShellProps {
     level: EditorNavLevel;
     /** Drives the app bar's sync readout (queued-photo count for this job). */
     inspectionId: string;
+    /** Live server connection, so the readout cannot say "Synced" while cut off. */
+    connection?: PresenceStatus;
     /** Property address — the inspection's own name on the root screen. */
     inspectionTitle: string;
     sectionTitle: string;
@@ -65,6 +68,7 @@ export interface MobileDrillShellProps {
 export function MobileDrillShell({
     level,
     inspectionId,
+    connection,
     inspectionTitle,
     sectionTitle,
     itemLabel,
@@ -100,7 +104,7 @@ export function MobileDrillShell({
                 onMore={onMore}
                 onSearch={onOpenSearch}
                 backLabel={backLabel}
-                syncPill={<MobileSyncPill inspectionId={inspectionId} />}
+                syncPill={<MobileSyncPill inspectionId={inspectionId} connection={connection} />}
             />
             {/* Item screens reserve extra clearance: a rich item pins its
                 rating strip (ItemEditor) in the same fixed band as the

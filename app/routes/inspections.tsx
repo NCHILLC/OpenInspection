@@ -678,8 +678,8 @@ export default function InspectionsPage() {
   );
 
   return (
-    /* ds-allow: page bottom gutter (60px), bespoke page-shell spacing with no token */
-    <div className="max-w-[1080px] mx-auto pt-5 pb-[60px] px-9 space-y-ih-list">
+    /* No page shell here: `auth-layout` supplies it, and a second copy left 231px of a 375px phone. */
+    <div className="space-y-ih-list">
       {/* IA-118 — an empty dashboard is this page's strongest claim: it says the
           operator has no work. Do not make it because a request failed. */}
       {loadFailed && <LoadFailedNotice />}
