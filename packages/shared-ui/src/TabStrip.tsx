@@ -30,12 +30,12 @@ export function TabStrip({ tabs, activeId, onChange, orientation = "horizontal" 
           onClick={() => onChange(tab.id)}
           className={
             vertical
-              ? `inline-flex items-center gap-1.5 px-3.5 py-2 border-l-2 -ml-px text-[13px] font-bold transition-all text-left ${
+              ? `inline-flex items-center gap-1.5 px-3.5 py-2 pointer-coarse:min-h-11 border-l-2 -ml-px text-[13px] font-bold transition-all text-left ${
                   activeId === tab.id
                     ? "border-ih-primary text-ih-primary-text"
                     : "border-transparent text-ih-fg-3 hover:text-ih-fg-1"
                 }`
-              : `inline-flex items-center gap-1.5 px-3.5 py-2.5 border-b-2 text-[13px] font-bold transition-all ${
+              : `inline-flex items-center gap-1.5 px-3.5 py-2.5 pointer-coarse:min-h-11 border-b-2 text-[13px] font-bold transition-all ${
                   activeId === tab.id
                     ? "border-ih-primary text-ih-primary-text"
                     : "border-transparent text-ih-fg-3 hover:text-ih-fg-1"

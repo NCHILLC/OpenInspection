@@ -133,6 +133,7 @@ export default function JoinPage() {
             id={fields.password.id}
             name={fields.password.name}
             type="password"
+            autoComplete="new-password"
             label={m.auth_login_password_label()}
             aria-invalid={fields.password.errors ? true : undefined}
             hint={makePasswordHint()}

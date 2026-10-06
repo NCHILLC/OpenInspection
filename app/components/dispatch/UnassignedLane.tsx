@@ -40,7 +40,7 @@ export function UnassignedLane({
 
   return (
     <aside
-      className="w-56 shrink-0 border-r border-ih-border bg-ih-bg-muted"
+      className="w-full md:w-56 shrink-0 border-b md:border-b-0 md:border-r border-ih-border bg-ih-bg-muted"
       data-testid="dispatch-unassigned-lane"
       aria-label={m.dispatch_unassigned_heading()}
       // Unconditional preventDefault: gating this on drag STATE loses the drop

@@ -174,7 +174,7 @@ export function DispatchBoard({ board }: { board: DispatchPayload }) {
           </div>
         )}
 
-        <div className="flex">
+        <div className="flex flex-col md:flex-row">
           <UnassignedLane
             items={board.unassigned}
             draggingId={draggingId}

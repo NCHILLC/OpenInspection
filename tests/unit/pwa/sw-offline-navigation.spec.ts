@@ -52,6 +52,11 @@ class FakeCache {
     add(): Promise<void> {
         return Promise.resolve();
     }
+
+    /** sw.js reads only `.url` off each key, then hands it back to `match`. */
+    keys(): Promise<{ url: string }[]> {
+        return Promise.resolve([...this.entries.keys()].map((url) => ({ url })));
+    }
 }
 
 let cache: FakeCache;
@@ -159,6 +164,32 @@ describe('sw.js — an offline reload must not end the inspection', () => {
         const res = await navigate('https://app.test/some/other/route');
         expect(res.status).toBe(503);
         expect(await res.text()).toContain('Offline');
+    });
+
+    /**
+     * The refusal used to be one bare line of text: no retry, and no way back
+     * to an inspection whose data was sitting intact on the device. It is a
+     * page now, and it offers the editors that CAN still open — which are the
+     * ones with a cached document, once each, whatever query they were cached
+     * under.
+     */
+    it('offers a way back to the editors cached on the device', async () => {
+        await navigate(EDITOR);
+        await navigate(`${EDITOR}?section=roof`);
+        await navigate('https://app.test/inspections');
+        online = false;
+        const res = await navigate('https://app.test/some/other/route');
+        const page = await res.text();
+        expect(res.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+        expect(page.match(/href="\/inspections\/42\/edit"/g)).toHaveLength(1);
+        expect(page).not.toContain('href="/inspections"');
+        expect(page).toContain('location.reload()');
+    });
+
+    it('lists no saved inspections when none was ever cached', async () => {
+        online = false;
+        const page = await (await navigate('https://app.test/some/other/route')).text();
+        expect(page).not.toContain('<li>');
     });
 });
 

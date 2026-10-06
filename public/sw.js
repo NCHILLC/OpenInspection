@@ -137,16 +137,67 @@ async function networkFirstWithCacheFallback(request) {
     // from local state and the address bar still holds the real params.
     const cached =
       (await cache.match(request)) ?? (await cache.match(request, { ignoreSearch: true }));
-    // ⚠️ `charset=utf-8` is load-bearing. The em-dash below is two UTF-8 bytes,
-    // and a `text/plain` response with no charset is decoded with the browser's
-    // legacy default — which rendered this sentence as "Offline 钦� please
-    // reconnect to continue." on a machine with a CJK locale. Found by reading
-    // the offline page in a browser; nothing in the source looks wrong.
-    return cached || new Response('Offline — please reconnect to continue.', {
+    // ⚠️ `charset=utf-8` is load-bearing. A response with no charset is decoded
+    // with the browser's legacy default — which rendered the em-dash this page
+    // used to carry as "Offline 钦� please reconnect to continue." on a machine
+    // with a CJK locale. Found by reading the offline page in a browser;
+    // nothing in the source looked wrong.
+    return cached || new Response(await offlinePage(cache), {
       status: 503,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
   }
+}
+
+// What an offline navigation gets when nothing is cached for its route.
+//
+// Self-contained on purpose: no stylesheet, script file or image, because each
+// of those is one more request that can miss. The list is what makes this a way
+// back instead of a dead end — field data lives in IndexedDB, but only a route
+// whose DOCUMENT is cached can boot the app that reads it, so those are the
+// routes worth offering. The editor's <title> is the same for every inspection,
+// hence the "opened" time as the only label that tells two of them apart.
+async function offlinePage(cache) {
+  const links = [];
+  const seen = new Set();
+  for (const req of await cache.keys()) {
+    const { pathname } = new URL(req.url);
+    if (!/^\/inspections\/[^/]+\/edit$/.test(pathname) || seen.has(pathname)) continue;
+    seen.add(pathname);
+    const opened = (await cache.match(req))?.headers.get('date');
+    const label = opened ? `Inspection opened ${new Date(opened).toLocaleString()}` : 'Open inspection';
+    // `pathname` comes out of the URL parser already percent-encoded.
+    links.push(`<li><a href="${pathname}">${label}</a></li>`);
+  }
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline</title>
+<style>
+:root { color-scheme: light dark; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; box-sizing: border-box; font: 16px/1.5 system-ui, sans-serif; }
+main { width: 100%; max-width: 26rem; }
+h1 { margin: 0 0 8px; font-size: 22px; }
+h2 { margin: 28px 0 8px; font-size: 16px; }
+p { margin: 0 0 20px; }
+ul { margin: 0; padding: 0; list-style: none; }
+button, a { display: flex; align-items: center; min-height: 44px; box-sizing: border-box; font: inherit; }
+button { width: 100%; justify-content: center; padding: 0 16px; border: 0; border-radius: 8px; background: #4f46e5; color: #fff; font-weight: 700; }
+a { padding: 0 4px; color: inherit; border-top: 1px solid rgba(128, 128, 128, 0.35); }
+</style>
+</head>
+<body>
+<main>
+<h1>You're offline</h1>
+<p>This page isn't saved on this device. Work already entered in an inspection is kept on this device and syncs when the connection returns.</p>
+<button type="button" onclick="location.reload()">Try again</button>
+${links.length ? `<h2>Inspections saved on this device</h2><ul>${links.join('')}</ul>` : ''}
+</main>
+<script>addEventListener('online', function () { location.reload(); });</script>
+</body>
+</html>`;
 }
 
 // ── Background Sync (Chromium only — iOS Safari throws on register) ─────────

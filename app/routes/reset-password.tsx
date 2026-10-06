@@ -116,6 +116,7 @@ export default function ResetPasswordPage() {
           id={fields.newPassword.id}
           name={fields.newPassword.name}
           type="password"
+          autoComplete="new-password"
           autoFocus
           label={m.auth_reset_password_label()}
           aria-invalid={fields.newPassword.errors ? true : undefined}

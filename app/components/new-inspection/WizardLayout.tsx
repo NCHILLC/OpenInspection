@@ -124,7 +124,7 @@ export function WizardLayout({
                     >
                         <button
                             onClick={onBack}
-                            className="h-8 px-4 rounded-md border border-ih-border text-[13px] font-medium text-ih-fg-3 hover:bg-ih-bg-muted"
+                            className="h-8 pointer-coarse:h-11 px-4 rounded-md border border-ih-border text-[13px] font-medium text-ih-fg-3 hover:bg-ih-bg-muted"
                         >
                             {stepIdx > 0 ? m.common_back() : m.common_cancel()}
                         </button>
@@ -141,7 +141,7 @@ export function WizardLayout({
                                 aria-busy={busy || undefined}
                                 aria-describedby={blockedReason ? "newinsp-blocked-reason" : undefined}
                                 onClick={onNext}
-                                className="inline-flex items-center gap-2 h-8 px-4 rounded-md bg-ih-primary text-ih-fg-inverse font-bold text-[13px] hover:bg-ih-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="inline-flex items-center gap-2 h-8 pointer-coarse:h-11 px-4 rounded-md bg-ih-primary text-ih-fg-inverse font-bold text-[13px] hover:bg-ih-primary-600 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 {/* border-current, so it is the button's own text
                                     colour in either colour scheme — no second
