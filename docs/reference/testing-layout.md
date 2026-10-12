@@ -52,7 +52,7 @@ Choosing a home for a new spec:
    (self-resetting, serial) and remote/staging runs are just other configs
    over the same dir — not separate directories.
 
-`tests/docs-shots/` is a documentation build step, not a test suite (`*.shots.ts`, carries no copy, only `npm run docs:shots` runs it): [`docs/reference/testing-layout.md`](docs/reference/testing-layout.md#testsdocs-shots).
+`tests/docs-shots/` is a documentation build step, not a test suite (`*.shots.ts`, carries no copy, only `npm run docs:shots` runs it): [the docs-shots section above](#testsdocs-shots).
 
 Rules: `tests/unit/<domain>/` dirs are named after the `server/api/` module (or
 service family) the specs exercise — never flat specs at the root. Frontend
