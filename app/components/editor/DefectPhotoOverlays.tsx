@@ -1,5 +1,5 @@
 import { MediaViewer } from "~/components/media-studio/MediaViewer";
-import { PhotoAnnotator } from "~/components/media-studio/PhotoAnnotator";
+import { LazyPhotoAnnotator as PhotoAnnotator } from "~/components/media-studio/LazyPhotoAnnotator";
 import { PhotoCropper } from "~/components/media-studio/PhotoCropper";
 import { fullResUrl } from "~/components/media-studio/cropImage";
 import type { useDefectPhotoOps } from "~/hooks/useDefectPhotoOps";

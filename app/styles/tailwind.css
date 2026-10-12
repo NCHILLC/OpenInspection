@@ -573,8 +573,25 @@ html[data-sidebar-collapsed="1"] .ih-sidebar { width: var(--width-sidebar-collap
    its specificity. Mouse density is unchanged: `pointer: coarse` does not
    match a desktop. Buttons are not covered by a blanket rule (it would stretch
    thumbnail overlays and chips); their floor lives on the shared-ui `Button` /
-   `IconButton` sizes as `pointer-coarse:min-h-11`. */
+   `IconButton` sizes as `pointer-coarse:min-h-11`, and hand-rolled ones are
+   picked out below by the shape that is safe to grow. */
 @media (pointer: coarse) {
+  /* A hand-rolled control that already sizes itself as a button: its own
+     `h-8`..`h-10`, or a <button> with vertical padding. Smaller ones (`h-5`..
+     `h-7`, `py-1`) are the overlays and chips, and stay as they are. */
+  :is(button, a, summary, [role="button"], [role="tab"]):is(.h-8, .h-9, .h-10),
+  button:is(.py-1\.5, .py-2, .py-2\.5) {
+    min-height: 44px;
+  }
+  :is(button, a, [role="button"]):is(.h-8.w-8, .h-9.w-9, .h-10.w-10, .size-8, .size-9, .size-10) {
+    min-width: 44px;
+  }
+  /* Text actions ("Edit", "Archive", "Remove": one 18px line, no padding) are
+     NOT covered, and an invisible larger hit area is not the fix. Where two
+     are stacked (the contacts row) the areas overlap, the later one in the
+     document wins the overlap, and a tap on the lower half of "Edit" lands on
+     "Archive". They need room in the layout, page by page. */
+
   /* Under 16px, iOS Safari zooms the page when the control takes focus and
      leaves it zoomed. 44px is the smallest target a thumb hits reliably.
      `.ih-input` is named because its own 13px is a class rule, which a bare

@@ -46,7 +46,7 @@ import { reorderItemBySwap } from "~/lib/editor/reorder-by-swap";
 import { KeyboardHud } from "~/components/editor/KeyboardHud";
 import { InspectorToolsDock } from "~/components/editor/InspectorToolsDock";
 import { FieldCamera } from "~/components/editor/FieldCamera";
-import { PhotoAnnotator } from "~/components/media-studio/PhotoAnnotator";
+import { LazyPhotoAnnotator as PhotoAnnotator } from "~/components/media-studio/LazyPhotoAnnotator";
 import { resolveActivePropertyPreset } from "~/lib/property-preset";
 import { InspectionSettingsSheet } from "~/components/editor/InspectionSettingsSheet";
 import { CoverCropper, coverCropFor } from "~/components/media-studio/CoverCropper";
