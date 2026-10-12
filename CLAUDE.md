@@ -1,19 +1,15 @@
 # CLAUDE.md — OpenInspection (Open Source Edition)
 
-The open-source inspection engine. A single Cloudflare Worker (the
-cloudflare/react-router-hono-fullstack-template shape): a Hono entry that mounts the full
-API in-process and delegates page routes to React Router v8 SSR.
+The open-source inspection engine: a single Cloudflare Worker (Hono entry mounting the API in-process, React Router v8 SSR for pages).
 
-**Docs**: `docs/README.md` is the map — `docs/operate/` (deploy, upgrade, JWT-keyring rotation, SMS compliance) · `docs/develop/` (architecture, testing, design system) · `docs/reference/` (API, database, roles, deployment modes) · `docs/concepts/` (how the engine works) · `docs/integrations/` (external services) · `docs/compliance/` (data handling). Docs here cover the **engine**: deploying it, operating it, changing it, integrating it. Using the product day to day is documented at <https://inspectorhub.io/docs>, which serves self-hosted and hosted deployments alike.
+**Docs**: `docs/README.md` is the map (operate · develop · reference · concepts · integrations · compliance). Docs here cover the **engine**: deploying it, operating it, changing it, integrating it. Using the product day to day is documented at <https://inspectorhub.io/docs>, which serves self-hosted and hosted deployments alike.
 
 **This checkout is a fork.** `origin` is `NCHILLC/OpenInspection` (**public**, and not a GitHub-network fork — see the fork log), `upstream` is `InspectorHub/OpenInspection`. What has been taken from upstream, skipped, or deliberately diverged on is recorded in [`docs/develop/fork-log.md`](docs/develop/fork-log.md) — read it before merging upstream or before "fixing" behaviour that looks like drift. It is linked from here rather than from `docs/README.md` on purpose: that map is upstream's, and a fork-only row in it would conflict on every merge.
 
 ## Check upstream BEFORE debugging anything
 
 **Before investigating any error, bug, failing test or red gate: look for the
-fix upstream first.** This fork tracks a fast-moving upstream (232 commits merged on 2026-09-07 alone),
-so the odds that a failure has already been diagnosed and fixed there are high,
-and re-deriving a fix costs far more than the lookup does. Not optional, and not
+fix upstream first.** Not optional, and not
 a judgement call about how obvious the symptom looks.
 
 ```bash
@@ -25,8 +21,7 @@ git log main..upstream/main --oneline --no-merges -- <file you suspect>
 A hit: cherry-pick or port it, and record the decision in
 [`docs/develop/fork-log.md`](docs/develop/fork-log.md). A miss is worth knowing
 too — it means the bug is this fork's own, and once fixed it belongs in the fork
-log as a deviation. Either way the lookup takes seconds and its answer changes
-what you do next.
+log as a deviation. 
 
 **Reading CI requires the `gh` CLI, not the GitHub MCP connector.** The
 connector's token has no Checks permission: `pull_request_read` does expose a
@@ -41,7 +36,7 @@ gh pr checks <n> --repo NCHILLC/OpenInspection
 gh run view --job <id> --log-failed
 ```
 
-Installed via `winget install --id GitHub.cli`. It may be missing from an
+`gh` may be missing from an
 existing shell's PATH if that shell started before the install — call it as
 `"/c/Program Files/GitHub CLI/gh.exe"` rather than concluding it is absent. A
 timed-out job archives no log, so `--log-failed` returns EMPTY for one; use
@@ -50,46 +45,21 @@ timed-out job archives no log, so `--log-failed` returns EMPTY for one; use
 ## Commands
 
 ```bash
-# Single package.json at the root.
+# Single package.json at the root. Commentary on each command: docs/reference/dev-workflow.md
 npm install
-npm run dev          # Build + run the worker locally (react-router build + wrangler dev).
-                     # Production-shape (real workerd, no HMR) — use to verify built behavior.
-npm run dev:hmr      # Vite dev server with HMR (react-router dev). The fast iteration loop.
-                     # Works since the lazy-API entry refactor (workers/app.ts) — the entry
-                     # must keep its top-level import graph tiny; see the comment there.
-npm run dev:tunnel   # Like `dev`, but also exposed over a Cloudflare Quick Tunnel (https).
-                     # REQUIRED to exercise the collab/presence WebSockets: the session
-                     # cookie is `Secure`, and a page served over http://localhost opens
-                     # `ws://` — which browsers do not treat as a secure scheme, so the
-                     # cookie is withheld and the handshake 401s. Over the tunnel the same
-                     # endpoints upgrade (wss://) and both presence and Y.Doc sync work.
-                     # The tunnel URL is a new origin: log in again there. It is PUBLIC
-                     # while running — stop it when finished. (A self-signed
-                     # `--local-protocol https` is not a substitute: Chrome refuses it.)
-npm run build        # react-router build — bundles server/ (API) + app/ (RR SSR) into one worker
+npm run dev          # build + wrangler dev: real workerd, no HMR; verifies built behavior
+npm run dev:hmr      # Vite HMR, the fast loop; workers/app.ts must keep its top-level import graph tiny
+npm run dev:tunnel   # dev + Cloudflare Quick Tunnel (needed for collab WebSockets); PUBLIC while running — stop it when finished
+npm run build        # react-router build: server/ + app/ into one worker
 npm run deploy       # standalone: build + wrangler deploy (real ids via wrangler.local.jsonc)
 npm run deploy:saas  # saas: build + wrangler deploy with wrangler.saas.jsonc
-npm run type-check   # i18n:compile + react-router typegen, then FOUR tsc passes serially
-                     # (app, api, e2e, tests) — serial to keep peak RAM down
-npm run type-check:app   # `tsc -b tsconfig.json` — the app/worker program
-npm run type-check:api   # `tsc -b tsconfig.api.json` — the server program; fastest loop for server/ work
-
-# Both are BUILD-mode (`tsc -b`), because the two programs are TypeScript project
-# references: tsconfig.api.json is composite and emits .d.ts into `.types/`, and the
-# app program consumes those instead of recompiling ~800 server sources (that is what
-# made a cold app pass exceed an 8 GB heap). Consequences:
-#   - `type-check:app` first brings the api project up to date. Nothing changed under
-#     server/ ⇒ a stat pass; something did ⇒ a real rebuild the app pass depends on.
-#   - `.types/` is generated and gitignored. Never commit it — a stale .d.ts produces
-#     boundary errors with no matching source. Deleting the directory is always safe;
-#     its build-info lives inside it, so a missing output dir is just a cold project.
+npm run type-check   # i18n:compile + typegen, then four tsc passes serially (app, api, e2e, tests)
+npm run type-check:app   # tsc -b tsconfig.json
+npm run type-check:api   # tsc -b tsconfig.api.json; fastest loop for server/ work
+                         # `.types/` is generated and gitignored: never commit it
 npm run lint
-npm run test:unit    # API unit tests (vitest --config vitest.api.config.ts)
-npm run test:web     # Web unit tests (vitest --config vitest.config.ts)
-npm run test:workers # Real-runtime (workerd) queue-path tests (vitest.workers.config.ts)
-npm run test:contract # Our outbound payloads vs a third party's own schema — offline, no credentials
-npm run test:contract:live # The same payloads against the REAL API — needs a connected Intuit sandbox
-npm run test:e2e     # Playwright E2E
+npm run test:unit | test:web | test:workers | test:contract | test:e2e   # config per suite: testing-layout.md
+npm run test:contract:live   # real third-party API; needs a connected Intuit sandbox
 
 # Database — drizzle-kit schema-first (server/lib/db/schema is the source of truth)
 npm run db:migrate          # apply migrations to local D1
@@ -98,173 +68,26 @@ npm run db:generate         # generate a forward migration from schema changes
 npm run db:check            # drift gate: schema vs migrations/ must match
 ```
 
-## Wrangler config & deploy
-
-One file per deploy target; the build bakes whichever config wins (vite `configPath`:
-`WRANGLER_CONFIG` env > `wrangler.local.jsonc` > `wrangler.jsonc`).
-
-| File | Tracked? | Purpose |
-|---|---|---|
-| `wrangler.jsonc` | committed (PLACEHOLDER ids) | standalone + the **Deploy to Cloudflare** one-click default — CF auto-provisions D1/KV/R2 and injects real ids (no real ids in the repo). |
-| `wrangler.local.jsonc` | gitignored | your real standalone ids (written by `scripts/setup-cloudflare.js`). |
-| `wrangler.saas.jsonc` | gitignored | SaaS-mode config (`APP_MODE=saas`, `*-saas` resources, the same three crons). Carries three queue producers — `SYNC_QUEUE`, `WORD_EXPORT_QUEUE`, `CRON_QUEUE` — plus the sync-DLQ and cmd consumers, `OAUTH_KV`, the shared `EXPORTS_BUCKET`, and a `RATE_LIMITER` unsafe binding. Multi-tenant; absent in standalone. |
-
-`wrangler deploy` runs against the built `build/server/wrangler.json`. `scripts/wrangler.mjs`
-applies the same config resolution to direct wrangler commands (db:migrate).
-
 ## Key Files & Directories
 
-The layout is conventional and discoverable — `server/` (api, lib/db, lib/middleware,
-lib/validations, services), `app/` (routes, components, hooks, lib), `packages/`
-(shared-ui, api-types), `migrations/`, `public/`. `workers/app.ts` is the single
-worker entry; see Core Architecture below for what it does and why.
+The layout is conventional and discoverable: `server/`, `app/`, `packages/`, `migrations/`, `public/`. `workers/app.ts` is the single worker entry; see Architecture below for what it does and why.
 
 ### Test Layout
 
-Directory = suite; a spec's location alone decides which config runs it
-(gated by `npm run lint:tests`):
+Directory = suite; a spec's location alone decides which config runs it (gated by `npm run lint:tests`). The location → suite → config table is in [`docs/reference/testing-layout.md`](docs/reference/testing-layout.md).
 
-| Location | Suite | Config |
-|---|---|---|
-| `app/**/*.test.{ts,tsx}` (co-located) | `test:web` (CI) | `vitest.config.ts` |
-| `tests/unit/<domain>/` | `test:unit` (CI) | `vitest.api.config.ts` |
-| `tests/workers/` | `test:workers` (CI) | `vitest.workers.config.ts` |
-| `tests/contract/<party>/*.contract.spec.ts` | `test:contract` (CI) | `vitest.contract.config.ts` |
-| `tests/contract/<party>/*.live.spec.ts` | `test:contract:live` (pre-push when `server/services/qbo/` changed; needs a connected sandbox) | `vitest.contract.live.config.ts` |
-| `tests/e2e/` | `test:e2e` · `test:e2e:seeded` (+ integration/remote/docs-shots modes) | `playwright.config.ts` (local, seeds D1) / `.seeded` / `.integration` / `.remote`. `npm run lint:e2e-coverage` prints which config OWNS each spec — read it there. |
-| `tests/docs-shots/**/*.shots.ts` | `docs:shots` (NOT a test suite) | `playwright.docs-shots.config.ts` |
+Where a spec goes is gated by `npm run lint:tests`; decision list and rules: `docs/develop/testing.md` §1. Component/hook tests co-locate under `app/` (never in `tests/`); unit specs live in `tests/unit/<domain>/` (named for the `server/api/` module or service family, spec files only, never flat at the root). Do not recreate `tests/web/unit/`, `tests/web/e2e/` or `tests/integration/`. Every spec is collected by exactly one config; fully-skipped specs need a `TODO(...)` naming their blocker; name specs after behavior, not sprints.
 
-Choosing a home for a new spec:
-1. Frontend component/unit test? → **co-locate** beside the component as
-   `Foo.test.tsx` (or `__tests__/Foo.test.tsx`) under `app/` (R2). Never in `tests/`.
-2. Server-side, no browser: depends on real CF runtime semantics (Queue
-   delivery, Durable Objects, workerd-only APIs)? Yes → `tests/workers/`
-   (real workerd via vitest-pool-workers); no → `tests/unit/<domain>/`
-   (node env, stubs + better-sqlite3).
-3. Asserting on a THIRD PARTY's contract rather than our own behavior? →
-   `tests/contract/<party>/`. The test: if a red run usually means "change our
-   code to match theirs" rather than "fix our bug", it is a contract spec.
-4. Full-stack / browser / anything hitting a running worker → `tests/e2e/`
-   (R8). One directory; default `playwright.config.ts` seeds real D1 via
-   `globalSetup` so every E2E exercises the actual database. `*.integration.spec.ts`
-   (self-resetting, serial) and remote/staging runs are just other configs
-   over the same dir — not separate directories.
+## Architecture
 
-`tests/docs-shots/` is the odd one out and deliberately so: those files are a
-**documentation build step**, not tests. They walk the real product and
-photograph it, so every screenshot in the user guide was produced by software
-that actually clicked the button — a UI change that breaks a documented step
-breaks the docs build instead of leaving a lie on the website. They are
-`*.shots.ts` so no other config can collect them, and they carry **no copy**:
-every word lives in the markdown, joined by `<!-- shot: id | alt -->` markers.
+How the single worker, auth, tenancy modes, inspection engine, frontend and the `wrangler*.jsonc` config files (which one wins, what each tracks) fit together: [`docs/reference/architecture-notes.md`](docs/reference/architecture-notes.md). Two standing rules from it:
 
-**Only this half lives here.** `npm run docs:shots` writes
-`.docs-shots/<slug>/<id>.png` (gitignored) and stops. The prose those markers
-belong to, the code that joins the two, and the gate that fails when they
-disagree are all in the hosted product's repository, which is where the guides
-are published from. This repository has no marker gate, because it has no
-markers — a capture with nowhere to go is caught over there, against the prose.
-
-Rules: `tests/unit/<domain>/` dirs are named after the `server/api/` module (or
-service family) the specs exercise — never flat specs at the root. Frontend
-tests co-locate under `app/` (do not recreate `tests/web/unit/`). E2E is the
-single `tests/e2e/` (do not recreate `tests/web/e2e/` or `tests/integration/`).
-Domain dirs contain ONLY spec files; shared infra stays at
-`tests/unit/{db,mocks,setup-client}.ts` + `helpers/` + `stubs/` and
-`tests/{global-setup,seed-fixtures}.ts` + `helpers/` + `fixtures/` (fixtures
-group payloads by event family, versioned filenames). `tests/workers/` stays
-flat until a family reaches ~5 specs, then gets a domain dir (`mcp/` is the
-example). `tests/e2e/` stays flat: one spec file = one playwright project. Every
-spec must be collected by exactly one config (playwright projects must resolve).
-Fully-skipped specs need a `TODO(...)` naming their blocker. Name new specs after
-behavior, not sprints. Full rules for classification, writing, and run
-initialization: `docs/develop/testing.md`.
-
-## Core Architecture
-
-### Single-Worker Architecture
-OpenInspection runs as ONE Cloudflare Worker (cloudflare/react-router-hono-fullstack-template shape):
-
-- **`workers/app.ts`** — a Hono app is the worker entry. It mounts the full API (`server/`) for API-owned paths and delegates everything else to the React Router v8 SSR handler. It injects an **in-process `API_WORKER` self-binding** so React Router loaders/actions call the API app DIRECTLY (no network hop, no second worker, no Service Binding).
-- **`server/`** — Hono + Drizzle + D1. All business logic, authentication, and data access. Typed JSON API.
-- **`app/`** — React Router v8 + React 19 + Tailwind v4. Server-side renders the React UI on the edge.
-- **`packages/shared-ui/`** — Design System 0523 token-based React components.
-- **`packages/api-types/`** — Re-exports the Hono app type so `hono/client` gets full end-to-end type safety.
-
-**Token Relay BFF** pattern: the React Router v8 server holds the JWT cookie and forwards it to the in-process API on every request, so the browser never sees the token.
-
-### Authentication
-- JWT-based (ES256 / ECDSA P-256, HttpOnly cookie `__Host-inspector_token`). Multi-version keyring with `kid` header for safe rotation — see `server/lib/jwt-keyring.ts`.
-- Supports both Cookie (dashboard) and Bearer Header (API) token delivery.
-- PBKDF2-SHA256 password hashing (100k iterations, 16-byte salt). Legacy SHA-256 hashes auto-rehashed on login.
-- **SaaS login is portal-only.** When `APP_MODE=saas` (any topology, after silo-deconvergence 2026-05-29), `GET /login` and `GET /forgot-password` 302 to `${PORTAL_API_URL}/login` (resp. `/forgot-password`), and `POST /api/auth/login` returns HTTP 410 `LOGIN_MOVED_TO_PORTAL`. Reason: SaaS deploys share one core D1 holding users for many tenants and `users.email` is unique per-`(tenant_id, email)` (composite unique index in `schema/tenant.ts`), so a local form can't disambiguate the tenant. SaaS entry into core is exclusively via portal's `POST /api/account/handoff` → `GET /sso?code=` flow. Standalone is unchanged (single-tenant mapping is unambiguous).
-- **Switch workspace UI.** `MainLayout` renders a "Switch workspace" sidebar entry (desktop bottom + mobile drawer) whenever `branding.isSaas` is true and `PORTAL_API_URL` is set, pointing at `${PORTAL_API_URL}/company/switch`. Because the JWT carries a single `custom:tenantId`, this portal bounce is the only way to swap tenants without losing the session — portal SSOs back with the new tenant's cookie (overwrites the old one).
-
-### Standalone Engine (Single-Tenant)
-- Optimized for single-tenant deployments (Private Instances).
-- Resolves configuration via a fixed `SINGLE_TENANT_ID`.
-- Stable API surface. The SaaS overlay is **not a branch** — it is `APP_MODE=saas` plus `server/portal/` in this same tree, read through `server/lib/deployment-profile.ts`. (This line named a `saas` branch; no such branch exists.)
-
-### Inspection Engine
-- JSON-schema based inspection templates (`server/types/template-schema.ts`, single canonical v2 — see `server/lib/validations/template.schema.ts`).
-- 9 item types: `rich` (rating + 3 canned-comment tabs) plus `boolean / text / textarea / number / select / multi_select / date / photo_only` for non-rated data points. Inspection side stores rating on `result.rating` and non-rich values on `result.value`.
-- Template import from another product runs through ONE front door: the wizard at `/settings/imports?intent=templates.create`. The operator declares which product the file came from, an adapter under `server/lib/migration-intake/adapters/` reads it, and the run is staged so the conversion can be reviewed and repaired before anything is written. `/templates` links to that address and owns no importer of its own — the old paste-a-JSON-document modal and its `POST /api/inspections/templates/import-spectora` endpoint are both gone.
-- Support for field results, e-signatures, and report generation.
-- Integrated public booking system with Turnstile bot protection. Entry point is company-level (`/book/:tenant`); bookings auto-assign the first available qualified inspector. Admins can optionally enable an inspector-choice dropdown (Settings → Online Booking → Booking policies). Legacy per-inspector deep links (`/book/:tenant/:slug`) redirect 302 to the company page with that inspector pre-selected.
-
-## Frontend Architecture
-
-- **Framework**: React Router v8 on Cloudflare Workers with Vite.
-- **Rendering**: Full SSR — RR v8 server renders on the edge, hydrates on the client.
-- **Styling**: Tailwind CSS v4 with Design System 0523 tokens (`app/styles/tailwind.css`). Tailwind is v4-only (via `@tailwindcss/vite`); no separate server-side CSS build.
-- **API calls**: `hono/client` with end-to-end type safety via `packages/api-types/`. RR v8 loader/action functions call the in-process API through the injected `API_WORKER` binding (`createApi(context)` in `app/lib/api-client.server.ts`) — no network hop.
-- **State management**: React hooks in `app/hooks/` — `useInspection`, `useFindings`, `useKeyboard`, `useCannedComments`, `usePresence`, `useTheme`, `useUnsavedChanges`, plus the `findings/` and `inspection/` sub-hook directories. (`useOfflineQueue` was RETIRED with the rest of the bespoke offline layer in #181; do not reach for it.)
-- **Component library**: `packages/shared-ui/` — `src/index.ts` is the authoritative list (Button, IconButton, MenuItem, Pill, StatCard, Icon, Eyebrow, PageHeader, TabStrip, Input, Select, Textarea, Checkbox, Radio, RadioGroup, RadioCardGroup, EmptyState, Skeleton, Card, Banner, Modal, Drawer, Popover, Pagination, FileDropzone, Table, SegmentedControl, Avatar). Do not maintain a count here — read the file. See `docs/develop/design-system.md`.
-- **Dark mode**: `data-color-scheme` attribute on `<html>`, managed by `useTheme` hook (auto/light/dark).
-- **Offline**: Service Worker for the app shell; FIELD DATA is offline-capable through the Yjs results document, which `y-indexeddb` buffers locally and merges on reconnect (`docs/concepts/collab-editing.md`). Photo and video BINARY upload writes to R2 and therefore needs a connection — offline the editor declines it rather than queueing.
+- `useOfflineQueue` was RETIRED with the rest of the bespoke offline layer in #181; do not reach for it.
+- `packages/shared-ui/src/index.ts` is the authoritative component list. Do not maintain a count or list of components in docs — read the file.
 
 ## Environment Variables
 
-| Variable | Required | Purpose |
-|---|---|---|
-| `JWT_CURRENT_KID` | Yes | Active JWT keypair version (e.g. `v1`). Names which `JWT_PRIVATE_KEY_V<N>`/`JWT_PUBLIC_KEY_V<N>` pair signs new tokens. |
-| `JWT_PRIVATE_KEY_V<N>` | Yes | PKCS8 PEM-encoded ES256 private key for version `vN`. At least V1 must be provisioned. |
-| `JWT_PUBLIC_KEY_V<N>` | Yes | SPKI PEM-encoded ES256 public key for version `vN`. Pairs with private key. Keep older versions in env during rotation so existing tokens stay valid. |
-| `JWT_SECRET` | Yes | KDF input, and only that: config/QBO secret crypto, audit signing-key encryption, and the several signed-URL and session HMACs (render tokens, portal sessions, video upload, unsubscribe, agent view, ICS links). **Never** used for JWT signing — that is the ES256 keyring above. It is also **not** the M2M credential: the portal→core `x-portal-m2m` HMAC key is HKDF-derived from `JWT_PRIVATE_KEY_V<N>` (`server/lib/m2m-auth.ts`), and there is no M2M Bearer token. |
-| `DB` | Yes | Cloudflare D1 Database binding |
-| `PHOTOS` | Yes | Cloudflare R2 Bucket for image storage |
-| `TENANT_CACHE`| Yes | Cloudflare KV for configuration caching |
-| `INSPECTION_DOC` | No | Durable Object binding (`class_name: InspectionDocDO`) for collaborative inspection editing (#181 — Yjs CRDT host; one DO per inspection, tenant-scoped `idFromName`). Declared with its `v2` SQLite-class migration in `wrangler.jsonc` (committed) **and** in `wrangler.saas.jsonc` (gitignored) — both are wired; this line used to read as an outstanding task. When absent the collab routes return `501` and fail closed — editing falls back to a single-client Y.Doc with no realtime sync. See `docs/concepts/collab-editing.md`. |
-| `TURNSTILE_SECRET_KEY` | No | Server-side Turnstile verification on the two anonymous submit surfaces, `POST /api/public/book` and agent signup. Whether a challenge applies is the `botProtectionMandatory` capability, not whether this key is set: `saas` always enforces (falling back to Cloudflare's public test key), `standalone` challenges only when the key is present. Use test secret `1x0000000000000000000000000000000AA` for local dev. See `docs/integrations/turnstile.md`. |
-| `APP_BASE_URL` | No | Public origin used for OAuth redirect URIs and when building absolute links (reports, hosted `/legal/:tenant/…` Privacy & Terms). Must be the exact origin the deployment answers on — Intuit matches the QuickBooks redirect URI byte for byte. |
-| `RESEND_API_KEY`| No | Platform-default email delivery (Resend). Tenants may switch to their OWN Resend key + verified sender via Settings → Communication (per-tenant override; the email pipeline resolves own-vs-platform explicitly). |
-| `GEMINI_API_KEY`| No | The env name is legacy; it holds a workspace's own AI provider key whatever the provider is. Not the credential AI features run on by itself: `resolve-provider.ts` decides credentials, endpoint and model per call — a workspace's own stored key (Settings → Advanced → AI) always wins, and where `profile.hasManagedAi` holds, a deployment-provided key may serve workspaces granted managed access. Otherwise there is no managed path at all — the workspace's key or nothing. |
-| `AI_MODEL` | No | Model id every AI call uses, in the chosen backend's own naming. Through an AI gateway that is `{provider}/{model}`. **No default is compiled in**: when unset, AI features fail closed with a 503 rather than silently pinning whichever model was current when the code was written. Required for any AI feature to work, in every mode. A workspace may override it per company (Settings → Advanced → AI). |
-| `AI_BASE_URL` | No | Root of the OpenAI-compatible API every AI call posts to (`{base}/chat/completions`, `Authorization: Bearer`). One adapter serves every backend — `server/lib/ai/providers/openai-compatible.ts`; there is no vendor-native adapter. **No default is compiled in**: unset fails closed, because a baked-in destination would send inspection text somewhere no operator chose. Self-hosted deployments may point it at an address on their own network running Ollama or vLLM, **in which case inspection data sent to that endpoint does not need to leave that network** (actual flows depend on the operator's configuration and any third-party services they enable). A workspace may override it per company. Note that some backends encode a **processing region** in this URL, in which case this value is where the answer to "where is inspection text processed" is written down — see `docs/compliance/ai-data-flow.md`. |
-| `AI_MANAGED_API_KEY` | No | Deployment-provided AI key. Used only where `profile.hasManagedAi` is true (`saas`), and only for tenants the deployment grants managed access to — that grant is `isPaidPlan` (`server/features/plan-quota/policy.ts`), the one predicate every platform-funded capability reads, answered once in `resolveRuntimeAiSource`. An entitled tenant on a deployment that never provisioned this key gets the feature OFF, not a runtime credential error. Absent in `standalone` by construction rather than disabled by a flag. Usage on this key meters under `ai_translate`/`ai_assist` and is checked against any delivered per-tier allowance before the call (`PlanQuotaGuard.checkAiQuota`); usage on a tenant's own key meters under `ai_translate_byo`/`ai_assist_byo` and never counts against a deployment allowance. What actually leaves the process on either key is enumerated field-by-field in `docs/compliance/ai-data-flow.md`. |
-| `AI_VERTEX_SERVICE_ACCOUNT` | No | The second shape a deployment-provided AI credential can take: a service-account document, supplied whole as a deployment secret, for a backend that authenticates with **short-lived access tokens** instead of a key that lasts. A signed assertion is exchanged for an access token and cached in the isolate until shortly before it expires; a cold isolate pays one extra round trip on its first AI call, and nothing is written to durable storage. Read only where `profile.hasManagedAi` is true, so it is **absent in `standalone` by construction** — it introduces no configuration a self-hosted operator must supply. **When both this and `AI_MANAGED_API_KEY` are set, this one is used** (a superseded key must not silently keep serving). It is a DEPLOYMENT credential, never a per-workspace one: a workspace configures its own key and nothing else. It travels with `AI_BASE_URL` and `AI_MODEL` — those three are one set, and when the credential is unusable the log names the field that is missing (nothing from the document itself is ever logged). A malformed credential resolves the feature **OFF**, exactly as an unprovisioned one does, rather than failing mid-report. |
-| `APP_MODE` | No | `standalone` (default) or `saas` — controls tenant resolution |
-| `APP_NAME` | No | Custom branding name |
-| `PRIMARY_COLOR` | No | Custom branding color |
-| `SINGLE_TENANT_ID` | No | Fixed tenant ID for standalone mode |
-| `SETUP_CODE` | No | Verification code for first-time setup |
-| `PORTAL_API_URL` | No | Portal URL for browser redirects (login bounce, billing, workspace switch) |
-| `SYNC_QUEUE` | No | Cloudflare Queue producer for the SaaS user-sync seam (SaaS only; absent in standalone). The outbox publishes CloudEvents envelopes here; a cron sweeper republishes stragglers; this worker also consumes the matching DLQ to mark failed rows. The same queue carries command REPLIES (`reply.tenant.updated`) from the cmd consumer. (The former `PORTAL_SERVICE` Service Binding was RETIRED 2026-06-04 — core holds no binding to portal; inbound M2M is guarded by the `x-portal-m2m` HMAC.) Inbound portal→core commands arrive on a separate queue this worker consumes (`server/portal/cmd-consumer.ts`): dedup (`processed_cmd_events`) → per-tenant stale guard (`tenants.applied_cmd_seq`) + credential-stream guard (`tenants.applied_cred_seq`) → apply → optional reply; unknown types park (`parked_cmd_events`). |
-| `STRIPE_SECRET_KEY` | No | Stripe Connect (each tenant's OWN account; the platform never collects payments). Resolution is tenant-DB-preferred: a tenant's stored key always beats this env, so a platform-level binding can never hijack tenant payments. |
-| `STRIPE_WEBHOOK_SECRET` | No | Stripe webhook HMAC verification |
-| `QBO_ENV` | No | Which Intuit host the QuickBooks Online integration calls: `sandbox` (`https://sandbox-quickbooks.api.intuit.com`) or `production` (`https://quickbooks.api.intuit.com`). **No default and no fallback** — when unset, every QuickBooks API call throws and `GET /api/integrations/qbo/callback` refuses to store a connection. That is deliberate: Intuit Development keys authenticate only against sandbox companies and Production keys only against real ones, so a guessed host is wrong for one of them and fails in a way that reads like a bad credential. Required (together with `QBO_CLIENT_ID` / `QBO_CLIENT_SECRET`, which may instead be set per tenant in Settings → Integrations) for any QuickBooks sync. The OAuth authorize, token, and revoke endpoints are shared by both environments and are not affected by this setting. |
-| `GOOGLE_PLACES_API_KEY` | No | Google Places API key powering address autocomplete on the dashboard new-inspection wizard and the public `/book` page (proxied via `/api/places/*` and `/api/public/geocode`). When unset, both endpoints return `{ data: [], reason: 'NO_API_KEY' }` and the address inputs degrade gracefully to plain text — the customer can still type a free-form address and submit. |
-| `ESTATED_API_KEY` | No | Estated.io public-records key for the `POST /api/inspections/:id/property-facts/autofill` endpoint. Resolves year built / sqft / foundation / lot size / bedrooms / bathrooms by address. When unset, returns `{ data: null, reason: 'NO_API_KEY' }` and the Property Facts card shows a polite "auto-fill not configured" hint while still accepting manual entry. Same graceful-degrade pattern as `GOOGLE_PLACES_API_KEY`. |
-| `STREAM` | No | Cloudflare Stream binding (binding name `STREAM`). Required only when the video backend is set to Stream (self-host: Settings → Integrations → Video; SaaS: paid tier). Absent in the default R2 configuration. |
-| `STREAM_CUSTOMER_SUBDOMAIN` | No | Your Cloudflare Stream customer subdomain (e.g. `customer-abc123`, the prefix before `.cloudflarestream.com`). Required in SaaS mode for paid tenants (plan-gated; free/trial tenants use R2). In self-host mode this is stored per-tenant in `integrationConfig` via Settings → Integrations → Video, not as an env var. |
-
----
-
-- **API Framework**: [Hono](https://hono.dev/) with Zod OpenAPI.
-- **Frontend Framework**: [React Router v8](https://reactrouter.com/) + React 19.
-- **ORM**: [Drizzle ORM](https://orm.drizzle.team/) with D1.
-- **CSS**: [Tailwind CSS v4](https://tailwindcss.com/) with Design System 0523 tokens.
-- **Testing**: Vitest for unit tests; Playwright for E2E.
+Table of every variable and binding: [`docs/reference/environment-variables.md`](docs/reference/environment-variables.md). Read it before adding, renaming or changing the default of one.
 
 ## JWT & Auth Security Rules
 
@@ -273,9 +96,9 @@ OpenInspection runs as ONE Cloudflare Worker (cloudflare/react-router-hono-fulls
 - **ES256 keyring**: All JWT signing and verification MUST go through `server/lib/jwt-keyring.ts`. Direct `sign()` / `verify()` calls from `hono/jwt` are FORBIDDEN — the keyring pins the algorithm to ES256 (ECDSA P-256 SHA-256), stamps the `kid` header, and enforces multi-version verification. Per-request keyrings are pre-built in `contextBootstrap` (NOT `diMiddleware` — JWT auth needs the keyring before di runs) and exposed as `await c.var.keyringPromise`.
 - **kid required**: Every JWT MUST carry a `kid` header. `signJwt()` sets it from `JWT_CURRENT_KID`; `verifyJwt()` rejects tokens with no kid, or with a kid not in the keyring.
 - **iat claim**: `signJwt()` auto-injects `iat: Math.floor(Date.now() / 1000)` when the caller omits it. Without `iat`, KV session invalidation (`pwchanged:{userId}`) cannot work.
-- **No HS256 fallback**: There is NO legacy HS256 path. Pre-launch architectural choice — see rotation scripts and docs. The remaining `JWT_SECRET` env binding is KDF input only, never a JWT signing key. State it that way rather than listing its consumers: there are dozens of files reading it (secret crypto, signed-URL and session HMACs, token derivation), and every enumeration written here has gone stale.
+- **No HS256 fallback**: There is NO legacy HS256 path. Pre-launch architectural choice — see rotation scripts and docs. The remaining `JWT_SECRET` env binding is KDF input only, never a JWT signing key. Do not list its consumers: dozens of files read it and every enumeration has gone stale.
 - **Key rotation flow**: To rotate, provision `JWT_PRIVATE_KEY_V<N+1>` + `JWT_PUBLIC_KEY_V<N+1>` first (verify-only window), then flip `JWT_CURRENT_KID` to the new version. Old tokens remain verifiable until V<N> is retired.
-- **Token NOT in response body — one carved-out exception.** Login, setup and join MUST NOT return the JWT to a browser; delivery is `Set-Cookie` (HttpOnly). The exception is the in-process BFF, which identifies itself with `x-token-relay: 1` and then receives `token` in the body, because Workers `fetch()` may strip `Set-Cookie` on a server-to-server hop and the BFF has to write its own session cookie. A browser never sends that header. Do not add a second exception without one here.
+- **Token NOT in response body — one carved-out exception.** Login, setup and join MUST NOT return the JWT to a browser; delivery is `Set-Cookie` (HttpOnly). The exception is the in-process BFF, which identifies itself with `x-token-relay: 1` and then receives `token` in the body,  (it has to write its own session cookie). A browser never sends that header. Do not add a second exception without one here.
 - **Cookie name**: Always use `__Host-inspector_token` (enforces `Secure`, `Path=/`, no `Domain`).
 - **setCookie attributes**: Every `setCookie()` MUST include `httpOnly: true, secure: true, sameSite: 'Strict', path: '/'`.
 - **deleteCookie secure**: Every `deleteCookie()` MUST include `{ path: '/', secure: true }`. Omitting `secure` on `__Host-` cookies throws a runtime exception.
@@ -322,62 +145,48 @@ OpenInspection runs as ONE Cloudflare Worker (cloudflare/react-router-hono-fulls
 DB design policies (2026-06-04 DBA review). These apply to ALL new tables/columns; legacy columns converge opportunistically when a table is already being touched — no big-bang migrations.
 
 - **Timestamps**: new columns MUST be `integer(..., { mode: 'timestamp_ms' })` (epoch milliseconds). Calendar-semantic fields with no time component (e.g. `due_date`) MAY be `YYYY-MM-DD` TEXT but must say so in a comment. Never introduce new raw `integer` or text-datetime timestamp columns.
-- **Foreign keys**: referential integrity is enforced at the APPLICATION layer (ScopedDB + tenant filters), not the database. New tables MUST NOT declare `.references()` — D1 cannot rebuild a table referenced by an FK (no `PRAGMA foreign_keys=OFF` outside a transaction), so every FK is a permanent migration liability. Existing FKs are frozen as legacy; do not extend them. Delete-ordering in purge/cascade paths is the service layer's responsibility.
+- **Foreign keys**: referential integrity is enforced at the APPLICATION layer (ScopedDB + tenant filters), not the database. New tables MUST NOT declare `.references()`  (a permanent migration liability on D1). Existing FKs are frozen as legacy; do not extend them. Delete-ordering in purge/cascade paths is the service layer's responsibility.
 - **Naming**: money columns end in `_cents` (integer cents, never floats); encrypted-at-rest columns end in `_enc`; booleans always use `integer(..., { mode: 'boolean' })` (never raw 0/1); index names are prefixed by intent — `idx_` for a plain index, `uq_` for a unique one. Roughly a fifth carry the `uq_` form, so a grep for `idx_` alone will miss them; names drizzle generated itself (`<table>_<column>_unique`) are legacy, do not add more.
 - **Money authority chain**: when an invoice exists it is authoritative; otherwise the sum of `inspection_services` price snapshots; `inspections.price` is a denormalized cache only — never reconcile the other way.
 - **Status fields**: any column that models a state machine MUST declare a drizzle `{ enum: [...] }` (type-layer only, no DDL cost).
-- **Column retirement**: native `ALTER TABLE … DROP COLUMN` is the expected way to retire a column, and it works even on FK-referenced tables. Drop migrations are hand-written, and verified before they are applied: `grep -nE "PRAGMA|__new_|DROP TABLE|RENAME TO" <file>` must return nothing — those four strings are the signature of a table rebuild (copy the table under a new name, retire the original, rename the copy), which needs `PRAGMA foreign_keys=OFF` outside a transaction and would lose referenced rows on D1. This rule used to say `db:generate` EMITS such a rebuild for a drop; on drizzle-kit 0.31.10 it does not — verified on a plain column, on a column carrying a unique index, and on an FK-referenced table, each time producing the native `DROP INDEX` + `ALTER TABLE … DROP COLUMN`. Hand-write them anyway, because the migration is where the reasoning lives and a generated one-liner carries none; keep the grep because a future version could change its mind. Freezing (stop all reads/writes, add a `-- DEAD (date, reason)` schema comment, never reuse the name) is the exception, reserved for the cases SQLite's native `DROP COLUMN` genuinely refuses: a PRIMARY KEY column, a column carrying an inline UNIQUE or CHECK constraint in the table DDL, one named in a foreign key, a generated-column expression or a partial-index predicate, or one referenced by a view. A column merely covered by an index — UNIQUE or not — is NOT one of these: drop the index first, in the same migration, and the column goes. `agreement_requests.token` carried a unique index and went that way. A column still being read needs draining first, whatever the reason it can't simply go.
+- **Column retirement**: native `ALTER TABLE … DROP COLUMN` is the expected way to retire a column, and it works even on FK-referenced tables. Drop migrations are hand-written and verified before they are applied: `grep -nE "PRAGMA|__new_|DROP TABLE|RENAME TO" <file>` must return nothing — those strings are the signature of a table rebuild, which needs `PRAGMA foreign_keys=OFF` outside a transaction and would lose referenced rows on D1. Keep the grep even though drizzle-kit currently emits the native drop. Freezing (stop all reads/writes, add a `-- DEAD (date, reason)` schema comment, never reuse the name) is the exception, reserved for columns SQLite's native `DROP COLUMN` genuinely refuses: a PRIMARY KEY, an inline UNIQUE or CHECK, one named in a foreign key, a generated-column expression, a partial-index predicate, or a view. A column merely covered by an index is NOT one of these: drop the index first, in the same migration. A column still being read needs draining first, whatever the reason it can't simply go. Full original wording, drizzle-kit evidence and an example: [`docs/reference/dev-workflow.md`](docs/reference/dev-workflow.md#rule-rationale-and-history).
 
 ## Quality gates
 
-CI is a strict superset of pre-commit, not the same set: the hook runs the `precommit` rung of the gate registry and a tiered tsc, while CI runs every gate at both rungs plus the type-aware eslint pass, the full type-check and every suite. `verify` is the authoritative gate (wire it up as a required status check). The pre-commit hook is a fast local guard — bypass only with `--no-verify` (discouraged). Mechanism, steps, and Node version are aligned across the superproject and the portal/cms submodules.
+CI is a strict superset of pre-commit, not the same set (what each runs: [`docs/reference/dev-workflow.md`](docs/reference/dev-workflow.md#quality-gates-mechanism)). `verify` is the authoritative gate (wire it up as a required status check). The pre-commit hook is a fast local guard — bypass only with `--no-verify` (discouraged). 
 
 **Run the gates BEFORE writing, not at commit.** `npm run lint:gates` is the
 20-gate pre-commit rung and takes seconds. Paying it up front tells you straight
 away that (say) a file is at its size cap — where finding out at commit time
 means discovering it after a multi-minute eslint pass, an hour into work that
-now has to be restructured. Not hypothetical: that is how a duplicate of an
-existing module got written on 2026-09-06. The size cap that would have forced
-the split — and so surfaced the module already there — was not consulted until
-the commit failed.
+now has to be restructured. 
 
 **Run `npm run preflight` before trusting anything a dev server says.** It
 checks for worktrees shadowing the checkout, a build that is not HEAD, and a
 port that looks alive but is not. Add `--url http://localhost:5173` to compare
-the SERVED commit against HEAD. Every check in it is a trap that has already
-cost a session; the script header says which.
+the SERVED commit against HEAD. 
 
 **Worktrees belong OUTSIDE this checkout** (`../oi-worktrees/`, not
-`.claude/worktrees/`). A worktree inside the repo makes the preview launcher
-resolve the project root to it and serve ITS build on the expected port —
-`/status` reports the wrong commit and every observation is about other source.
-An absolute path in `launch.json` does not save you; the launcher rebases it.
+`.claude/worktrees/`). A worktree inside the repo makes the preview launcher serve ITS build on the expected port, so every observation is about other source; an absolute path in `launch.json` does not help.
 
 **`--no-verify` is blocked**, with `--dangerously-skip-permissions` and
 `HUSKY=0`, by a PreToolUse hook (`~/.claude/hooks/block-verify-skip.mjs`).
 CI does run now — `verify` fires on pull requests and on pushes to `main`
-(2026-09-07) — but it **does not block a merge today**. The repository is public,
-so GitHub Free does enforce rulesets on it; the one that exists does not guard
-`main`. The `verify` ruleset is `active` but targets `refs/heads/verify` (a
-branch of that name), and carries only deletion and non-fast-forward rules — no
-required status check (verified 2026-09-13 via
-`gh api repos/NCHILLC/OpenInspection/rulesets/22446814`). So a red `verify` is a
+(2026-09-07) — but it **does not block a merge today**. The only ruleset, `verify`, targets `refs/heads/verify` rather than `main` and requires no status check (evidence: [`docs/reference/dev-workflow.md`](docs/reference/dev-workflow.md#rule-rationale-and-history)). So a red `verify` is a
 signal you have to choose to honour, and **pre-commit remains the only gate that
 actually stops anything** until that ruleset targets `main` with a required check.
 If a gate fails, fix the cause.
 
-- **Hook mechanism**: `.githooks/pre-commit`, activated by the `prepare` npm script (`git config core.hooksPath .githooks`) on `npm install`/`npm ci` — native git hooks, **no husky**.
-- **Pre-commit** (`.githooks/pre-commit`): tiered type-check (scoped to staged files — skip / api-only / full) → `lint-staged` (eslint --fix, `ESLINT_FAST=1`) → every gate declared at the `precommit` rung in `scripts/lib/gate-registry.mjs`, run in ONE node process by `scripts/run-gates.mjs`. That is two dozen gates, not the three this line used to name; the registry is the list and must not be copied here. Commits with no staged `.ts`/`.tsx` skip the type-check entirely. The Worker bundle-size gate is NOT here — it lives in `.githooks/pre-push`.
-- **CI** (`.github/workflows/ci.yml`, Node 22): nine parallel jobs — `typecheck-app`, `lint-eslint`, `lint-gates` (+ `db:check`), `test-unit` (4 shards), `test-contract`, `test-workers`, `test-web` (4 shards), `build` (+ bundle size), and `e2e` (a 2-way matrix). `verify` does no work of its own: it is the aggregate job branch protection keys off, and it waits on all nine including `e2e`. CodeQL runs separately (`codeql.yml`). Details: `docs/develop/testing.md`.
+Hook mechanism, what pre-commit and CI each run, and the CI job list: [`docs/reference/dev-workflow.md`](docs/reference/dev-workflow.md#quality-gates-mechanism).
 
 ## Comment Rules
 
-Migration sequence numbers are an unstable, positional ordering token — squash/consolidation renumbers them, leaving comments dangling at files that no longer exist (the `0000_baseline.sql` consolidation made every `migration 00NN` comment point to nothing). Annotate the durable artifact, not the transient migration.
+Annotate the durable artifact, not the transient migration: migration sequence numbers renumber on squash.
 
 - **No migration sequence numbers in code comments** (`migration 0045`, `0052_inspector_slug.sql`, `pre-migration 0040`, …). The only allowed reference is `0000_baseline.sql` — it never renumbers. Enforced by `npm run lint:migrefs` (`scripts/check-migration-refs.mjs`); also runs in `npm run lint` and pre-commit.
 - **State the invariant, not the history.** Put *why a column/index exists* next to its definition in `server/lib/db/schema/` (it travels with the field and survives any renumber). "the `lot_size` column on `inspections`" beats "the `lot_size` column added in migration 0045". History lives in `git blame`.
-- **For traceability, cite a stable id** — PR# / issue# (`see #144`) or a feature name — never a migration number. These never renumber and link to full context.
-- **"Must stay in sync with X" coupling → make it executable, not prose.** A comment that says "must match the inline DDL / the backfill list" is a latent bug; people forget. Prefer a shared constant both sides import, or a test that asserts the equality. Example: `tests/unit/platform/inline-ddl-schema-sync.spec.ts` asserts the workers specs' hand-maintained `tenant_configs` DDL covers every Drizzle schema column — replacing the old "remember to sync this DDL" comment that blocked #164.
+- **For traceability, cite a stable id** — PR# / issue# (`see #144`) or a feature name — never a migration number. 
+- **"Must stay in sync with X" coupling → make it executable, not prose.** A comment that says "must match the inline DDL / the backfill list" is a latent bug; people forget. Prefer a shared constant both sides import, or a test that asserts the equality. 
 
 ## Cross-Portal Reuse
 
@@ -388,8 +197,7 @@ two audiences, not two products.
 
 - **Same entity in both portals ⇒ same component.** Render the client component
   and express the difference as a prop. A parallel component drifts, and only
-  one of the two gets the next fix — that is how the agent repair-items page
-  ended up dropping photos and the item label that were already in its payload.
+  one of the two gets the next fix .
 - **A deliberate fork must say why, in a code comment at the fork.** State the
   invariant that makes the two genuinely different (not the history of how it
   happened). "Agent view is read-only" is a prop; "the agent's list spans
