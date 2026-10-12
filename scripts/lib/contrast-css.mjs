@@ -58,12 +58,30 @@ export function contrastRatio(fgHex, bgHex) {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
-/** Every declaration body whose selector list mentions `marker`, in order. */
+/**
+ * Every declaration body whose selector list mentions `marker`, in order.
+ *
+ * Remembered for the last stylesheet read. `resolveVar` asks once per token per
+ * theme, and one pass is not cheap: the pattern backtracks across the prelude
+ * of every nested block, so each `@media { … }` with a comment above it costs
+ * more than its size suggests. Unremembered, one scan re-read the file several
+ * hundred times.
+ */
+let blocksCss = null;
+let blocksByMarker = new Map();
 function blocksFor(css, marker) {
-  const out = [];
-  const re = /([^{}]+)\{([^{}]*)\}/g;
-  let m;
-  while ((m = re.exec(css)) !== null) if (m[1].includes(marker)) out.push(m[2]);
+  if (css !== blocksCss) {
+    blocksCss = css;
+    blocksByMarker = new Map();
+  }
+  let out = blocksByMarker.get(marker);
+  if (!out) {
+    out = [];
+    const re = /([^{}]+)\{([^{}]*)\}/g;
+    let m;
+    while ((m = re.exec(css)) !== null) if (m[1].includes(marker)) out.push(m[2]);
+    blocksByMarker.set(marker, out);
+  }
   return out;
 }
 
