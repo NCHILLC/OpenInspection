@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 /**
  * F74 — first-run setup has to name the step that leaves the agent portal dead.
+ * ONB-02 — and has to do it without putting deployment notes on the first view.
  *
  * Publishing agent terms is a manual, deployment-level step in BOTH modes: the
  * gate does not branch on `APP_MODE`, no workspace administrator can supply the
@@ -9,9 +10,12 @@
  * thoroughly in `docs/operate/deploy.md`, and nowhere an operator who only runs
  * the wizard would ever see it.
  *
- * The claim under test is that the setup SURFACE names the step and its
- * consequence — and that it stays a note, not a gate: the terms are published
- * from the command line, so nothing here may block finishing setup.
+ * The claims under test: the setup SURFACE still names the step and its
+ * consequence, but inside a disclosure that is closed on first paint, together
+ * with the Cloudflare secret steps for the setup code; the setup-code field
+ * itself keeps a short hint that points at it; and none of it is a gate: the
+ * terms are published from the command line, so nothing here may block
+ * finishing setup.
  */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -40,22 +44,35 @@ function renderSetup() {
     return render(<Stub initialEntries={["/setup"]} />);
 }
 
-describe("first-run setup — the agent-terms step", () => {
-    it("names agent sign-up and what is off until the terms are published", async () => {
+describe("first-run setup — the operator notes", () => {
+    it("holds the agent-terms step and the Cloudflare secret steps in a closed disclosure", async () => {
         const { container } = renderSetup();
         // Positive control: the surface this assertion is aimed at really did
         // render. A bad selector reports "absent" indistinguishably otherwise.
         expect(await screen.findByText(/Create Account/i)).toBeTruthy();
 
-        expect(container.textContent).toMatch(/agent sign-up/i);
-        expect(container.textContent).toMatch(/agent terms/i);
+        const details = container.querySelector("details");
+        expect(details).not.toBeNull();
+        expect(details!.hasAttribute("open")).toBe(false);
+        expect(details!.querySelector("summary")?.textContent).toMatch(/whoever deployed this/i);
+
+        const inside = details!.textContent;
+        expect(inside).toMatch(/agent sign-up/i);
+        expect(inside).toMatch(/agent terms/i);
+        expect(inside).toMatch(/operates this deployment/i);
+        expect(inside).toMatch(/agent-terms:publish/);
+        expect(inside).toMatch(/SETUP_CODE/);
+        expect(inside).toMatch(/Variables and Secrets/);
     });
 
-    it("says only whoever operates the deployment can do it, and points at the command", async () => {
+    it("keeps the setup-code hint on the field and points at the note", async () => {
         const { container } = renderSetup();
         await screen.findByText(/Create Account/i);
-        expect(container.textContent).toMatch(/operates this deployment/i);
-        expect(container.textContent).toMatch(/agent-terms:publish/);
+        const details = container.querySelector("details");
+        const hint = screen.getByText(/at least 6 characters/i).parentElement;
+        expect(hint).not.toBeNull();
+        expect(details!.contains(hint)).toBe(false);
+        expect(hint!.textContent).toMatch(/note below the form/i);
     });
 
     it("does not block finishing setup", async () => {
