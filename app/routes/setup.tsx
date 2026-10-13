@@ -167,19 +167,7 @@ export default function SetupPage() {
             hint={
               <>
                 <span className="font-medium text-ih-fg-2">{m.auth_setup_code_help_required()}</span>{" "}
-                {m.auth_setup_code_help_enter_prefix()}{" "}
-                <code className="px-1 py-0.5 bg-ih-bg-muted rounded text-ih-fg-2 font-mono text-[10px]">SETUP_CODE</code>{" "}
-                {m.auth_setup_code_help_middle()}{" "}
-                <span className="font-medium text-ih-fg-2">{m.auth_setup_code_help_settings_path()}</span>{" "}
-                {m.auth_setup_code_help_suffix()}{" "}
-                <a
-                  href="https://developers.cloudflare.com/workers/configuration/environment-variables/#add-environment-variables-via-the-dashboard"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-ih-primary-text hover:text-ih-primary-600 underline underline-offset-2"
-                >
-                  {m.auth_setup_code_help_link()}
-                </a>
+                {m.auth_setup_code_help_where()}
               </>
             }
           />
@@ -195,7 +183,11 @@ export default function SetupPage() {
           </Button>
         </Form>
 
-        {/* F74 — publishing agent terms is a manual, deployment-level step in
+        {/* Operator-only notes, collapsed (ONB-02): the first screen a new admin
+            sees is about creating the account, not about deployment secrets or
+            a CLI. Both notes stay one click away, and the summary names what is
+            inside so the operator who does need them can tell.
+            F74 — publishing agent terms is a manual, deployment-level step in
             BOTH modes: the gate does not branch on APP_MODE, no workspace
             administrator can supply the document, and until it exists agents
             reach "Agent sign-up is not available yet" with no way forward. It is
@@ -203,13 +195,33 @@ export default function SetupPage() {
             operator who only runs this wizard would see it. A note, not a step:
             the terms are published from the command line, so nothing here waits
             on it. */}
-        <p className="mt-6 pt-4 border-t border-ih-border text-[12px] text-ih-fg-3">
-          {m.auth_setup_agent_terms_note()}{" "}
-          {/* i18n-literal-ok: a shell command. Translating it would produce a
-              command that does not exist. */}
-          <code className="px-1 py-0.5 bg-ih-bg-muted rounded text-ih-fg-2 font-mono text-[10px]">npm run agent-terms:publish</code>{" "}
-          {m.auth_setup_agent_terms_docs()}
-        </p>
+        <details className="mt-6 pt-4 border-t border-ih-border text-[12px] text-ih-fg-3">
+          <summary className="cursor-pointer select-none font-medium text-ih-fg-2 focus-visible:outline-2 focus-visible:outline-ih-primary rounded-sm">
+            {m.auth_setup_operator_summary()}
+          </summary>
+          <p className="mt-3">
+            {m.auth_setup_code_help_enter_prefix()}{" "}
+            <code className="px-1 py-0.5 bg-ih-bg-muted rounded text-ih-fg-2 font-mono text-[10px]">SETUP_CODE</code>{" "}
+            {m.auth_setup_code_help_middle()}{" "}
+            <span className="font-medium text-ih-fg-2">{m.auth_setup_code_help_settings_path()}</span>{" "}
+            {m.auth_setup_code_help_suffix()}{" "}
+            <a
+              href="https://developers.cloudflare.com/workers/configuration/environment-variables/#add-environment-variables-via-the-dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ih-primary-text hover:text-ih-primary-600 underline underline-offset-2"
+            >
+              {m.auth_setup_code_help_link()}
+            </a>
+          </p>
+          <p className="mt-3">
+            {m.auth_setup_agent_terms_note()}{" "}
+            {/* i18n-literal-ok: a shell command. Translating it would produce a
+                command that does not exist. */}
+            <code className="px-1 py-0.5 bg-ih-bg-muted rounded text-ih-fg-2 font-mono text-[10px]">npm run agent-terms:publish</code>{" "}
+            {m.auth_setup_agent_terms_docs()}
+          </p>
+        </details>
       </div>
     </div>
   );
