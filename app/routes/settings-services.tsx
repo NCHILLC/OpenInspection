@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLoaderData, Form, useActionData } from "react-router";
 import { SettingsCrumb } from "~/components/SettingsCrumb";
 import { didSaveService } from "~/lib/settings-services";
+import { parseDollarsToCents } from "~/lib/money";
 import { useForm } from "@conform-to/react";
 import { parseWithZod } from "@conform-to/zod/v4";
 import type { Route } from "./+types/settings-services";
@@ -169,7 +170,7 @@ export async function action({ request, context }: Route.ActionArgs) {
         // CreateServiceSchema.description is .optional() — undefined is the
         // only valid "absent" encoding; sending null fails validation (400).
         ...(description ? { description } : {}),
-        price: Number(price) * 100 || 0,
+        price: parseDollarsToCents(price ?? "") ?? 0,
         // Same "absent means omitted" rule for both optional fields. A blank
         // duration leaves booking on the time-slot window; a blank template
         // leaves the service unbookable, which the catalog table now says.
@@ -204,7 +205,7 @@ export async function action({ request, context }: Route.ActionArgs) {
         // except that clearing a template must be expressible: an empty string
         // is how the API records "no template" on an existing row.
         description: description ?? "",
-        price: Number(price) * 100 || 0,
+        price: parseDollarsToCents(price ?? "") ?? 0,
         ...(durationMinutes ? { durationMinutes: Number(durationMinutes) } : { durationMinutes: 0 }),
         templateId: templateId ?? "",
       },

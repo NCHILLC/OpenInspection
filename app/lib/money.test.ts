@@ -27,6 +27,11 @@ describe('parseDollarsToCents', () => {
     expect(parseDollarsToCents('1000')).toBe(100000);
     expect(parseDollarsToCents(' 5 ')).toBe(500);
   });
+  // Number('17.99') * 100 is 1798.9999999999998; the API takes integer cents.
+  it('rounds float-imprecise amounts to exact cents', () => {
+    expect(parseDollarsToCents('17.99')).toBe(1799);
+    expect(parseDollarsToCents('9.95')).toBe(995);
+  });
   it('returns null for empty / non-numeric input', () => {
     expect(parseDollarsToCents('')).toBeNull();
     expect(parseDollarsToCents('   ')).toBeNull();
