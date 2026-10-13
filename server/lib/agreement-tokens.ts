@@ -21,14 +21,14 @@ export interface AgreementTokenValues {
 }
 
 /** Substring of the starter template's admin-only caveat paragraph. */
-export const STARTER_NOTICE_MARK = 'Review before sending to real customers';
+const STARTER_NOTICE_MARK = 'Review before sending to real customers';
 
 const esc = (s: string): string =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const longDay = (d: string): string | null => {
     const t = new Date(`${d.slice(0, 10)}T12:00:00Z`);
-    return Number.isNaN(t.getTime()) ? null : t.toLocaleDateString('en-US', { timeZone: 'UTC', dateStyle: 'long' });
+    return Number.isNaN(t.getTime()) ? null : t.toLocaleDateString('en-US', { timeZone: 'UTC', dateStyle: 'long' }); // i18n-lint-ok: the agreement body is English-only and frozen into content_snapshot
 };
 
 export function fillAgreementTokens(html: string, v: AgreementTokenValues): string {
