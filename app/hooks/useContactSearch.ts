@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useFetcher } from "react-router";
 import { useAnchoredDropdown } from "~/hooks/useAnchoredDropdown";
+import { isOffline } from "~/lib/network-failure";
 
 /**
  * A debounced Contacts typeahead, driven through the /inspections action.
@@ -32,6 +33,9 @@ export function useContactSearch<D>(
         if (timer.current) clearTimeout(timer.current);
         if (q.length >= 2) {
             timer.current = setTimeout(() => {
+                // Offline there is nothing to search; the typed text is still the
+                // answer. Read at fire time: the line can drop inside the debounce.
+                if (isOffline()) return;
                 fetcher.submit({ intent, search: q }, { method: "post", action: "/inspections" });
             }, 300);
         }

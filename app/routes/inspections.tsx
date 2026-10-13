@@ -5,6 +5,7 @@ import type { Route } from "./+types/inspections";
 import { requireToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
 import { buildCreateInspectionJson } from "~/lib/inspection-create";
+import { guardWizardNetwork } from "~/lib/wizard-submit";
 import { IDEMPOTENCY_FIELD } from "~/hooks/useGuardedSubmit";
 import { searchContactsForTypeahead } from "~/lib/contact-search.server";
 import type { WizardTeamMember } from "~/components/NewInspectionWizard";
@@ -257,6 +258,10 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
   return { ok: false };
 }
+
+// A dropped connection reaches the wizard as data, not an error (guardWizardNetwork).
+export const clientAction = ({ request, serverAction }: Route.ClientActionArgs) =>
+  guardWizardNetwork(request, serverAction);
 
 /* ------------------------------------------------------------------ */
 /*  Page component                                                     */

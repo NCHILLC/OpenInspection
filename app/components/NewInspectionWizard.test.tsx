@@ -108,6 +108,17 @@ describe('NewInspectionWizard — at-open quota gate', () => {
         expect(queryByText(/Free plan limit reached/)).toBeNull();
         expect(getByText('Property Type')).toBeTruthy();
     });
+
+    // The wizard stays mounted while shut and returns null: every hook has to sit
+    // above that return, or opening it changes the hook count and React throws.
+    it('opens from closed without changing its hook count', () => {
+        const { rerender, getByText, queryByText } = render(
+            <NewInspectionWizard open={false} onClose={() => {}} />,
+        );
+        expect(queryByText('Property Type')).toBeNull();
+        rerender(<NewInspectionWizard open onClose={() => {}} />);
+        expect(getByText('Property Type')).toBeTruthy();
+    });
 });
 
 /**
@@ -275,6 +286,71 @@ describe('NewInspectionWizard — client + buyer-agent payload', () => {
         const createCalls = fetcherMocks.submit.mock.calls
             .filter((c) => (c[0] as { intent?: string })?.intent === 'create');
         expect(createCalls.length).toBe(1);
+    });
+
+    /**
+     * QA sweep NET-02: with no connection the create never leaves the device, and
+     * what the inspector typed is still on screen. The retry is the same button.
+     */
+    it('says it is offline instead of submitting, keeps the draft, and creates once back online', () => {
+        const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+        try {
+            const { getAllByRole, getByText } = walkToConfirm();
+            const create = () => (getAllByRole('button') as HTMLButtonElement[])
+                .find((b) => b.textContent?.includes('Create Inspection'))!;
+
+            fireEvent.click(create());
+            expect(getByText(/No connection/)).toBeTruthy();
+            expect(getByText('123 Main Street')).toBeTruthy();
+            const createCalls = () => fetcherMocks.submit.mock.calls
+                .filter((c) => (c[0] as { intent?: string })?.intent === 'create');
+            expect(createCalls()).toHaveLength(0);
+
+            onLine.mockReturnValue(true);
+            fireEvent.click(create());
+            expect(createCalls()).toHaveLength(1);
+        } finally {
+            onLine.mockRestore();
+        }
+    });
+
+    // The line can drop between the keystroke and the debounce firing; a search
+    // sent then fails inside a fetcher and unmounts the wizard.
+    it('skips the Contacts search when the connection drops inside the debounce', () => {
+        vi.useFakeTimers();
+        const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+        try {
+            const { getByPlaceholderText, getByText, getByLabelText, getAllByRole } = render(
+                <NewInspectionWizard
+                    open
+                    onClose={vi.fn()}
+                    templates={[{ id: 'tpl-1', name: 'Standard Inspection' }]}
+                    services={[]}
+                    teamMembers={[]}
+                />,
+            );
+            fireEvent.change(getByPlaceholderText(/123 Main|St.*City/i), { target: { value: '123 Main Street' } });
+            fireEvent.change(getByLabelText('Report template'), { target: { value: 'Standard' } });
+            fireEvent.mouseDown(getByText('Standard Inspection'));
+            fireEvent.click((getAllByRole('button') as HTMLButtonElement[])
+                .find((b) => b.textContent?.includes('Next'))!);
+
+            const client = (getAllByRole('textbox') as HTMLInputElement[])[0];
+            const searches = () => fetcherMocks.submit.mock.calls
+                .filter((c) => (c[0] as { intent?: string })?.intent === 'search-clients');
+
+            fireEvent.change(client, { target: { value: 'Dana' } });
+            act(() => { vi.advanceTimersByTime(500); });
+            expect(searches()).toHaveLength(1);
+
+            fireEvent.change(client, { target: { value: 'Dana C' } });
+            onLine.mockReturnValue(false);
+            act(() => { vi.advanceTimersByTime(500); });
+            expect(searches()).toHaveLength(1);
+        } finally {
+            onLine.mockRestore();
+            vi.useRealTimers();
+        }
     });
 });
 

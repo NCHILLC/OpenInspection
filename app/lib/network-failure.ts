@@ -7,7 +7,16 @@
  */
 const FETCH_FAILURE = /failed to fetch|load failed|networkerror/i;
 
+/**
+ * True only when the browser KNOWS it has no connection. `onLine === true` can be
+ * wrong (a phone with a bar of signal and no route), `false` cannot, so this is
+ * a "skip the request" test and never a "the request will work" test.
+ */
+export function isOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
 export function isNetworkFailure(error: unknown): boolean {
-  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  if (isOffline()) return true;
   return error instanceof TypeError && FETCH_FAILURE.test(error.message);
 }
