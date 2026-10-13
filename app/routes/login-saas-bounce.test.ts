@@ -5,9 +5,28 @@
 //
 // Also covers B3: the standalone login loader honors a same-origin `returnTo`
 // (the OAuth consent loader bounces unauthenticated users here with it).
-import { describe, it, expect } from 'vitest';
+//
+// And ONB-01: a standalone instance with no users sends a visitor to /setup
+// instead of a login form nobody can use.
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { loader } from '~/routes/login';
 import { createLoadContext } from "~/lib/load-context";
+
+// The standalone loader asks the API whether first-run setup is done. Answered
+// here so the loader stays hermetic; `beforeEach` makes the instance "set up",
+// which is every case below except the ones that say otherwise.
+const { setupStatus } = vi.hoisted(() => ({ setupStatus: vi.fn() }));
+vi.mock('~/lib/api-client.server', () => ({
+    createApi: () => ({ auth: { 'setup-status': { $get: setupStatus } } }),
+}));
+
+const status = (isSetUp: boolean, init?: ResponseInit) =>
+    new Response(JSON.stringify({ success: true, data: { isSetUp } }), init);
+
+beforeEach(() => {
+    setupStatus.mockReset();
+    setupStatus.mockResolvedValue(status(true));
+});
 
 type LoaderArgs = Parameters<typeof loader>[0];
 
@@ -82,5 +101,43 @@ describe('login loader — returnTo (B3)', () => {
         );
         expect(res).toBeInstanceOf(Response);
         expect((res as Response).headers.get('Location')).toBe('/inspections');
+    });
+});
+
+describe('login loader — first run on a standalone instance (ONB-01)', () => {
+    it('an instance with no users redirects to /setup', async () => {
+        setupStatus.mockResolvedValue(status(false));
+        const res = await loader(args({}));
+        expect(res).toBeInstanceOf(Response);
+        expect((res as Response).status).toBe(302);
+        expect((res as Response).headers.get('Location')).toBe('/setup');
+    });
+
+    it('CONTROL — a set-up instance asks the API and still renders the form', async () => {
+        const res = await loader(args({}));
+        expect(setupStatus).toHaveBeenCalledTimes(1);
+        expect(res).toEqual({ returnTo: null });
+    });
+
+    it('an API that refuses or is unreachable shows the login form, never /setup', async () => {
+        setupStatus.mockResolvedValue(new Response('{"success":false}', { status: 500 }));
+        expect(await loader(args({}))).toEqual({ returnTo: null });
+
+        setupStatus.mockRejectedValue(new Error('ECONNREFUSED'));
+        expect(await loader(args({}))).toEqual({ returnTo: null });
+    });
+
+    it('a signed-in visitor is not asked, and goes to the app', async () => {
+        setupStatus.mockResolvedValue(status(false));
+        const res = await loader(args({}, { cookie: '__Host-inspector_token=fake.jwt.value' }));
+        expect(setupStatus).not.toHaveBeenCalled();
+        expect((res as Response).headers.get('Location')).toBe('/inspections');
+    });
+
+    it('saas has no /setup, so it is never asked and never redirected there', async () => {
+        setupStatus.mockResolvedValue(status(false));
+        const res = await loader(args({ APP_MODE: 'saas' }));
+        expect(setupStatus).not.toHaveBeenCalled();
+        expect(res).toEqual({ returnTo: null });
     });
 });

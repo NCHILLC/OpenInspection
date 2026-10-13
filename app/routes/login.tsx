@@ -39,6 +39,18 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const returnTo = new URL(request.url).searchParams.get("returnTo");
   const token = await getToken(context, request);
   if (token) return redirect(safeReturnTo(returnTo, "/inspections"));
+
+  // ONB-01 — a standalone instance with no users has nobody who could sign in,
+  // and `/setup` is only findable by already knowing the URL. Ask the question
+  // `/setup` asks and send the visitor there. Only an explicit `false` redirects:
+  // an API hiccup must never turn the sign-in page into the claim-this-deployment
+  // page, so every other outcome falls through to the form.
+  if (profile.hasSetupWizard) {
+    try {
+      const res = await createApi(context).auth["setup-status"].$get();
+      if ((await res.json()).data.isSetUp === false) return redirect("/setup");
+    } catch { /* refusal, unreachable API or malformed body: show the login form */ }
+  }
   return { returnTo };
 }
 
