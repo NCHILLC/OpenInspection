@@ -2,7 +2,7 @@ import { Form, useActionData, useLoaderData, useNavigation, redirect } from "rea
 import { useForm } from "@conform-to/react";
 import { parseWithZod } from "@conform-to/zod/v4";
 import type { Route } from "./+types/login";
-import { getToken, createSessionWithToken } from "~/lib/session.server";
+import { getToken, isTokenExpired, createSessionWithToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
 import { makeLoginSchema } from "~/lib/forms/auth.schema";
 import { AuthShell } from "~/components/AuthShell";
@@ -37,8 +37,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   // it to same-origin paths, so an attacker can't turn this into an open
   // redirect. Absent/invalid → /inspections (unchanged behavior).
   const returnTo = new URL(request.url).searchParams.get("returnTo");
+  // A token past its `exp` is not a session: bouncing it to `returnTo` only has
+  // that page's loader send it straight back here with the destination dropped.
   const token = await getToken(context, request);
-  if (token) return redirect(safeReturnTo(returnTo, "/inspections"));
+  if (token && !isTokenExpired(token, Date.now())) return redirect(safeReturnTo(returnTo, "/inspections"));
 
   // ONB-01 — a standalone instance with no users has nobody who could sign in,
   // and `/setup` is only findable by already knowing the URL. Ask the question

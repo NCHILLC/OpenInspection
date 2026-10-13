@@ -30,6 +30,11 @@ beforeEach(() => {
 
 type LoaderArgs = Parameters<typeof loader>[0];
 
+// The loader reads `exp` from the token's payload and nothing else; the API is
+// what verifies a signature. So a session is a payload with a future `exp`.
+const cookieExpiring = (exp: number) => `__Host-inspector_token=h.${btoa(JSON.stringify({ exp }))}.s`;
+const LIVE_COOKIE = cookieExpiring(4102444800); // 2100-01-01
+
 // happy-dom enforces the Fetch spec's forbidden-header list and silently drops a
 // `Cookie` header set on `new Request(...)`, so we hand-roll a minimal request
 // object whose `headers.get('Cookie')` we fully control (the loader only reads
@@ -89,15 +94,22 @@ describe('login loader — returnTo (B3)', () => {
 
     it('redirects an already-authenticated user to the same-origin returnTo', async () => {
         const res = await loader(
-            args({}, { cookie: '__Host-inspector_token=fake.jwt.value', returnTo: '/oauth/authorize?x=1' }),
+            args({}, { cookie: LIVE_COOKIE, returnTo: '/oauth/authorize?x=1' }),
         );
         expect(res).toBeInstanceOf(Response);
         expect((res as Response).headers.get('Location')).toBe('/oauth/authorize?x=1');
     });
 
+    it('shows the form, returnTo kept, when the token is past its exp (NET-06)', async () => {
+        // Bounced to returnTo, that page's loader would end the session and send
+        // the visitor back here with the destination gone.
+        const res = await loader(args({}, { cookie: cookieExpiring(1), returnTo: '/inspections/i1/edit?item=a' }));
+        expect(res).toEqual({ returnTo: '/inspections/i1/edit?item=a' });
+    });
+
     it('ignores an off-origin returnTo for an authenticated user (no open redirect)', async () => {
         const res = await loader(
-            args({}, { cookie: '__Host-inspector_token=fake.jwt.value', returnTo: '//evil.test/phish' }),
+            args({}, { cookie: LIVE_COOKIE, returnTo: '//evil.test/phish' }),
         );
         expect(res).toBeInstanceOf(Response);
         expect((res as Response).headers.get('Location')).toBe('/inspections');
@@ -129,7 +141,7 @@ describe('login loader — first run on a standalone instance (ONB-01)', () => {
 
     it('a signed-in visitor is not asked, and goes to the app', async () => {
         setupStatus.mockResolvedValue(status(false));
-        const res = await loader(args({}, { cookie: '__Host-inspector_token=fake.jwt.value' }));
+        const res = await loader(args({}, { cookie: LIVE_COOKIE }));
         expect(setupStatus).not.toHaveBeenCalled();
         expect((res as Response).headers.get('Location')).toBe('/inspections');
     });

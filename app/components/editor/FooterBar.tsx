@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@core/shared-ui";
 import type { PresenceUser, PresenceStatus } from "~/hooks/usePresence";
 import { m } from "~/paraglide/messages";
+import { SignInAgainLink } from "./SignInAgainLink";
 
 interface FooterBarProps {
   connected?: boolean;
@@ -91,12 +92,16 @@ export function FooterBar({ connected = false, status, roster = [] }: FooterBarP
         <span className={`w-1.5 h-1.5 rounded-full ${
           effectiveStatus === 'connected'
             ? 'bg-ih-ok'
+            : effectiveStatus === 'expired'
+            ? 'bg-ih-bad'
             : effectiveStatus === 'reconnecting'
             ? 'bg-ih-watch'
             : 'bg-ih-fg-4 animate-pulse'
         }`} />
         {effectiveStatus === 'connected'
           ? m.editor_footer_status_connected()
+          : effectiveStatus === 'expired'
+          ? <SignInAgainLink>{m.editor_session_expired()}</SignInAgainLink>
           : effectiveStatus === 'reconnecting'
           ? m.editor_footer_status_reconnecting()
           : m.editor_footer_status_connecting()}

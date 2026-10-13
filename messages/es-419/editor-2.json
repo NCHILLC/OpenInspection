@@ -257,5 +257,7 @@
   "editor_limitation_reason_unsafe": "Acceso inseguro",
   "editor_mobile_sync_ok": "Sincronizado",
   "editor_mobile_sync_uploading": "Subiendo {count}",
-  "editor_mobile_sync_offline": "Sin conexión · {count} en cola"
+  "editor_mobile_sync_offline": "Sin conexión · {count} en cola",
+  "editor_session_expired": "La sesión expiró: inicia sesión para continuar",
+  "editor_session_expired_short": "Sesión expirada"
 }
