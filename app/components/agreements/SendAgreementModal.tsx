@@ -101,6 +101,7 @@ export function SendAgreementModal({
     busy,
     initialSigners,
     templates,
+    serverError,
 }: {
     open: boolean;
     onSend: (payload: SendAgreementPayload) => void;
@@ -109,6 +110,8 @@ export function SendAgreementModal({
     initialSigners?: SignerDraft[];
     /** Agreement templates to choose from. Omit to hide the picker entirely. */
     templates?: AgreementTemplateOption[];
+    /** The API's refusal of the last send. Shown inside the dialog: a page-level line sits under the modal's scrim and reads as "Send did nothing". */
+    serverError?: string | null;
 }) {
     const seed = (): SignerDraftRow[] => {
         if (initialSigners && initialSigners.length > 0) {
@@ -272,7 +275,7 @@ export function SendAgreementModal({
                 </div>
             </fieldset>
 
-            {error && <p className="text-[13px] text-ih-bad-fg mt-3">{error}</p>}
+            {(error ?? serverError) && <p role="alert" className="text-[13px] text-ih-bad-fg mt-3">{error ?? serverError}</p>}
         </Modal>
     );
 }
