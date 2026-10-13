@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { listPendingMedia } from "~/lib/collab/media-pending-store";
 import type { PresenceStatus } from "~/hooks/usePresence";
 import { m } from "~/paraglide/messages";
+import { SignInAgainLink } from "./SignInAgainLink";
 
 /** Poll interval while photos are queued. Slow on purpose: the pill is a
  *  reassurance readout, not a progress bar, and this runs on a phone. */
@@ -24,7 +25,9 @@ const POLL_MS = 3000;
  * "Synced". `navigator.onLine` only reports that the phone has a network, not
  * that this server answers on it (one bar in a crawlspace, a captive portal, a
  * deploy in progress), and the edit made in that window is on the phone only.
- * `connection` is the same status the desktop `FooterBar` shows.
+ * `connection` is the same status the desktop `FooterBar` shows. Its "expired"
+ * is the one state the inspector can end themselves, so there the label is the
+ * link that does it.
  */
 export function MobileSyncPill({ inspectionId, connection = "connected" }: { inspectionId: string; connection?: PresenceStatus }) {
     const [online, setOnline] = useState(true);
@@ -63,6 +66,8 @@ export function MobileSyncPill({ inspectionId, connection = "connected" }: { ins
     const label =
         state === "offline"
             ? m.editor_mobile_sync_offline({ count: pending })
+            : state === "expired"
+                ? <SignInAgainLink>{m.editor_session_expired_short()}</SignInAgainLink>
             : state === "reconnecting"
                 ? m.editor_footer_status_reconnecting()
                 : state === "connecting"
@@ -73,14 +78,14 @@ export function MobileSyncPill({ inspectionId, connection = "connected" }: { ins
     // A fresh page is "connecting" for a moment and that is not a warning, so
     // it stays neutral — the same reading the desktop footer gives it.
     const tone =
-        state === "offline"
+        state === "offline" || state === "expired"
             ? "bg-ih-bad-bg text-ih-bad-fg"
             : state === "connecting"
                 ? "bg-ih-bg-muted text-ih-fg-2"
                 : state === "synced"
                     ? "bg-ih-ok-bg text-ih-ok-fg"
                     : "bg-ih-watch-bg text-ih-watch-fg";
-    const dot = state === "offline" ? "bg-ih-bad" : state === "connecting" ? "bg-ih-fg-3" : state === "synced" ? "bg-ih-ok" : "bg-ih-watch";
+    const dot = state === "offline" || state === "expired" ? "bg-ih-bad" : state === "connecting" ? "bg-ih-fg-3" : state === "synced" ? "bg-ih-ok" : "bg-ih-watch";
 
     return (
         <span

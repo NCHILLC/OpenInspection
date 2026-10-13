@@ -257,5 +257,7 @@
   "editor_limitation_reason_unsafe": "Unsafe to access",
   "editor_mobile_sync_ok": "Synced",
   "editor_mobile_sync_uploading": "Uploading {count}",
-  "editor_mobile_sync_offline": "Offline · {count} queued"
+  "editor_mobile_sync_offline": "Offline · {count} queued",
+  "editor_session_expired": "Session expired: log in to continue",
+  "editor_session_expired_short": "Session expired"
 }

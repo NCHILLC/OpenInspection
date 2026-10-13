@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { isOffline } from "~/lib/network-failure";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -11,8 +12,12 @@ export interface PresenceUser {
   focusItemId?: string | null;
 }
 
-/** FE-5 — tri-state so the UI can distinguish "still connecting" from "lost". */
-export type PresenceStatus = "connecting" | "connected" | "reconnecting";
+/**
+ * FE-5 — tri-state so the UI can distinguish "still connecting" from "lost".
+ * "expired" is a lost connection with a known cause: the server refuses the
+ * socket because there is no session, so no amount of retrying will reopen it.
+ */
+export type PresenceStatus = "connecting" | "connected" | "reconnecting" | "expired";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -44,6 +49,9 @@ export function usePresence(options: {
   // read as data loss by field users. Track connecting/connected/reconnecting.
   const [status, setStatus] = useState<PresenceStatus>("connecting");
   const everConnectedRef = useRef(false);
+  // Held in a ref so each failed retry keeps the reading instead of flashing
+  // "Reconnecting…" until its own session check answers.
+  const expiredRef = useRef(false);
   const wsRef = useRef<WebSocket | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const backoffRef = useRef(400);
@@ -65,8 +73,13 @@ export function usePresence(options: {
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      let opened = false;
+      const downStatus = (): PresenceStatus =>
+        expiredRef.current ? "expired" : everConnectedRef.current ? "reconnecting" : "connecting";
 
       ws.addEventListener("open", () => {
+        opened = true;
+        expiredRef.current = false;
         backoffRef.current = 400;
         everConnectedRef.current = true;
         setStatus("connected");
@@ -97,7 +110,22 @@ export function usePresence(options: {
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = null;
         setConnected(false);
-        setStatus(everConnectedRef.current ? "reconnecting" : "connecting");
+        setStatus(downStatus());
+        // A browser is never told why a WebSocket handshake was refused: a 401
+        // and a dead network both arrive as a bare `close`. So a socket that
+        // closed without opening asks the API, with the cookie the socket
+        // itself sends, whether there is still a session. Only a 401 reads as
+        // "expired"; the retries below carry on either way, so signing in from
+        // another tab reconnects this one.
+        if (!opened && !closedRef.current && !isOffline()) {
+          void fetch("/api/auth/me").then(
+            (res) => {
+              expiredRef.current = res.status === 401;
+              if (!closedRef.current && wsRef.current?.readyState !== WebSocket.OPEN) setStatus(downStatus());
+            },
+            () => { /* unreachable: a network problem, not a session one */ },
+          );
+        }
         // Schedule reconnect
         if (!closedRef.current) {
           setTimeout(() => connect(), backoffRef.current);

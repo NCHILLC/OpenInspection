@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 
 import { MobileSyncPill } from "./MobileSyncPill";
 
@@ -30,5 +31,17 @@ describe("MobileSyncPill", () => {
 
         rerender(<MobileSyncPill inspectionId="i1" connection="connecting" />);
         expect(state()).toBe("connecting");
+    });
+
+    it("turns into the way back to this item when the session has expired", () => {
+        render(
+            <MemoryRouter initialEntries={["/inspections/i1/edit?section=s1&item=a1"]}>
+                <MobileSyncPill inspectionId="i1" connection="expired" />
+            </MemoryRouter>,
+        );
+        expect(state()).toBe("expired");
+        const href = screen.getByRole("link", { name: "Session expired" }).getAttribute("href") ?? "";
+        expect(href.startsWith("/login?")).toBe(true);
+        expect(new URLSearchParams(href.slice("/login?".length)).get("returnTo")).toBe("/inspections/i1/edit?section=s1&item=a1");
     });
 });

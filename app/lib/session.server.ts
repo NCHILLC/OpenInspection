@@ -135,7 +135,7 @@ export async function getToken(context: LoadContext, request: Request): Promise<
  * cheaper question: is it even worth sending? A token whose payload cannot be
  * read counts as expired, so an unreadable value can never be passed on.
  */
-function isTokenExpired(token: string, nowMs: number): boolean {
+export function isTokenExpired(token: string, nowMs: number): boolean {
   const payload = token.split(".")[1];
   if (!payload) return true;
   try {
