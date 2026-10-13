@@ -217,7 +217,7 @@
   "report_view_cert_with_company": "{company} · Certified Inspection Report",
   "report_view_cert": "Certified Inspection Report",
   "report_view_build_repair": "Build repair request",
-  "agent_report_actions_workspace_hint": "You already have an agent account for this email — we'll email you a secure link to sign in to your workspace.",
+  "agent_report_actions_workspace_hint": "You already have an agent account for this email — we'll email you a secure link to sign in to your account.",
   "agent_report_actions_workspace_cta": "Email me a sign-in link",
   "agent_report_actions_workspace_pending": "Sending…",
   "agent_report_actions_workspace_sent": "Check your email — we've sent a single-use sign-in link to your inbox. It expires in 15 minutes.",

@@ -26,7 +26,7 @@
   "helper_caloauth_login_required": "Google sign-in session expired. Please try connecting again.",
   "helper_caloauth_consent_required": "Google needs permission confirmation. Please try connecting again.",
   "helper_caloauth_session_expired": "The connection session expired. Please try again.",
-  "helper_caloauth_not_configured": "Google Calendar is not configured for this workspace. Contact your administrator.",
+  "helper_caloauth_not_configured": "Google Calendar is not configured for this company. Contact your administrator.",
   "helper_caloauth_no_refresh_token": "Google did not grant ongoing access. Try connecting again and approve all permissions.",
   "helper_caloauth_exchange_failed": "Could not complete Google Calendar authorization. Please try again.",
   "helper_caloauth_generic": "Could not connect Google Calendar. Please try again.",

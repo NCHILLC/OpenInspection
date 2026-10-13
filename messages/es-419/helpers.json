@@ -26,7 +26,7 @@
   "helper_caloauth_login_required": "La sesión de inicio de sesión de Google venció. Intente conectarse de nuevo.",
   "helper_caloauth_consent_required": "Google necesita que se confirmen los permisos. Intente conectarse de nuevo.",
   "helper_caloauth_session_expired": "La sesión de conexión venció. Inténtelo de nuevo.",
-  "helper_caloauth_not_configured": "Google Calendar no está configurado para este espacio de trabajo. Comuníquese con su administrador.",
+  "helper_caloauth_not_configured": "Google Calendar no está configurado para esta empresa. Comuníquese con su administrador.",
   "helper_caloauth_no_refresh_token": "Google no otorgó acceso continuo. Intente conectarse de nuevo y apruebe todos los permisos.",
   "helper_caloauth_exchange_failed": "No se pudo completar la autorización de Google Calendar. Inténtelo de nuevo.",
   "helper_caloauth_generic": "No se pudo conectar Google Calendar. Inténtelo de nuevo.",

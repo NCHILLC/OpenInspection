@@ -217,7 +217,7 @@
   "report_view_cert_with_company": "{company} · Informe de inspección certificado",
   "report_view_cert": "Informe de inspección certificado",
   "report_view_build_repair": "Crear una solicitud de reparación",
-  "agent_report_actions_workspace_hint": "Ya tiene una cuenta de agente con este correo — le enviaremos un enlace seguro para iniciar sesión en su espacio de trabajo.",
+  "agent_report_actions_workspace_hint": "Ya tiene una cuenta de agente con este correo — le enviaremos un enlace seguro para iniciar sesión en su cuenta.",
   "agent_report_actions_workspace_cta": "Envíenme un enlace de inicio de sesión",
   "agent_report_actions_workspace_pending": "Enviando…",
   "agent_report_actions_workspace_sent": "Revise su correo — le enviamos un enlace de inicio de sesión de un solo uso a su bandeja de entrada. Vence en 15 minutos.",

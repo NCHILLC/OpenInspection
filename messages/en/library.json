@@ -174,7 +174,7 @@
   "misc_not_found_home": "Go Home",
   "misc_feature_disabled_meta_title": "Feature Disabled - OpenInspection",
   "misc_feature_disabled_heading": "Feature Not Available",
-  "misc_feature_disabled_desc": "This feature is not enabled for your workspace. Contact your administrator or upgrade your plan.",
+  "misc_feature_disabled_desc": "This feature is not enabled for your company. Contact your administrator or upgrade your plan.",
   "misc_feature_disabled_back": "Back to Dashboard",
   "misc_version_diff_meta_title": "Version Diff - OpenInspection",
   "misc_version_diff_err_not_found": "Version not found",

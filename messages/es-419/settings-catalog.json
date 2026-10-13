@@ -16,7 +16,7 @@
   "settings_inspection_meta_title": "Configuración del flujo de trabajo de inspección - OpenInspection",
   "settings_inspection_loading": "Cargando...",
   "settings_inspection_crumb": "Flujo de trabajo de inspección",
-  "settings_inspection_intro": "Valores predeterminados que se aplican a todos los inspectores de este espacio de trabajo.",
+  "settings_inspection_intro": "Valores predeterminados que se aplican a todos los inspectores de esta empresa.",
   "settings_inspection_clone_heading": "Valor predeterminado de Clonar último (tecla R)",
   "settings_inspection_clone_rating": "Solo calificación",
   "settings_inspection_clone_rating_notes": "Calificación + notas",

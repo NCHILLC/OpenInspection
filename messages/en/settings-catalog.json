@@ -16,7 +16,7 @@
   "settings_inspection_meta_title": "Inspection Workflow Settings - OpenInspection",
   "settings_inspection_loading": "Loading...",
   "settings_inspection_crumb": "Inspection Workflow",
-  "settings_inspection_intro": "Defaults that apply to every inspector on this workspace.",
+  "settings_inspection_intro": "Defaults that apply to every inspector at your company.",
   "settings_inspection_clone_heading": "Clone last (R key) default",
   "settings_inspection_clone_rating": "Rating only",
   "settings_inspection_clone_rating_notes": "Rating + Notes",
