@@ -186,13 +186,13 @@ export default defineConfig({
             dependencies: ['api'],
         },
         {
-            // The phone report writer's drill-down stack. Separate from `mobile`
+            // The phone drill-down stack, online and offline. Separate from `mobile`
             // because it needs a two-section template to walk between and the
             // shared fixture has one — and because folding it in would have this
             // spec sort FIRST and create an inspection that `standalone-mobile`'s
             // SETUP would then adopt as its list[0].
             name: 'mobile-nav',
-            testMatch: 'mobile-drilldown-nav.spec.ts',
+            testMatch: /(mobile-drilldown-nav|offline-navigation)\.spec\.ts$/,
             dependencies: ['api'],
         },
         {

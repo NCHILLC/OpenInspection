@@ -33,6 +33,7 @@ import { ToastPortal } from "~/components/Toast";
 import { getLocale } from "~/paraglide/runtime";
 import { getCloudflareEnv } from "~/lib/load-context";
 import { isDrilldownOnlyChange } from "~/lib/drilldown-nav";
+import { isNetworkFailure } from "~/lib/network-failure";
 
 /**
  * ⚠️ ROOT'S LOADER IS CHEAP, BUT IT IS STILL A SERVER ROUND TRIP. It reads UI
@@ -192,6 +193,21 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
             : "An unexpected error occurred. Please try again in a moment."
         }
         action={{ label: "Go to homepage", href: "/" }}
+      />
+    );
+  }
+  if (isNetworkFailure(error)) {
+    // Same words as the service worker's offline page (public/sw.js). A plain
+    // anchor to the current URL, like every ErrorState action: a reload is the
+    // retry, and it works with no router context.
+    return (
+      <ErrorState
+        title="You're offline"
+        message="Work already entered in an inspection is kept on this device and syncs when the connection returns."
+        action={{
+          label: "Try again",
+          href: typeof window === "undefined" ? "/" : window.location.href,
+        }}
       />
     );
   }
