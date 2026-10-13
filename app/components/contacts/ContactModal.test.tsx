@@ -8,8 +8,8 @@
  * edits into a stated preference, and a stated preference is the only thing the
  * column is evidence of.
  */
-import { describe, it, expect } from "vitest";
-import { render, within } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, within, fireEvent, waitFor } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 
 import { ContactModal } from "./ContactModal";
@@ -68,5 +68,27 @@ describe("ContactModal — preferred language", () => {
     const { findByLabelText } = renderModal(null);
     const select = asSelect(await findByLabelText("Preferred language"), "the language picker");
     expect(select.value).toBe("");
+  });
+});
+
+describe("ContactModal - closing after a save (FORM-01)", () => {
+  it("closes when the first save comes back ok, and not before", async () => {
+    const onClose = vi.fn();
+    const Stub = createRoutesStub([
+      {
+        path: "/contacts",
+        Component: () => <ContactModal open onClose={onClose} contact={null} />,
+        action: async () => ({ ok: true }),
+      },
+    ]);
+    const { findByLabelText, getByRole } = render(<Stub initialEntries={["/contacts"]} />);
+
+    fireEvent.change(await findByLabelText(/^Full Name/), { target: { value: "Ada Lovelace" } });
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(getByRole("button", { name: "Save" }));
+
+    // The pre-fix modal read the PREVIOUS result at click time (none), so this
+    // never fired on a first save and the dialog sat open after a 200.
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 });
