@@ -14,12 +14,12 @@
  */
 
 import type * as Y from 'yjs';
-import { findingKey } from '../../../server/lib/finding-key';
 import { cloneByScope } from '../../hooks/findings/shared';
 import type {
     AttachedRepairItem,
     CustomCommentEntry,
 } from '../../hooks/findings/shared';
+import { buildNotesWrites } from './finding-notes';
 import type { ResultMap } from './results-binding';
 import {
     setRating as bindingSetRating,
@@ -176,35 +176,9 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
         setDirty(true);
     };
 
-    // OPTIMISTIC LOCAL ONLY — do NOT write the doc here. Writing every keystroke
-    // through the doc/observer round-trips back into `results` and jumps the
-    // textarea cursor. The doc write happens on blur via `commitNotes`.
-    //
-    // Phase U (Batch C1): the bare `itemId` slot holds only ONE unit's entry, so
-    // we only mirror the echo there in the common scope (`unit == null`) — the
-    // legacy dual-key read pattern. Under a real unit the composite key IS what
-    // the read resolvers consult, so writing the shared bare slot would leak this
-    // unit's optimistic notes into another unit that lacks a composite entry.
-    const setNotes = (sectionId: string, itemId: string, notes: string): void => {
-        const key = findingKey(unit, sectionId, itemId);
-        setResults((prev) => {
-            const bare = unit == null ? ((prev[itemId] as Record<string, unknown>) || {}) : {};
-            const merged = {
-                ...((prev[key] as Record<string, unknown>) || {}),
-                ...bare,
-                notes,
-            };
-            return unit == null
-                ? { ...prev, [key]: merged, [itemId]: merged }
-                : { ...prev, [key]: merged };
-        });
-        setDirty(true);
-    };
-
-    const commitNotes = (sectionId: string, itemId: string, notes: string): void => {
-        bindingSetNotes(doc, sectionId, itemId, notes, unit);
-        setDirty(true);
-    };
+    // Notes echo locally per keystroke and reach the doc on idle, blur or page
+    // hide — see `finding-notes.ts` for why a keystroke must not write the doc.
+    const { setNotes, commitNotes, flushNotes } = buildNotesWrites(doc, setResults, setDirty, unit);
 
     const setItemValue = (sectionId: string, itemId: string, value: unknown): void => {
         bindingSetValue(doc, sectionId, itemId, value, unit);
@@ -282,6 +256,7 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
         text: string,
         withExtraNewline = false,
     ): void => {
+        flushNotes(sectionId, itemId);
         bindingAppendNote(doc, sectionId, itemId, text, withExtraNewline, unit);
         setDirty(true);
     };
@@ -311,6 +286,7 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
             bindingSetRating(doc, sectionId, itemId, (projected.rating as string | null) ?? null, unit);
         }
         if ('notes' in projected && typeof projected.notes === 'string') {
+            flushNotes(sectionId, itemId);
             bindingSetNotes(doc, sectionId, itemId, projected.notes, unit);
         }
         setDirty(true);
