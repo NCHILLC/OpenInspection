@@ -5,6 +5,12 @@ describe('public URL builders', () => {
     it('uses http for localhost', () => {
         expect(embedBookingCompanyUrl('localhost:8788', 'acme')).toBe('http://localhost:8788/embed/acme');
     });
+    it('uses http only for exact loopback hosts, https for a real domain that starts with one', () => {
+        expect(paymentUrl('127.0.0.1:8791', 'i', 't')).toMatch(/^http:\/\//);
+        expect(paymentUrl('acme.localhost:5173', 'i', 't')).toMatch(/^http:\/\//);
+        expect(paymentUrl('localhost-inspections.com', 'i', 't')).toMatch(/^https:\/\//);
+        expect(paymentUrl('127.0.0.1.nip.io', 'i', 't')).toMatch(/^https:\/\//);
+    });
     it('reportUrl emits /report-view/<tenant>/<id> (canonical renderer)', () => {
         expect(reportUrl('app.example.com', 'acme', 'abc-123')).toBe('https://app.example.com/report-view/acme/abc-123');
     });

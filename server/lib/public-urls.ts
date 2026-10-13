@@ -8,8 +8,11 @@
  */
 import { signRenderToken } from './render-token';
 
+// Exact loopback hostnames only. A prefix test sent token-bearing links over
+// plain http for any real domain that merely starts with `localhost`.
 function scheme(host: string): string {
-    return host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
+    const name = host.replace(/:\d+$/, '');
+    return name === 'localhost' || name.endsWith('.localhost') || name === '127.0.0.1' || name === '[::1]' ? 'http' : 'https';
 }
 
 function joinUrl(host: string, path: string): string {
