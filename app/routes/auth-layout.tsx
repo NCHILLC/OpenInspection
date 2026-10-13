@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { data, Outlet, useLoaderData, useLocation, useNavigate, useNavigation } from "react-router";
 import { uiLocaleStampFor } from "../../server/lib/i18n/ui-locale";
 import type { Route } from "./+types/auth-layout";
-import { requireToken } from "~/lib/session.server";
+import { destroyUserSession, requireToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
 import { CommandPalette, CommandPaletteProvider } from "~/components/CommandPalette";
 import { Sidebar, MobileHeader } from "~/components/Sidebar";
@@ -35,9 +35,11 @@ function useDelayedFlag(active: boolean, delayMs: number): boolean {
 export async function loader({ request, context }: Route.LoaderArgs) {
   const token = await requireToken(context, request);
   let sessionContext: SessionContext | null = null;
+  let refused = false;
   try {
     const api = createApi(context, { token });
     const res = await api.sessionContext.context.$get();
+    refused = res.status === 401;
     if (res.ok) {
       const body = (await res.json()) as Record<string, unknown>;
       sessionContext = body.data as SessionContext;
@@ -45,6 +47,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   } catch {
     // Graceful fallback — layout renders with defaults
   }
+  // A 401 is the API saying this token is no longer a session: issued before a
+  // password change or reset, or its user was removed. `requireToken` cannot see
+  // that (the payload still reads as live), and the fallback above would paint
+  // an "Unnamed" shell at 200 for a signed-out visitor. Only 401 ends the
+  // session; a 5xx or a throw keeps the defaults, since the token may be fine.
+  // Outside the try so the thrown redirect is not swallowed by its catch.
+  if (refused) throw await destroyUserSession(context, request);
 
   // i18n activation (#269) — the DATABASE half of locale resolution.
   //

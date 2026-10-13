@@ -123,6 +123,9 @@ test.describe('Reset password', () => {
     expect(adminToken, 'admin must authenticate').toBeTruthy();
     const joinToken = await inviteMember(request, adminToken, email);
     await acceptInvite(request, joinToken, initialPassword);
+    // A session from BEFORE the reset, kept to prove the reset ends it (ONB-04).
+    const staleToken = await loginApi(request, email, initialPassword);
+    expect(staleToken, 'initial password must authenticate').toBeTruthy();
 
     // 2. Request a reset through the real UI; the email sink captures the link.
     await page.goto(`${BASE_URL}/forgot-password`, { timeout: NAV_TIMEOUT, waitUntil: 'networkidle' });
@@ -154,5 +157,20 @@ test.describe('Reset password', () => {
       headers: { 'Content-Type': 'application/json', ...csrfHeaders().headers },
     });
     expect(stale.status(), 'old password must be rejected after reset').toBe(401);
+
+    // 7. A session from before the reset is ended at the page, not rendered as a
+    // default shell (ONB-04). Asserted on status and Location, like
+    // route-auth-boundary.spec.ts. The fresh session is the control: if every
+    // cookie bounced to /login this would say nothing about the stale one.
+    const asPage = (token: string) =>
+      request.get(`${BASE_URL}/inspections`, {
+        maxRedirects: 0,
+        headers: { Cookie: `__Host-inspector_token=${token}` },
+      });
+    const fresh = await asPage(newToken);
+    expect(fresh.headers()['location'] ?? '', 'a live session must not be bounced').not.toMatch(/\/login/);
+    const old = await asPage(staleToken);
+    expect(old.status(), 'a session from before the reset must not render').toBe(302);
+    expect(old.headers()['location']).toMatch(/\/login/);
   });
 });
