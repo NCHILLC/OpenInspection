@@ -188,9 +188,11 @@ export default function TemplatesPage() {
   /* ---- Actions ---- */
   const handleCreate = () => {
     if (!newName.trim()) return;
-    if (!submit({ intent: "create", name: newName.trim() }, { method: "post" })) return;
-    setCreateOpen(false);
-    setNewName("");
+    // Stays open until the action answers: a success navigates to the editor,
+    // a failure renders `error` inside the dialog. Closing here hid the
+    // refusal of an over-long name behind a dialog that was already gone
+    // (QA FORM-06).
+    submit({ intent: "create", name: newName.trim() }, { method: "post" });
   };
 
   const handleDuplicate = (t: Template) => {

@@ -44,7 +44,9 @@ const A_TEMPLATE: TemplateFixture = {
     updatedAt: "2026-08-01T10:00:00.000Z",
 };
 
-function renderPage(opts: { templates?: TemplateFixture[]; url?: string } = {}) {
+function renderPage(
+    opts: { templates?: TemplateFixture[]; url?: string; action?: () => unknown } = {},
+) {
     const templates = opts.templates ?? [];
     const context = {
         branding: { defaultLocale: "en-US", defaultTimezone: "UTC" },
@@ -68,6 +70,7 @@ function renderPage(opts: { templates?: TemplateFixture[]; url?: string } = {}) 
                 {
                     path: "templates",
                     Component: TemplatesPage,
+                    action: opts.action,
                     loader: () => ({
                         templates,
                         meta: {
@@ -184,5 +187,25 @@ describe("/templates — one front door", () => {
         const create = await screen.findByRole("button", { name: /New Template/i });
         expect(create.tagName).toBe("BUTTON");
         expect(screen.queryByRole("link", { name: /New Template/i })).toBeNull();
+    });
+});
+
+describe("/templates - a refused create stays visible (FORM-06)", () => {
+    it("keeps the dialog open and shows the server's reason", async () => {
+        renderPage({
+            url: "/templates?new=1",
+            action: () => ({ error: "Name must be 100 characters or fewer" }),
+        });
+
+        const dialog = await screen.findByRole("dialog");
+        const input = within(dialog).getByRole("textbox");
+        // The field itself stops a typed or pasted name at the API's limit.
+        expect(input).toHaveAttribute("maxlength", "100");
+        fireEvent.change(input, { target: { value: "Residential" } });
+        fireEvent.click(within(dialog).getByRole("button", { name: /create/i }));
+
+        // Pre-fix the dialog closed on click, so the refusal had nowhere to show.
+        expect(await screen.findByText("Name must be 100 characters or fewer")).toBeVisible();
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 });
