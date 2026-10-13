@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useFetcher } from "react-router";
 import { useForm, type SubmissionResult } from "@conform-to/react";
 import { parseWithZod } from "@conform-to/zod/v4";
@@ -40,8 +41,18 @@ export function ContactModal({
     shouldRevalidate: "onInput",
   });
 
-  // Close after a successful submission (fetcher.data has ok:true).
+  // Close when THIS submission settles ok. The old onSubmit read `fetcherOk`
+  // from the render the click happened in, i.e. the previous result, so a
+  // successful first save never closed the dialog (QA FORM-01). The modal
+  // stays mounted, so ok:true from an earlier save is still in fetcher.data:
+  // only a busy -> idle transition counts, not the value alone.
   const fetcherOk = (fetcher.data as { ok?: boolean } | undefined)?.ok;
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    const busy = fetcher.state !== "idle";
+    if (wasBusy.current && !busy && fetcherOk) onClose();
+    wasBusy.current = busy;
+  }, [fetcher.state, fetcherOk, onClose]);
 
   return (
     <Modal
@@ -59,10 +70,7 @@ export function ContactModal({
       <fetcher.Form
         method="post"
         id={form.id}
-        onSubmit={(e) => {
-          form.onSubmit(e);
-          if (fetcherOk) setTimeout(onClose, 200);
-        }}
+        onSubmit={form.onSubmit}
         noValidate
         className="space-y-4"
       >

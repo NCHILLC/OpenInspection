@@ -44,6 +44,8 @@ export function CreateTemplateModal({
         <input
           ref={nameRef}
           value={newName}
+          // The API refuses a name over 100 characters (templates.schema).
+          maxLength={100}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           placeholder={m.templates_create_name_placeholder()}
