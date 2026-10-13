@@ -11,6 +11,7 @@ import {
   wizardRefusalMessage,
   type WizardCreateResult,
 } from "~/lib/wizard-submit";
+import { isOffline } from "~/lib/network-failure";
 import { PropertyStep } from "./new-inspection/PropertyStep";
 import { PeopleStep } from "./new-inspection/PeopleStep";
 import { ServicesStep } from "./new-inspection/ServicesStep";
@@ -174,6 +175,8 @@ export function NewInspectionWizard({
   const [newAgentMode, setNewAgentMode] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentEmail, setNewAgentEmail] = useState("");
+  // Offline nothing is submitted: an unfetched clientAction chunk fails uncatchably.
+  const [offlineBlocked, setOfflineBlocked] = useState(false);
 
   // Free-tier usage quotas — when the create POST comes back 402
   // QUOTA_EXHAUSTED, the wizard stays open and shows an upgrade panel instead
@@ -257,6 +260,7 @@ export function NewInspectionWizard({
       setNewAgentName("");
       setNewAgentEmail("");
       setQuotaExceeded(undefined);
+      setOfflineBlocked(false);
       return;
     }
     // At-open quota gate — seed quotaExceeded from the caller-supplied prop
@@ -291,13 +295,15 @@ export function NewInspectionWizard({
   // inspectorId or date/time changes. With no explicit inspector chosen
   // (solo flow) the server checks the CALLER — that is who the inspection
   // will be assigned to. Advisory only — never blocks.
+  // Both advisory checks skip when offline (a failed load unmounts the wizard),
+  // read at fire time as the line can drop inside the debounce. Not re-run on reconnect.
   useEffect(() => {
     if (!date) return;
     const combinedDate = civilToInstantISO(date, time, schedulingTz);
     const params = new URLSearchParams({ date: combinedDate });
     if (inspectorId) params.set("inspectorId", inspectorId);
     const t = setTimeout(() => {
-      conflictFetcher.load(`/resources/schedule-conflicts?${params.toString()}`);
+      if (!isOffline()) conflictFetcher.load(`/resources/schedule-conflicts?${params.toString()}`);
     }, 400);
     return () => clearTimeout(t);
   // conflictFetcher is stable across renders — intentionally omitted per RR convention.
@@ -307,7 +313,7 @@ export function NewInspectionWizard({
   useEffect(() => {
     if (!date) return;
     const t = setTimeout(() => {
-      holidayFetcher.load(`/resources/holiday-check?date=${encodeURIComponent(date)}`);
+      if (!isOffline()) holidayFetcher.load(`/resources/holiday-check?date=${encodeURIComponent(date)}`);
     }, 300);
     return () => clearTimeout(t);
   }, [date]);
@@ -410,11 +416,13 @@ export function NewInspectionWizard({
   });
 
   // Derived, not mirrored: a copy would need clearing on submit AND on reset.
-  const submitError = wizardRefusalMessage(
+  const submitError = offlineBlocked ? m.new_inspection_offline() : wizardRefusalMessage(
     fetcher.state === "idle" ? (fetcher.data as WizardCreateResult | undefined) : undefined,
   );
 
   function handleSubmit() {
+    setOfflineBlocked(isOffline());
+    if (isOffline()) return;
     // Returns false and does nothing if a create is already in flight — the
     // button below is disabled too, but that only takes effect on the NEXT
     // render, which a double click beats.

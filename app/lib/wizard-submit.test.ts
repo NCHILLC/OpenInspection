@@ -1,6 +1,12 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { buildWizardCreatePayload, wizardRefusalMessage, type WizardCreateState } from "~/lib/wizard-submit";
+import {
+    buildWizardCreatePayload,
+    guardWizardNetwork,
+    wizardRefusalMessage,
+    type WizardCreateResult,
+    type WizardCreateState,
+} from "~/lib/wizard-submit";
 
 const base: WizardCreateState = {
     propertyType: "single_family",
@@ -145,5 +151,43 @@ describe("wizardRefusalMessage", () => {
         // Null here must mean "nothing went wrong", never "nothing to say".
         expect(wizardRefusalMessage(undefined)).toBeNull();
         expect(wizardRefusalMessage({ intent: "create", ok: true })).toBeNull();
+    });
+});
+
+describe("guardWizardNetwork", () => {
+    const post = (fields: Record<string, string>) =>
+        new Request("https://x/inspections", {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams(fields),
+        });
+    const dropped = () => Promise.reject(new TypeError("Failed to fetch"));
+
+    it("turns a dropped create into a refusal the wizard already knows how to hold", async () => {
+        const out = (await guardWizardNetwork(post({ intent: "create" }), dropped)) as WizardCreateResult;
+        expect(out).toMatchObject({ ok: false, intent: "create", error: { code: "NETWORK" } });
+        // The same line the wizard shows for any refusal — no second code path.
+        expect(wizardRefusalMessage(out)).toBe(out.error?.message);
+        expect(wizardRefusalMessage(out)).toBeTruthy();
+    });
+
+    it("gives a search that could not run an empty answer instead of an error", async () => {
+        expect(await guardWizardNetwork(post({ intent: "search-agents" }), dropped)).toEqual({ intent: "search-agents", agents: [] });
+        expect(await guardWizardNetwork(post({ intent: "search-clients" }), dropped)).toEqual({ intent: "search-clients", clients: [] });
+    });
+
+    it("lets the result through untouched, and leaves the body for serverAction to read", async () => {
+        const request = post({ intent: "create" });
+        const result = { ok: true };
+        await expect(guardWizardNetwork(request, async () => result)).resolves.toBe(result);
+        expect(request.bodyUsed).toBe(false);
+    });
+
+    it("does not swallow a redirect, a non-network error, or an intent it does not own", async () => {
+        const redirect = new Response(null, { status: 302, headers: { Location: "/inspections/i1/edit" } });
+        await expect(guardWizardNetwork(post({ intent: "create" }), () => Promise.reject(redirect))).rejects.toBe(redirect);
+        const boom = new Error("server exploded");
+        await expect(guardWizardNetwork(post({ intent: "create" }), () => Promise.reject(boom))).rejects.toBe(boom);
+        await expect(guardWizardNetwork(post({ intent: "delete" }), dropped)).rejects.toBeInstanceOf(TypeError);
     });
 });

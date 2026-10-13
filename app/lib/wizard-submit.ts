@@ -1,4 +1,5 @@
 import type { AddressSelection } from "~/routes/resources/places";
+import { isNetworkFailure } from "~/lib/network-failure";
 import { m } from "~/paraglide/messages";
 
 /**
@@ -111,4 +112,38 @@ export function wizardRefusalMessage(data: WizardCreateResult | undefined): stri
     // The API names the field and the reason ("client.email: Invalid email
     // address") — the only thing that tells the inspector what to go and fix.
     return data.error?.message || m.new_inspection_create_failed();
+}
+
+/**
+ * What the wizard's `/inspections` fetches do when the connection drops under
+ * them. `fetch` rejects, and React Router does not hand that to the component:
+ * it routes a failed fetcher to the route's error boundary, which unmounts the
+ * wizard and the inspector's whole draft with it (QA sweep NET-02).
+ * Returning the same `ok: false` shape a server refusal has keeps the wizard
+ * mounted, where Create is the retry — and the idempotency key is held on
+ * `ok: false`, so a create whose reply was lost is not made twice.
+ *
+ * Wired as the route's `clientAction`. Only the wizard's intents are caught; a
+ * failure of any other intent keeps the behaviour it always had. The body is read
+ * from a clone because `serverAction()` has to read the original.
+ */
+export async function guardWizardNetwork<T>(
+    request: Request,
+    serverAction: () => Promise<T>,
+): Promise<T | WizardCreateResult | { intent: string; agents?: []; clients?: [] }> {
+    const intent = (await request.clone().formData()).get("intent");
+    try {
+        return await serverAction();
+    } catch (error) {
+        // A redirect (a successful create) arrives here as a thrown Response and
+        // is not ours to swallow; neither is anything that is not a network error.
+        if (!isNetworkFailure(error)) throw error;
+        if (intent === "create") {
+            return { ok: false, intent, error: { code: "NETWORK", message: m.new_inspection_offline() } };
+        }
+        // Nothing found beats a crashed wizard for a search that could not run.
+        if (intent === "search-agents") return { intent, agents: [] };
+        if (intent === "search-clients") return { intent, clients: [] };
+        throw error;
+    }
 }
