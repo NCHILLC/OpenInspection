@@ -1274,12 +1274,10 @@ export default function InspectionHubPage() {
             : undefined
         }
         busy={agreementModal.busy}
+        serverError={agreementModal.error}
         onSend={submitSendAgreement}
         onClose={() => agreementModal.setOpen(false)}
       />
-      {agreementModal.error && (
-        <p className="text-[12px] font-medium text-ih-bad-fg">{agreementModal.error}</p>
-      )}
 
       {/* Inspector pre-sign — the envelope-level signature an inspector applies
           before the client sees it. Moved off the Library page with the rest of

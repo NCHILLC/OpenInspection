@@ -1,5 +1,7 @@
 import { eq, and, inArray, lt, sql, desc, asc } from 'drizzle-orm';
-import { agreements, agreementRequests, agreementSigners, inspections } from '../../lib/db/schema';
+import { agreements, agreementRequests, agreementSigners, inspections, inspectionServices, invoices, users } from '../../lib/db/schema';
+import { getEffectivePriceCents } from '../../lib/effective-price';
+import { fillAgreementTokens, blockingAgreementIssues } from '../../lib/agreement-tokens';
 import { Errors } from '../../lib/errors';
 import { logger } from '../../lib/logger';
 import { mintToken, hashToken } from '../../lib/token-hash';
@@ -131,7 +133,10 @@ export function EnvelopeLegacyMixin<TBase extends Constructor<AgreementServiceBa
                 return { token, status: env.status, alreadyExists: true, requestId: env.id, addedSignerIds };
             }
             // Verify the inspection exists in this tenant.
-            const inspRows = await db.select({ id: inspections.id }).from(inspections)
+            const inspRows = await db.select({
+                id: inspections.id, inspectorId: inspections.inspectorId, address: inspections.propertyAddress,
+                date: inspections.date, price: inspections.price,
+            }).from(inspections)
                 .where(and(eq(inspections.id, inspectionId), eq(inspections.tenantId, tenantId))).limit(1);
             if (inspRows.length === 0) throw Errors.NotFound('Inspection not found');
             // Pick the agreement template: explicit id (tenant-scoped) or the tenant's first template.
@@ -173,13 +178,45 @@ export function EnvelopeLegacyMixin<TBase extends Constructor<AgreementServiceBa
             const completionPolicy = opts?.completionPolicy ?? 'all';
             const now = new Date();
             const requestId = crypto.randomUUID();
-            const contentSnapshot = agreement.content;
+            // The snapshot is the permanent signed record: merge fields are
+            // filled now, and a body that still carries placeholders or the
+            // starter's admin notice is refused rather than sent (DELIV-01).
+            const insp = inspRows[0];
+            const [inspector, invoice, lines] = await Promise.all([
+                insp.inspectorId
+                    ? db.select({ name: users.name }).from(users)
+                        .where(and(eq(users.id, insp.inspectorId), eq(users.tenantId, tenantId))).get()
+                    : undefined,
+                db.select({ amountCents: invoices.amountCents }).from(invoices)
+                    .where(and(eq(invoices.inspectionId, inspectionId), eq(invoices.tenantId, tenantId)))
+                    .orderBy(desc(invoices.createdAt)).limit(1).get(),
+                db.select({ priceSnapshot: inspectionServices.priceSnapshot, priceOverride: inspectionServices.priceOverride })
+                    .from(inspectionServices)
+                    .where(and(eq(inspectionServices.inspectionId, inspectionId), eq(inspectionServices.tenantId, tenantId))).all(),
+            ]);
+            const brand = await new BrandingService(this.db).getBrand(tenantId);
+            const contentSnapshot = fillAgreementTokens(agreement.content, {
+                inspector: inspector?.name || brand.legalName || brand.companyName,
+                client: resolvedClientName || primaryClient?.email,
+                address: insp.address,
+                date: insp.date,
+                amountCents: getEffectivePriceCents({
+                    invoiceAmountCents: invoice?.amountCents ?? null,
+                    serviceLines: lines,
+                    inspectionPriceCents: insp.price,
+                }),
+            });
+            const issues = blockingAgreementIssues(contentSnapshot);
+            if (issues.length > 0) {
+                throw Errors.UnprocessableEntity(
+                    `This agreement cannot be sent yet: ${issues.join('; ')}. Edit the template in Settings, then send again.`,
+                );
+            }
             const contentHash = await sha256Hex(contentSnapshot);
             // Spec 2026-08-04 section 3 — freeze the contracting identity onto
             // the envelope. Renaming the company must not retroactively rewrite
             // which entity a past agreement was signed with. `legalName` arrives
             // ALREADY resolved from getBrand; no fallback is re-applied here.
-            const brand = await new BrandingService(this.db).getBrand(tenantId);
 
             const newRow = {
                 id: requestId,
