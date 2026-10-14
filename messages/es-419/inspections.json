@@ -132,7 +132,7 @@
   "inspections_hub_reports_blocked_primary": "El informe principal no se puede eliminar: cada orden conserva uno y, sin él, la orden no se puede editar.",
   "inspections_hub_reports_blocked_published": "Un informe publicado no se puede eliminar: ya fue entregado, y sus versiones firmadas son lo que le permite al cliente verificar el documento que tiene en su poder.",
   "inspections_hub_error_report_delete": "No se pudo eliminar el informe.",
-  "inspections_hub_block_details": "Detalles de la orden",
+  "inspections_hub_block_details": "Detalles de la inspección",
   "inspections_hub_details_edit": "Editar detalles",
   "inspections_hub_details_reference": "Número de referencia",
   "inspections_hub_details_referral": "Fuente de referencia",
