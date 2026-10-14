@@ -1,7 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "modal_seatlimit_title": "Seat limit reached",
-  "modal_seatlimit_body": "You’ve reached your seat limit ({used}/{max}). Upgrade your plan to invite more team members.",
+  "modal_seatlimit_body": "You've reached your seat limit ({used}/{max}). Upgrade your plan to invite more team members.",
   "modal_seatlimit_upgrade": "Upgrade",
   "modal_invite_title": "Invite",
   "modal_edit_member_title": "Edit member",
@@ -99,7 +99,7 @@
   "newinsp_schedule_holiday_block": "Cannot schedule on {name} — company holidays are blocked.",
   "newinsp_schedule_holiday_block_generic": "Cannot schedule on a company closed day.",
   "newinsp_quota_title": "Free plan limit reached",
-  "newinsp_quota_body": "You’ve used all 5 free inspections. Everything you created stays fully usable — subscribe to create new ones.",
+  "newinsp_quota_body": "You've used all 5 free inspections. Everything you created stays fully usable — subscribe to create new ones.",
   "newinsp_quota_subscribe": "Subscribe",
   "newinsp_services_label": "Services and pricing",
   "newinsp_services_template_hint": "The Report template you picked decides what the report contains; services decide what the client is charged — nothing here has to match the template.",
