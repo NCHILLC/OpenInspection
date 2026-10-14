@@ -232,7 +232,7 @@ describe('settings-integrations action — save-video intent', () => {
         expect(patchTenantConfig).not.toHaveBeenCalled();
         expect(postAdminConfig).not.toHaveBeenCalled();
         expect(res).toMatchObject({ intent: 'save-video', success: false });
-        expect((res as { error: string }).error).toMatch(/plan-managed/);
+        expect((res as { error: string }).error).toMatch(/managed by your plan/);
     });
 });
 

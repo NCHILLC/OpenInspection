@@ -62,7 +62,7 @@ test.describe.serial('Timezone configuration E2E', () => {
         await expect(tz).toBeVisible({ timeout: 10000 });
 
         await tz.selectOption('America/New_York');
-        await page.getByRole('button', { name: 'Save Company' }).click();
+        await page.getByRole('button', { name: 'Save company' }).click();
         await expect(page.getByText(/company settings saved/i)).toBeVisible({ timeout: 10000 });
 
         // Reload and confirm the saved timezone is the selected value.

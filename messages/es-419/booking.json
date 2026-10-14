@@ -40,7 +40,7 @@
   "booking_prefill_clear": "¿No es usted? Borrar",
   "booking_agent_on_behalf_heading": "Reservando en nombre de un cliente como {name}",
   "booking_agent_on_behalf_body": "Ingrese abajo los datos de contacto de su cliente. Se le pedirá que confirme, y la empresa fijará la fecha y el precio.",
-  "booking_submitting": "Enviando...",
+  "booking_submitting": "Enviando…",
   "booking_powered_by": "Con la tecnología de OpenInspection",
   "booking_link_privacy_policy": "Política de privacidad",
   "booking_link_terms": "Términos",

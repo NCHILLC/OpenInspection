@@ -78,7 +78,7 @@
   "editor_comment_library_sev_defect": "Defecto",
   "editor_comment_library_sev_my_snippets": "Mis fragmentos",
   "editor_comment_library_sev_aria": "Filtro de gravedad de comentarios",
-  "editor_comment_library_search_placeholder": "Buscar comentarios...",
+  "editor_comment_library_search_placeholder": "Buscar comentarios…",
   "editor_comment_library_count": "{count} comentarios",
   "editor_comment_list_empty": "Ningún comentario coincide con el filtro actual.",
   "editor_typeahead_kind_defect": "Defecto",

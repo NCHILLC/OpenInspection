@@ -340,7 +340,7 @@ export async function certRenderHandler(
         : '<em>not recorded — this envelope predates identity capture</em>'
     }</p>` +
     `<p><strong>Document:</strong> Signed agreement for ${escapeHtml(clientLabel)}</p>` +
-    `<p><strong>Envelope ID:</strong> <code>${escapeHtml(reqRow.id)}</code></p>` +
+    `<p><strong>Document ID:</strong> <code>${escapeHtml(reqRow.id)}</code></p>` +
     `<p><strong>Signed by:</strong></p>` +
     `<ul style="margin:4px 0 0 0;padding-left:20px">${signersHtml}</ul>` +
     `<p style="margin-top:16px"><strong>Audit chain:</strong> ${auditRows.length} events · key <code>${escapeHtml(keyFingerprint)}</code></p>` +

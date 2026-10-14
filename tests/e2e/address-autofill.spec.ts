@@ -61,6 +61,6 @@ test.describe.serial('Address autocomplete + property auto-fill (#198/#200)', ()
     await expect(btn).toBeEnabled();
     await btn.click();
 
-    await expect(page.getByText(/isn.t configured/i)).toBeVisible();
+    await expect(page.getByText(/is not set up for your company/i)).toBeVisible();
   });
 });

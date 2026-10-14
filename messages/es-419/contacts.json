@@ -55,7 +55,7 @@
   "contacts_detail_untitled_inspection": "Inspección sin título",
   "contacts_error_not_found": "No se pudo encontrar este contacto. Es posible que se haya eliminado.",
   "contacts_error_forbidden": "No tiene permiso para ver este contacto.",
-  "contacts_error_generic": "Algo salió mal al abrir el contacto.",
+  "contacts_error_generic": "No pudimos abrir este contacto. Actualice la página para volver a intentarlo. Si sigue ocurriendo, comuníquese con soporte.",
   "contacts_label_roles": "Roles",
   "contacts_roles_action_add": "Agregar rol",
   "contacts_roles_empty_title": "Aún no hay perfiles de rol",

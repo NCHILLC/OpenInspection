@@ -1,7 +1,7 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "editor_sectionpicker_title": "Ir a la sección",
-  "editor_sectionpicker_placeholder": "Ir a la sección...",
+  "editor_sectionpicker_placeholder": "Ir a la sección…",
   "editor_sectionpicker_item_count": "{count} elementos",
   "editor_sectionpicker_no_match": "Ninguna sección coincide",
   "editor_siderail_close_panel": "Cerrar el panel",

@@ -289,7 +289,7 @@ describe('SettingsConnectedApps component render', () => {
             isSaas: false,
         } as never);
         const html = renderToStaticMarkup(createElement(SettingsConnectedApps));
-        expect(html).not.toContain('Tenant-wide');
+        expect(html).not.toContain('Company-wide');
     });
 
     it('renders the tenant-wide section for an owner with all-grants data', () => {
@@ -311,7 +311,7 @@ describe('SettingsConnectedApps component render', () => {
             seatUsage: null, outboundCoolingWindow: null,
         });
         const html = renderToStaticMarkup(createElement(SettingsConnectedApps));
-        expect(html).toContain('Tenant-wide');
+        expect(html).toContain('Company-wide');
         expect(html).toContain('bob@example.com');
     });
 

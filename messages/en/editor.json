@@ -78,7 +78,7 @@
   "editor_comment_library_sev_defect": "Defect",
   "editor_comment_library_sev_my_snippets": "My Snippets",
   "editor_comment_library_sev_aria": "Comment severity filter",
-  "editor_comment_library_search_placeholder": "Search comments...",
+  "editor_comment_library_search_placeholder": "Search comments…",
   "editor_comment_library_count": "{count} comments",
   "editor_comment_list_empty": "No comments match the current filter.",
   "editor_typeahead_kind_defect": "Defect",
