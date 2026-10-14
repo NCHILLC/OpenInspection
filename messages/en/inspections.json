@@ -242,7 +242,7 @@
   "inspections_hub_copy_link": "Copy link",
   "inspections_hub_eb_not_found": "This inspection could not be found. It may have been deleted.",
   "inspections_hub_eb_forbidden": "You do not have permission to view this inspection.",
-  "inspections_hub_eb_generic": "Something went wrong while opening the inspection.",
+  "inspections_hub_eb_generic": "We could not open this inspection. Refresh the page to try again. If it keeps happening, contact support.",
   "inspections_hub_eb_back": "Back to Dashboard",
   "inspections_hub_error_send_report": "Could not send the report. Please try again.",
   "inspections_hub_error_send_sms": "Could not send the text. Please try again.",

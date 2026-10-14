@@ -3,7 +3,7 @@
   "helper_booking_inspector_first_available": "El primero disponible",
   "helper_booking_inspector_default": "Inspector",
   "helper_booking_submit_success": "¡Se envió la solicitud de reserva! Usted recibirá en breve un correo electrónico de confirmación.",
-  "helper_booking_submit_error": "Algo salió mal. Inténtelo de nuevo.",
+  "helper_booking_submit_error": "No pudimos enviar su reserva. Revise su conexión e inténtelo de nuevo. Si sigue fallando, comuníquese directamente con el inspector.",
   "helper_booking_network_error": "Error de red. Revise su conexión.",
   "helper_rating_desc_satisfactory": "El elemento funciona como corresponde; no se observaron inconvenientes.",
   "helper_rating_desc_monitor": "El elemento es funcional pero muestra desgaste; se recomienda una reinspección periódica.",

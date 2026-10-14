@@ -12,7 +12,7 @@
   "settings_channel_in_app": "In-app",
   "settings_connection_test_failed": "Connection test failed.",
   "settings_unknown_action": "Unknown action",
-  "settings_error_generic": "An error occurred.",
+  "settings_error_generic": "That did not work. Check your connection and try again.",
   "settings_comms_meta_title": "Communication - Settings - OpenInspection",
   "settings_comms_intro": "Configure email delivery, templates, and calendar sync.",
   "settings_comms_nav_managed": "Managed SMS",

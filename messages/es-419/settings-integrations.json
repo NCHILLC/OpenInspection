@@ -12,7 +12,7 @@
   "settings_channel_in_app": "En la aplicación",
   "settings_connection_test_failed": "Falló la prueba de conexión.",
   "settings_unknown_action": "Acción desconocida",
-  "settings_error_generic": "Ocurrió un error.",
+  "settings_error_generic": "No funcionó. Revise su conexión e inténtelo de nuevo.",
   "settings_comms_meta_title": "Comunicación - Configuración - OpenInspection",
   "settings_comms_intro": "Configure el envío de correo electrónico, las plantillas y la sincronización del calendario.",
   "settings_comms_nav_managed": "SMS gestionados",

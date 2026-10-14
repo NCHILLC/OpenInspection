@@ -3,7 +3,7 @@
   "helper_booking_inspector_first_available": "First available",
   "helper_booking_inspector_default": "Inspector",
   "helper_booking_submit_success": "Booking request submitted! You will receive a confirmation email shortly.",
-  "helper_booking_submit_error": "Something went wrong. Please try again.",
+  "helper_booking_submit_error": "We could not submit your booking. Check your connection and try again. If it keeps failing, contact the inspector directly.",
   "helper_booking_network_error": "Network error. Please check your connection.",
   "helper_rating_desc_satisfactory": "Item is functioning as intended; no concerns observed.",
   "helper_rating_desc_monitor": "Item is functional but shows wear; recommend periodic re-inspection.",

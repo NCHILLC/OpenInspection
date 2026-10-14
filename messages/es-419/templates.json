@@ -111,7 +111,7 @@
   "templates_edit_tab_comments": "Comentarios",
   "templates_edit_error_not_found": "No se encontró esta plantilla. Es posible que se haya eliminado.",
   "templates_edit_error_forbidden": "No tiene permiso para editar esta plantilla.",
-  "templates_edit_error_generic": "Se produjo un error al abrir el editor de plantillas.",
+  "templates_edit_error_generic": "No pudimos abrir el editor de plantillas. Actualice la página para volver a intentarlo. Si sigue ocurriendo, comuníquese con soporte.",
   "templates_edit_error_back": "Volver a Plantillas",
   "templates_edit_phone_preview_label": "Vista de teléfono · {width}px"
 }
