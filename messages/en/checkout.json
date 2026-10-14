@@ -24,7 +24,7 @@
   "checkout_sign_draw_prompt": "Draw your signature below:",
   "checkout_sign_canvas_aria": "Signature pad — draw your signature here",
   "checkout_sign_submit_pending": "Signing...",
-  "checkout_sign_submit": "Sign Agreement",
+  "checkout_sign_submit": "Sign agreement",
   "checkout_pay_step_label": "Step 2 · Payment",
   "checkout_pay_none_required": "No payment is required for this inspection.",
   "checkout_pay_received": "Payment received — thank you.",

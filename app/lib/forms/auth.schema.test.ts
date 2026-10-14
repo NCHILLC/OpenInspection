@@ -113,7 +113,7 @@ describe('auth login i18n (Phase C pilot)', () => {
   it('resolves login UI messages in en (baseLocale)', () => {
     overwriteGetLocale(() => 'en');
     expect(m.auth_login_heading()).toBe('Log in to your company');
-    expect(m.auth_login_submit()).toBe('Log In');
+    expect(m.auth_login_submit()).toBe('Log in');
     expect(m.auth_login_email_label()).toBe('Email address');
   });
 

@@ -131,7 +131,7 @@
   "portal_agreement_verify_hint": "Use this link anytime to confirm this signature hasn't been altered.",
   "portal_agreement_draw_prompt": "Draw your signature below:",
   "portal_agreement_signing_pending": "Signing...",
-  "portal_agreement_sign_submit": "Sign Agreement",
+  "portal_agreement_sign_submit": "Sign agreement",
   "portal_agreement_cancel_decline": "Cancel decline",
   "portal_agreement_decline_toggle": "Decline this agreement",
   "portal_agreement_reason_label": "Reason (optional)",

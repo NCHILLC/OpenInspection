@@ -73,7 +73,7 @@ export const CLIENT_TEMPLATES: EmailTemplateDescriptor[] = [
     blocks: [
       { key: 'heading',  label: 'Heading', default: 'Inspection Report Shared',                                                                         multiline: false },
       { key: 'body',     label: 'Body',    default: 'The inspector has shared the inspection report for {{address}} with you.',                          multiline: true  },
-      { key: 'ctaLabel', label: 'Button',  default: 'View Report',                                                                                      multiline: false },
+      { key: 'ctaLabel', label: 'Button',  default: 'View report',                                                                                      multiline: false },
     ],
     variables: [
       { name: 'address',   desc: 'Property address' },
@@ -147,7 +147,7 @@ export const CLIENT_TEMPLATES: EmailTemplateDescriptor[] = [
     blocks: [
       { key: 'heading',  label: 'Heading', default: 'Document Ready to Sign',                                                                                                                          multiline: false },
       { key: 'body',     label: 'Body',    default: 'Hi {{clientName}}, you have been asked to review and sign the following agreement: {{agreementName}}.',                                           multiline: true  },
-      { key: 'ctaLabel', label: 'Button',  default: 'Review & Sign Agreement',                                                                                                                        multiline: false },
+      { key: 'ctaLabel', label: 'Button',  default: 'Review & sign agreement',                                                                                                                        multiline: false },
     ],
     variables: [
       { name: 'clientName',    desc: 'Client name' },

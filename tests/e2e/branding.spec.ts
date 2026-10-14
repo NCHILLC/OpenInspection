@@ -75,7 +75,7 @@ test.describe.serial('Branding System E2E', () => {
         // Live primary-color picker (settings-workspace.tsx:185-192).
         await expect(page.locator('input[type="color"][name="primaryColor"]')).toBeVisible();
         // Live save affordance (settings-workspace.tsx:366-369).
-        await expect(page.getByRole('button', { name: 'Save Company' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Save company' })).toBeVisible();
     });
 
     test('design-system --ih-primary token is injected on the document root', async ({ page }) => {
