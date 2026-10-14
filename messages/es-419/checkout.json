@@ -47,7 +47,7 @@
   "invoice_from_party": "Emitida por {entity}",
   "agreement_printable_meta_title": "Acuerdo firmado - OpenInspection",
   "agreement_printable_not_found": "Acuerdo no encontrado.",
-  "agreement_printable_envelope_id": "ID del sobre: {envelopeId}",
+  "agreement_printable_envelope_id": "ID del documento: {envelopeId}",
   "agreement_printable_signed_by": "Firmado por",
   "agreement_printable_signature_alt": "Firma",
   "agreement_printable_date_signed": "Fecha de firma (UTC)",
