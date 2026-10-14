@@ -68,7 +68,7 @@
   "editor_settings_legend_report_rules": "Report rules",
   "editor_settings_legend_appearance": "Report appearance",
   "editor_settings_required_defect_fields": "Required defect fields at publish",
-  "editor_settings_required_inherit": "Inherit (tenant default)",
+  "editor_settings_required_inherit": "Inherit (company default)",
   "editor_settings_appearance_summary": "Use a different style preset",
   "editor_settings_appearance_help": "Overrides the company or template default for this report only.",
   "editor_settings_appearance_inherit": "Inherit default",

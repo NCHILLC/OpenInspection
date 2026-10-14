@@ -299,7 +299,7 @@
   "settings_stripe_send_test_event": "Send test event",
   "settings_stripe_no_deliveries_suffix": ", y luego presione Actualizar.",
   "settings_video_heading": "Video",
-  "settings_video_subtitle": "Elija el backend de almacenamiento de video para esta instancia.",
+  "settings_video_subtitle": "Elija dónde se almacenan los videos de esta instancia.",
   "settings_video_default_label": "Predeterminado: R2 (gratis).",
   "settings_video_r2_desc": "Los videos se almacenan en su bucket de Cloudflare R2 — sin costo adicional más allá de las tarifas de almacenamiento de R2.",
   "settings_video_stream_label": "Cloudflare Stream",
