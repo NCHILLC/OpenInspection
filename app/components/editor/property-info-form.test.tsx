@@ -309,7 +309,7 @@ describe("PropertyInfoForm — Fetch property details (#200)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /fetch property details/i }));
 
-    await waitFor(() => expect(screen.getByText(/isn.t configured/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/is not set up for your company/i)).toBeTruthy());
     expect(onCommit).not.toHaveBeenCalled();
   });
 });

@@ -123,9 +123,9 @@ describe("AiAssurancePanel", () => {
         expect(screen.getByText("u1")).toBeTruthy();
     });
 
-    it("reports reviews that cite a call this workspace has no record of", () => {
+    it("reports reviews that cite a call this company has no record of", () => {
         renderPanel(base({ calls: [reviewedCall()], unresolvedReviewCount: 3 }));
-        expect(screen.getByText(/reviews citing a call this workspace has no record of: 3/i)).toBeTruthy();
+        expect(screen.getByText(/reviews citing a call this company has no record of: 3/i)).toBeTruthy();
     });
 
     it("stays silent when every review resolves", () => {
