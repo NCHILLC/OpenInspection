@@ -4,7 +4,7 @@
   "metrics_heading": "Metrics",
   "metrics_meta_singular": "inspection",
   "metrics_meta_plural": "inspections",
-  "metrics_loading": "Loading...",
+  "metrics_loading": "Loading…",
   "metrics_kpi_revenue": "Total Revenue",
   "metrics_kpi_inspections": "Total Inspections",
   "metrics_kpi_aov": "Avg Order Value",

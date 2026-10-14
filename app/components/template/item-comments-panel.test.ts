@@ -43,7 +43,7 @@ describe("ItemCommentsPanel (behavior-preserving swap)", () => {
     expect(screen.getByDisplayValue("Shingles lifted")).toBeTruthy();
     expect(screen.queryByText("Lifted at ridge.")).toBeNull();
     fireEvent.click(screen.getByLabelText("Expand comment"));
-    const textarea = screen.getByPlaceholderText("Comment text...") as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText("Comment text…") as HTMLTextAreaElement;
     expect(textarea.value).toBe("Lifted at ridge.");
   });
 
@@ -64,7 +64,7 @@ describe("ItemCommentsPanel (behavior-preserving swap)", () => {
     // Guard: the CommentTypeahead wiring must not remove the editable textarea.
     renderPanel();
     fireEvent.click(screen.getByLabelText("Expand comment"));
-    const textarea = screen.getByPlaceholderText("Comment text...") as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText("Comment text…") as HTMLTextAreaElement;
     expect(textarea.tagName).toBe("TEXTAREA");
     expect(textarea.value).toBe("Lifted at ridge.");
   });
