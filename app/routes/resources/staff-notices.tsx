@@ -82,7 +82,9 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs): Pr
   try {
     return await serverLoader();
   } catch (error) {
-    if (isNetworkFailure(error)) return EMPTY;
+    // Inline, not `EMPTY`: splitRouteModules "enforce" rejects a clientLoader
+    // that shares a top-level binding with the server loader.
+    if (isNetworkFailure(error)) return { notices: [], unread: 0 };
     throw error;
   }
 }
