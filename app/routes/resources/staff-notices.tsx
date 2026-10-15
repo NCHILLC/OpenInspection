@@ -15,6 +15,7 @@ import type { Route } from "./+types/staff-notices";
 import { getToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
 import type { NoticeRowData } from "~/lib/notice-view";
+import { isNetworkFailure } from "~/lib/network-failure";
 
 export interface StaffNoticesPayload {
   notices: NoticeRowData[];
@@ -67,6 +68,22 @@ export async function loader({ request, context }: Route.LoaderArgs): Promise<St
     return { notices: (list.data ?? []).map(toNoticeRow), unread: count };
   } catch {
     return EMPTY;
+  }
+}
+
+/**
+ * The bell sits in the shell, so its read must never reach the root boundary.
+ * The server loader's try/catch cannot see the `.data` request itself failing
+ * (offline, QA sweep NET-01): without this the whole portal swaps to "You're
+ * offline" for a glance-sized widget. Network failure -> empty list; anything
+ * else still throws.
+ */
+export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs): Promise<StaffNoticesPayload> {
+  try {
+    return await serverLoader();
+  } catch (error) {
+    if (isNetworkFailure(error)) return EMPTY;
+    throw error;
   }
 }
 
