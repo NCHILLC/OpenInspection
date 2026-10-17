@@ -259,5 +259,13 @@
   "editor_mobile_sync_uploading": "Subiendo {count}",
   "editor_mobile_sync_offline": "Sin conexión · {count} en cola",
   "editor_session_expired": "La sesión expiró: inicia sesión para continuar",
-  "editor_session_expired_short": "Sesión expirada"
+  "editor_session_expired_short": "Sesión expirada",
+  "editor_settings_sync_mode": "Cuándo se suben las fotos",
+  "editor_settings_sync_mode_help": "Las fotos siempre se guardan primero en este dispositivo. Esto solo decide cuándo salen de él, y aplica solo a este dispositivo.",
+  "editor_settings_sync_mode_auto": "Automáticamente, cuando haya conexión",
+  "editor_settings_sync_mode_prompt": "Preguntarme cuando vuelva la conexión",
+  "editor_settings_sync_mode_wifi": "Solo con wi-fi (pregunta si este dispositivo no puede saberlo)",
+  "editor_mobile_sync_held": "{count} en espera · toca para sincronizar",
+  "editor_sync_held_toast": "{count} fotos esperan para subirse.",
+  "editor_sync_held_toast_action": "Sincronizar ahora"
 }

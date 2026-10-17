@@ -5,6 +5,7 @@ import { TemplateCombobox } from "~/components/TemplateCombobox";
 import { CoverCropper, coverCropFor, type StoredCoverCrop } from "~/components/media-studio/CoverCropper";
 import { fullResUrl } from "~/components/media-studio/cropImage";
 import { ORIGINAL_QUALITY_KEY } from "~/routes/inspection-edit";
+import { PhotoSyncModeSelect } from "./PhotoSyncModeSelect";
 import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
 import { m } from "~/paraglide/messages";
 import { CLIENT_PROFILE_LIST } from "~/lib/report-style/profiles-client";
@@ -366,8 +367,7 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
                 </details>
               </fieldset>
 
-              {/* N2+N4 — device-local upload quality preference. Persisted to
-                  localStorage (not the inspection row); applies to this browser. */}
+              {/* N2+N4 — device-local upload preferences (localStorage, not the inspection row). */}
               <fieldset className="space-y-2">
                 <legend className="text-[15px] font-semibold tracking-tight text-ih-fg-1">{m.editor_settings_legend_photo_uploads()}</legend>
                 <label className="inline-flex items-start gap-2 text-[16px] text-ih-fg-3">
@@ -385,8 +385,8 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
                     </span>
                   </span>
                 </label>
+                <PhotoSyncModeSelect open={open} />
               </fieldset>
-
           </form>
         )}
       </Drawer>

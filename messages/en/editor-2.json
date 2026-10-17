@@ -259,5 +259,13 @@
   "editor_mobile_sync_uploading": "Uploading {count}",
   "editor_mobile_sync_offline": "Offline · {count} queued",
   "editor_session_expired": "Session expired: log in to continue",
-  "editor_session_expired_short": "Session expired"
+  "editor_session_expired_short": "Session expired",
+  "editor_settings_sync_mode": "When photos upload",
+  "editor_settings_sync_mode_help": "Photos always save on this device first. This only decides when they leave it, and applies to this device only.",
+  "editor_settings_sync_mode_auto": "Automatically, whenever there is a connection",
+  "editor_settings_sync_mode_prompt": "Ask me when a connection returns",
+  "editor_settings_sync_mode_wifi": "Only on wi-fi (asks if this device cannot tell)",
+  "editor_mobile_sync_held": "{count} waiting · tap to sync",
+  "editor_sync_held_toast": "{count} photos are waiting to upload.",
+  "editor_sync_held_toast_action": "Sync now"
 }
