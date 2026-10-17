@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listPendingMedia } from "~/lib/collab/media-pending-store";
+import { currentConnectionType, gateDrain, onConnectionTypeChange, photoSyncMode, SYNC_NOW_EVENT } from "~/lib/collab/photo-sync-mode";
 import type { PresenceStatus } from "~/hooks/usePresence";
 import { m } from "~/paraglide/messages";
 import { SignInAgainLink } from "./SignInAgainLink";
@@ -62,7 +63,12 @@ export function MobileSyncPill({ inspectionId, connection = "connected" }: { ins
     // Three states, and the count is always a NUMBER — a coloured dot alone
     // cannot be read at arm's length in glare, which is the whole failure mode
     // this replaces.
-    const state = !online ? "offline" : connection !== "connected" ? connection : pending > 0 ? "uploading" : "synced";
+    // Held: the sync mode is keeping photos on the phone until the inspector
+    // says go (or wi-fi appears). Tapping the pill is that "go".
+    const [, bump] = useState(0);
+    useEffect(() => onConnectionTypeChange(() => bump((n) => n + 1)), []);
+    const held = pending > 0 && gateDrain(photoSyncMode(), currentConnectionType(), false) !== "go";
+    const state = !online ? "offline" : connection !== "connected" ? connection : held ? "held" : pending > 0 ? "uploading" : "synced";
     const label =
         state === "offline"
             ? m.editor_mobile_sync_offline({ count: pending })
@@ -72,6 +78,8 @@ export function MobileSyncPill({ inspectionId, connection = "connected" }: { ins
                 ? m.editor_footer_status_reconnecting()
                 : state === "connecting"
                     ? m.editor_footer_status_connecting()
+                    : state === "held"
+                        ? m.editor_mobile_sync_held({ count: pending })
                     : state === "uploading"
                         ? m.editor_mobile_sync_uploading({ count: pending })
                         : m.editor_mobile_sync_ok();
@@ -87,8 +95,10 @@ export function MobileSyncPill({ inspectionId, connection = "connected" }: { ins
                     : "bg-ih-watch-bg text-ih-watch-fg";
     const dot = state === "offline" || state === "expired" ? "bg-ih-bad" : state === "connecting" ? "bg-ih-fg-3" : state === "synced" ? "bg-ih-ok" : "bg-ih-watch";
 
+    const Tag = state === "held" ? "button" : "span";
     return (
-        <span
+        <Tag
+            {...(state === "held" ? { type: "button" as const, onClick: () => window.dispatchEvent(new Event(SYNC_NOW_EVENT)) } : {})}
             data-testid="mobile-sync-pill"
             data-sync-state={state}
             aria-live="polite"
@@ -96,6 +106,6 @@ export function MobileSyncPill({ inspectionId, connection = "connected" }: { ins
         >
             <span aria-hidden="true" className={`inline-block w-2 h-2 rounded-full ${dot}`} />
             {label}
-        </span>
+        </Tag>
     );
 }

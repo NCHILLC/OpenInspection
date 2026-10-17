@@ -24,7 +24,16 @@ import {
     type MediaUploader,
     type UploadResult,
 } from '~/lib/collab/media-upload-queue';
-import type { PendingMediaRecord } from '~/lib/collab/media-pending-store';
+import { listPendingMedia, type PendingMediaRecord } from '~/lib/collab/media-pending-store';
+import {
+    currentConnectionType,
+    gateDrain,
+    onConnectionTypeChange,
+    photoSyncMode,
+    SYNC_NOW_EVENT,
+} from '~/lib/collab/photo-sync-mode';
+import { pushToast } from '~/hooks/useToast';
+import { m } from '~/paraglide/messages';
 import { resolvePendingPhoto } from '~/lib/collab/results-binding';
 import { resolvePendingDefectPhoto } from '~/lib/collab/defect-photo-binding';
 import { readResultMap } from '~/lib/collab/results-binding';
@@ -130,7 +139,7 @@ export function useMediaDrain(
     const revokeRef = useRef(revokePendingUrl);
     revokeRef.current = revokePendingUrl;
 
-    const drain = useCallback(() => {
+    const run = useCallback(() => {
         const liveDoc = docRef.current;
         if (!liveDoc) return;
         const uploader = buildUploader(inspectionId, liveDoc);
@@ -168,13 +177,51 @@ export function useMediaDrain(
         });
     }, [inspectionId]);
 
-    // Drain when the network returns (in addition to the collab onSynced trigger).
+    // Prompt once per reconnect, not once per trigger: the pill carries the
+    // standing reminder, so repeat toasts would only interrupt report writing.
+    const askedRef = useRef(false);
+
+    /**
+     * The automatic triggers (collab resync, `online`, a fresh capture, a
+     * connection-type change) go through the sync-mode gate. Nothing is lost
+     * when it holds: the blobs stay in the local queue.
+     */
+    const drain = useCallback(() => {
+        const gate = gateDrain(photoSyncMode(), currentConnectionType(), false);
+        if (gate === 'go') {
+            run();
+            return;
+        }
+        if (gate === 'wait' || askedRef.current) return;
+        void listPendingMedia(inspectionId).then((rows) => {
+            if (rows.length === 0 || askedRef.current) return;
+            askedRef.current = true;
+            pushToast({
+                message: m.editor_sync_held_toast({ count: rows.length }),
+                variant: 'warning',
+                actionLabel: m.editor_sync_held_toast_action(),
+                onAction: run,
+                durationMs: 15000,
+            });
+        });
+    }, [inspectionId, run]);
+
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const onOnline = (): void => drain();
+        const onOffline = (): void => { askedRef.current = false; };
+        const onSyncNow = (): void => run();
         window.addEventListener('online', onOnline);
-        return () => window.removeEventListener('online', onOnline);
-    }, [drain]);
+        window.addEventListener('offline', onOffline);
+        window.addEventListener(SYNC_NOW_EVENT, onSyncNow);
+        const offConn = onConnectionTypeChange(drain);
+        return () => {
+            window.removeEventListener('online', onOnline);
+            window.removeEventListener('offline', onOffline);
+            window.removeEventListener(SYNC_NOW_EVENT, onSyncNow);
+            offConn();
+        };
+    }, [drain, run]);
 
     return { drain };
 }

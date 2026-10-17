@@ -74,6 +74,24 @@ export interface DrainSummary {
  */
 const draining = new Set<string>();
 
+let persistAsked = false;
+
+/**
+ * Ask the browser not to evict the queue under storage pressure. Un-persisted
+ * IndexedDB is best-effort and a full-size photo set is the largest thing this
+ * app stores. Once per page; the answer is not acted on (a refusal changes
+ * nothing we can do), and unsupported browsers simply skip it.
+ */
+function requestPersistentStorage(): void {
+    if (persistAsked) return;
+    persistAsked = true;
+    try {
+        void navigator.storage?.persist?.().catch(() => {});
+    } catch {
+        /* storage API unavailable */
+    }
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────────
 
 /**
@@ -85,6 +103,7 @@ const draining = new Set<string>();
  */
 export async function enqueueMedia(rec: PendingMediaRecord): Promise<string> {
     await putPendingMedia(rec);
+    requestPersistentStorage();
     return rec.pendingId;
 }
 
