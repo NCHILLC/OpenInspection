@@ -4,6 +4,7 @@ import { uiLocaleStampFor } from "../../server/lib/i18n/ui-locale";
 import type { Route } from "./+types/auth-layout";
 import { destroyUserSession, requireToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
+import { openNewInspection } from "~/lib/wizard-submit";
 import { CommandPalette, CommandPaletteProvider } from "~/components/CommandPalette";
 import { Sidebar, MobileHeader } from "~/components/Sidebar";
 import { RouteSkeleton } from "~/components/RouteSkeleton";
@@ -184,7 +185,7 @@ export default function AuthLayout() {
       <CommandPalette
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
-        onNewInspection={() => navigate("/inspections/new")}
+        onNewInspection={() => openNewInspection(navigate)}
       />
     </CommandPaletteProvider>
   );

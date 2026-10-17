@@ -132,6 +132,7 @@
   "new_inspection_create": "Create Inspection",
   "new_inspection_create_failed": "This inspection could not be created. Nothing was saved — check the details and try again.",
   "new_inspection_offline": "No connection, so this inspection was not created. Everything you entered is still here — press Create Inspection again once you are back online.",
+  "new_inspection_needs_connection": "You're offline, so a new inspection can't be started. Reconnect to start one. Inspections already open keep working.",
   "rating_editor_error_name_required": "Name is required",
   "rating_editor_error_slug": "Name must contain at least 2 letters or numbers.",
   "rating_editor_error_min_levels": "Add at least 2 levels",
