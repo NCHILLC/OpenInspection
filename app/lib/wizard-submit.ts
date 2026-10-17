@@ -1,5 +1,6 @@
 import type { AddressSelection } from "~/routes/resources/places";
-import { isNetworkFailure } from "~/lib/network-failure";
+import { isNetworkFailure, isOffline } from "~/lib/network-failure";
+import { pushToast } from "~/hooks/useToast";
 import { m } from "~/paraglide/messages";
 
 /**
@@ -146,4 +147,20 @@ export async function guardWizardNetwork<T>(
         if (intent === "search-clients") return { intent, clients: [] };
         throw error;
     }
+}
+
+/**
+ * Open the new-inspection wizard, or say why it cannot open.
+ *
+ * `/inspections/new` has a server-only loader (templates, services, team,
+ * quota), so a navigation made with no connection fails inside the router and
+ * leaves the user on the same page with no explanation. An inspection that is
+ * already open keeps working offline; only starting one needs the server.
+ */
+export function openNewInspection(navigate: (to: string) => void): void {
+  if (isOffline()) {
+    pushToast({ message: m.new_inspection_needs_connection(), variant: "warning", durationMs: 5000 });
+    return;
+  }
+  navigate("/inspections/new");
 }

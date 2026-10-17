@@ -132,6 +132,7 @@
   "new_inspection_create": "Crear la inspección",
   "new_inspection_create_failed": "No se pudo crear esta inspección. No se guardó nada — revise los datos e inténtelo de nuevo.",
   "new_inspection_offline": "Sin conexión, así que no se creó la inspección. Todo lo que ingresó sigue aquí — vuelva a presionar Crear la inspección cuando tenga conexión.",
+  "new_inspection_needs_connection": "Sin conexión, no se puede iniciar una inspección nueva. Vuelva a conectarse para iniciarla. Las inspecciones ya abiertas siguen funcionando.",
   "rating_editor_error_name_required": "El nombre es obligatorio",
   "rating_editor_error_slug": "El nombre debe producir un identificador de 2 caracteres o más",
   "rating_editor_error_min_levels": "Agregue al menos 2 niveles",

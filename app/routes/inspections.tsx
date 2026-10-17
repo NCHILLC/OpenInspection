@@ -5,7 +5,7 @@ import type { Route } from "./+types/inspections";
 import { requireToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
 import { buildCreateInspectionJson } from "~/lib/inspection-create";
-import { guardWizardNetwork } from "~/lib/wizard-submit";
+import { guardWizardNetwork, openNewInspection } from "~/lib/wizard-submit";
 import { IDEMPOTENCY_FIELD } from "~/hooks/useGuardedSubmit";
 import { searchContactsForTypeahead } from "~/lib/contact-search.server";
 import type { WizardTeamMember } from "~/components/NewInspectionWizard";
@@ -745,7 +745,7 @@ export default function InspectionsPage() {
                 {m.inspections_list_action_export()}
               </Button>
             )}
-            <Button variant="primary" size="sm" icon={<Icon name="plus" size={14} />} onClick={() => navigate("/inspections/new")}>
+            <Button variant="primary" size="sm" icon={<Icon name="plus" size={14} />} onClick={() => openNewInspection(navigate)}>
               {m.inspections_list_action_new()}
             </Button>
           </>
@@ -766,7 +766,7 @@ export default function InspectionsPage() {
             { method: "post" },
           );
         }}
-        onOpenWizard={() => navigate("/inspections/new")}
+        onOpenWizard={() => openNewInspection(navigate)}
       />
 
       {/* Everything that narrows a list, hidden while there is no list. */}
@@ -827,7 +827,7 @@ export default function InspectionsPage() {
             totalAll={allInspections.length}
             filters={listFilterState}
             onClearFilters={clearAllFilters}
-            onCreate={() => navigate("/inspections/new")}
+            onCreate={() => openNewInspection(navigate)}
           />
         </Card>
       ) : filteredBuckets ? (
