@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as SidebarModule from '~/components/Sidebar';
-import { WORKSPACE_ITEMS, visibleNavItems } from '~/components/sidebar/nav-items';
+import { WORKSPACE_ITEMS, isCrmPath, visibleNavItems } from '~/components/sidebar/nav-items';
 
 /**
  * Why the two real module graphs above are STATIC imports (#88/#95).
@@ -164,5 +164,22 @@ describe('Sidebar', () => {
     expect(drawerBlock).toContain('/logout');
     // MobileDrawer must NOT instantiate UserMenuPopover (no popover on mobile)
     expect(drawerBlock).not.toContain('<UserMenuPopover');
+  });
+
+  it('isCrmPath matches the CRM pages and below, query allowed, and leaves /calendar alone', () => {
+    expect(isCrmPath('/contacts')).toBe(true);
+    expect(isCrmPath('/contacts/abc')).toBe(true);
+    expect(isCrmPath('/contacts?new=1')).toBe(true);
+    expect(isCrmPath('/calendar/dispatch')).toBe(true);
+    expect(isCrmPath('/calendar')).toBe(false);
+    expect(isCrmPath('/contactsx')).toBe(false);
+    expect(isCrmPath('/library/templates')).toBe(false);
+  });
+
+  it('visibleNavItems drops CRM entries only while externalCrm is set', () => {
+    const all = { scheduleOthers: true };
+    const on = visibleNavItems(WORKSPACE_ITEMS, all, 'isn').map((i) => i.to);
+    expect(on).toEqual(['/inspections', '/calendar', '/team']);
+    expect(visibleNavItems(WORKSPACE_ITEMS, all, null)).toHaveLength(WORKSPACE_ITEMS.length);
   });
 });

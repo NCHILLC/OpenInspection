@@ -7,6 +7,7 @@ import { DepositWidget } from "./DepositWidget";
 import { splitDurationMinutes, serviceIsBookable } from "~/lib/settings-services";
 import type { DepositPolicy } from "../../../../server/lib/billing/deposit-policy";
 import { m } from "~/paraglide/messages";
+import { useSessionContext } from "~/hooks/useSessionContext";
 
 interface Service {
   id: string;
@@ -62,6 +63,8 @@ export function ServicesCatalogPanel({
   editingId = null,
   onEdit,
 }: ServicesCatalogPanelProps) {
+  // Pay splits and booking deposits belong to the CRM; hidden while another system is it.
+  const externalCrm = useSessionContext()?.deployment?.externalCrm;
   return (
     <div className="bg-ih-bg-card border border-ih-border rounded-lg overflow-hidden">
       <Table<Service>
@@ -101,19 +104,19 @@ export function ServicesCatalogPanel({
                 />
                 {/* Directly below the qualification line: who may run this,
                     and what they earn running it, are one thought. */}
-                <PayRuleWidget
+                {!externalCrm && <PayRuleWidget
                   serviceId={svc.id}
                   rules={payRuleMap[svc.id] ?? []}
                   members={members}
-                />
+                />}
                 {/* The third adjacent question about one service: who may run
                     it, what they earn running it, what the client pays up
                     front to book it. */}
-                <DepositWidget
+                {!externalCrm && <DepositWidget
                   serviceId={svc.id}
                   policy={svc.depositPolicy ?? null}
                   companyDefault={companyDepositPolicy}
-                />
+                />}
               </>
             ),
           },

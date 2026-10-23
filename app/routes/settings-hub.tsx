@@ -1,5 +1,6 @@
 import { HubCard, HUB_GRID_CLASS } from "~/components/HubCard";
 import { useSessionContext } from "~/hooks/useSessionContext";
+import { isCrmPath } from "~/components/sidebar/nav-items";
 import { isAdminRole, isOwnerRole } from "~/lib/access";
 import { m } from "~/paraglide/messages";
 
@@ -197,6 +198,7 @@ export default function SettingsHub() {
   const showBilling = session?.deployment?.hasBilling ?? session?.branding?.isSaas ?? false;
   // MCP tile is only shown when the MCP feature flag is on for this deployment.
   const showMcp = session?.deployment?.mcpEnabled ?? false;
+  const externalCrm = session?.deployment?.externalCrm;
 
   return (
     <div className="space-y-2">
@@ -210,6 +212,7 @@ export default function SettingsHub() {
               .filter((t) => t.to !== "/settings/billing" || showBilling)
               .filter((t) => t.to !== "/settings/connected-apps" || showMcp)
               .filter((t) => t.to !== "/settings/statutory-forms" || owner)
+              .filter((t) => !externalCrm || !isCrmPath(t.to))
               .map((tile) => (
                 <HubCard
                   key={tile.to}

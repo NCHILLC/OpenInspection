@@ -51,6 +51,7 @@ export function deploymentPayload(
         // implementations of one limit eventually disagree. The client shows
         // whatever sentence the server sent back with the refusal.
         hasAssistedMigration: profile.hasAssistedMigration || false,
+        externalCrm: profile.externalCrm ?? null,
     };
 }
 import { getDrizzle } from '../lib/route-helpers';

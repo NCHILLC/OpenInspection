@@ -255,6 +255,8 @@ export default function SettingsIntegrations() {
   // file were answering the same question two ways; the half with the comment
   // was the correct one.
   const videoBackendManaged = ctx?.deployment?.videoBackendManaged ?? false;
+  // Payments, QuickBooks and Google Calendar belong to the CRM while another system is it.
+  const externalCrm = ctx?.deployment?.externalCrm != null;
 
   const saving = nav.state !== "idle" && nav.formData?.get("intent") === "save-stripe-secrets";
   const savingVideo = nav.state !== "idle" && nav.formData?.get("intent") === "save-video";
@@ -293,7 +295,7 @@ export default function SettingsIntegrations() {
       )}
 
       {/* Stripe API keys */}
-      <StripePaymentsPanel
+      {!externalCrm && <StripePaymentsPanel
         secrets={secrets}
         webhookUrl={webhookUrl}
         webhookLog={webhookLog}
@@ -303,7 +305,7 @@ export default function SettingsIntegrations() {
         testFetcher={testFetcher}
         revalidator={revalidator}
         testResults={testResults}
-      />
+      />}
 
       {/* Video backend — shown only where the operator picks it. Where the
           platform picks it (`videoBackendManaged`) the form has nothing to
@@ -318,7 +320,7 @@ export default function SettingsIntegrations() {
         />
       )}
 
-      <IntegrationCardsGrid />
+      <IntegrationCardsGrid externalCrm={externalCrm} />
     </div>
   );
 }

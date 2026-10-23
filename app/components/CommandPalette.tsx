@@ -4,6 +4,7 @@ import { useSessionContext } from "~/hooks/useSessionContext";
 import { m } from "~/paraglide/messages";
 import { getPages, getSettings, RECENTS_CAP, type PaletteItem } from "./command-palette-items";
 import { importEntryHref } from "~/lib/import-entry-points";
+import { isCrmPath } from "~/components/sidebar/nav-items";
 import type { ContactSearchItem } from "~/routes/resources/contact-search";
 
 /**
@@ -159,7 +160,8 @@ export function CommandPalette({
     // Per-inspector booking deep links are retired: bookings go to the
     // company page and the server auto-assigns. `slug` still gates the action
     // to bookable inspectors, but the copied link is the company URL.
-    if (slug && host && tenant) {
+    // Booking belongs to the CRM; while another system is the CRM there is no link to copy.
+    if (slug && host && tenant && !sessionCtx?.deployment?.externalCrm) {
       const bookingUrl = `https://${host}/book/${tenant}`;
       actions.push({
         id: "qa-copy-booking-link",
@@ -221,14 +223,17 @@ export function CommandPalette({
     const isActions = query.startsWith(">");
     const isPeople = query.startsWith("@");
     const q = query.replace(/^[>@]\s*/, "");
+    // CRM pages are not offered while another system is the CRM (see isCrmPath).
+    const crm = sessionCtx?.deployment?.externalCrm;
+    const keep = (i: PaletteItem) => !crm || !i.to || !isCrmPath(i.to);
 
-    const dynamicQuickActions = [...getQuickActions(), ...bookingActions];
+    const dynamicQuickActions = [...getQuickActions(), ...bookingActions].filter(keep);
 
     // People are returned already searched and ordered by the contacts API, so
     // this branch leaves before the client-side scoring below: `score()` reads
     // the label only, and re-filtering on it would discard a contact the server
     // matched on email or agency.
-    if (isPeople) return toPeopleItems(peopleFetcher.data?.contacts ?? []);
+    if (isPeople) return toPeopleItems(peopleFetcher.data?.contacts ?? []).filter(keep);
 
     let sources: PaletteItem[];
     if (isActions) {
@@ -251,7 +256,7 @@ export function CommandPalette({
           to: `/inspections/${insp.id}`,
         };
       });
-      sources = [...getPages(), ...recents, ...getSettings(), ...dynamicQuickActions];
+      sources = [...getPages(), ...recents, ...getSettings(), ...dynamicQuickActions].filter(keep);
     }
 
     if (!q) return sources;
@@ -260,7 +265,7 @@ export function CommandPalette({
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score)
       .map((x) => x.item);
-  }, [query, recentsFetcher.data, peopleFetcher.data, bookingActions]);
+  }, [query, recentsFetcher.data, peopleFetcher.data, bookingActions, sessionCtx]);
 
   // Group the filtered results. No per-group truncation: every source group is
   // already bounded (Pages/Settings are fixed lists; Recents is sliced to

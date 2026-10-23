@@ -1,4 +1,6 @@
 import { HubCard, HUB_GRID_CLASS } from "~/components/HubCard";
+import { useSessionContext } from "~/hooks/useSessionContext";
+import { isCrmPath } from "~/components/sidebar/nav-items";
 import { m } from "~/paraglide/messages";
 
 // SVG path `d` values mirror the icons previously used in Sidebar's
@@ -67,9 +69,10 @@ function getTiles() {
 }
 
 export default function LibraryHub() {
+  const externalCrm = useSessionContext()?.deployment?.externalCrm;
   return (
     <div className={HUB_GRID_CLASS}>
-      {getTiles().map((t) => (
+      {getTiles().filter((t) => !externalCrm || !isCrmPath(t.to)).map((t) => (
         <HubCard key={t.to} to={t.to} title={t.title} desc={t.desc} icon={t.icon} />
       ))}
     </div>

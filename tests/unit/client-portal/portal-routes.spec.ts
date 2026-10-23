@@ -18,6 +18,7 @@ import { TENANT, inspStub } from '../helpers/portal-routes-setup';
 // ---------------------------------------------------------------------------
 import { OpenAPIHono } from '@hono/zod-openapi';
 import type { HonoConfig } from '../../../server/types/hono';
+import { STANDALONE_PROFILE } from '../../../server/lib/deployment-profile';
 import { signPortalSession, signMagicLink } from '../../../server/lib/portal-session';
 // eslint-disable-next-line import/order
 import portalRoutes from '../../../server/api/portal';
@@ -125,6 +126,8 @@ describe('portal API', () => {
         sendClientPortalLogin = vi.fn().mockResolvedValue(undefined);
         const app = new OpenAPIHono<HonoConfig>();
         app.use('*', async (c, next) => {
+            // contextBootstrap's job in production; the overview reads it.
+            c.set('profile', STANDALONE_PROFILE);
             if (tenantId) {
                 c.set('tenantId', tenantId);
                 c.set('requestedTenantSlug', 'acme');
@@ -375,8 +378,10 @@ describe('portal API', () => {
             headers: { cookie: '__Host-portal_session=' + cookie },
         }, reqEnv());
         expect(res.status).toBe(200);
-        const body = await res.json<{ data: { address: string; token: string } }>();
+        const body = await res.json<{ data: { address: string; token: string; externalCrm: boolean } }>();
         expect(body.data.address).toContain('insp1');
+        // OI is the CRM here, so the Hub keeps its Agreement/Payment/Messages tabs.
+        expect(body.data.externalCrm).toBe(false);
         // The Hub needs the recipient's persistent per-inspection token to build
         // section deep-links (works for magic-link sessions with no URL ?token).
         expect(typeof body.data.token).toBe('string');

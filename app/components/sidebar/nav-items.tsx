@@ -32,6 +32,31 @@ export const WORKSPACE_ITEMS: NavItem[] = [
 ];
 
 /**
+ * Pages that belong to the CRM, hidden while another system is the CRM
+ * (`deployment.externalCrm`). One list, read by the sidebar, the hubs, the
+ * command palette and the auth layout's guard, so no surface offers a door
+ * another one closes. `/calendar` is not on it: it stays, fed by the CRM.
+ */
+export const CRM_PATHS = [
+  "/calendar/dispatch",
+  "/contacts",
+  "/invoices",
+  "/metrics",
+  "/messages",
+  "/settings/booking",
+  "/settings/schedule",
+  "/settings/event-types",
+  "/settings/integrations/qbo",
+  "/library/agreements",
+];
+
+/** Whether `to` (a path, query and hash allowed) is one of the CRM_PATHS or below one. */
+export function isCrmPath(to: string): boolean {
+  const path = to.split(/[?#]/)[0];
+  return CRM_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+}
+
+/**
  * The entries this viewer may actually open.
  *
  * Both nav surfaces call this — filtering only the desktop sidebar would leave
@@ -42,6 +67,11 @@ export const WORKSPACE_ITEMS: NavItem[] = [
 export function visibleNavItems(
   items: NavItem[],
   capabilities: Partial<CapabilitySet> | null | undefined,
+  externalCrm?: string | null,
 ): NavItem[] {
-  return items.filter((item) => !item.capability || capabilities?.[item.capability] === true);
+  return items.filter(
+    (item) =>
+      (!item.capability || capabilities?.[item.capability] === true) &&
+      !(externalCrm && isCrmPath(item.to)),
+  );
 }

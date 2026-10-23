@@ -88,6 +88,9 @@ export interface SessionContext {
     /** Whether the import wizard may offer to hand an unreadable file to a
      *  person. False self-hosted, where the route does not exist at all. */
     hasAssistedMigration: boolean;
+    /** Which outside system is the CRM (`isn`), or null. While set, the CRM
+     *  screens are hidden; `isCrmPath` in sidebar/nav-items says which. */
+    externalCrm: "isn" | null;
   };
   seatUsage: { used: number; limit: number } | null;
   /**

@@ -461,7 +461,7 @@ const portalRoutes = portalRouter
 
         const overview = await c.var.services.portal.hubOverview(tenantId, inspectionId);
         if (!overview) return c.json({ error: 'Inspection not found' }, 404);
-        return c.json({ data: { ...overview, token, signerToken } }, 200);
+        return c.json({ data: { ...overview, externalCrm: c.var.profile.externalCrm != null, token, signerToken } }, 200);
     })
     .openapi(observeRoute, async (c) => {
         const tenantId = resolveTenantId(c);

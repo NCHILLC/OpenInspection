@@ -53,6 +53,7 @@ const HubOverviewSchema = z.object({
 export const HubOverviewResponseSchema = HubOverviewSchema.extend({
     token: z.string().describe('Persistent per-inspection access token for building section deep-links.'),
     signerToken: z.string().nullable().describe("The recipient's OWN agreement signer token (email-matched) for the inline Agreement section. Null when the recipient is not a signer."),
+    externalCrm: z.boolean().describe("Whether another system is this company's CRM (deployment EXTERNAL_CRM). True = agreements, payment and messages happen there, so the Hub hides those sections."),
 });
 
 export const ObserveSchema = z.object({

@@ -1,7 +1,7 @@
 import type React from "react";
 import { Link } from "react-router";
 import { brandTokens, type TenantBrand } from "~/lib/brand";
-import InspectionStatusCards, { reportLockNotice, type StatusOverview } from "./InspectionStatusCards";
+import InspectionStatusCards, { CRM_HUB_SECTIONS, reportLockNotice, type StatusOverview } from "./InspectionStatusCards";
 import { ThemeSegmentControl } from "~/components/sidebar/ThemeSegmentControl";
 import { m } from "~/paraglide/messages";
 
@@ -67,8 +67,8 @@ export function hubSectionNavHref(section: HubSection, ctx: HubLinkCtx): string 
  * the click. The flag is resolved server-side (where it is ENFORCED) and
  * arrives on the overview.
  */
-export function hubNavItems(opts: { repairRequestEnabled: boolean }): Array<{ section: HubSection; label: string }> {
-  return [
+export function hubNavItems(opts: { repairRequestEnabled: boolean; externalCrm?: boolean }): Array<{ section: HubSection; label: string }> {
+  const items: Array<{ section: HubSection; label: string }> = [
     { section: "overview", label: m.portal_hub_nav_overview() },
     { section: "report", label: m.portal_hub_nav_report() },
     { section: "agreement", label: m.portal_hub_nav_agreement() },
@@ -80,6 +80,7 @@ export function hubNavItems(opts: { repairRequestEnabled: boolean }): Array<{ se
       : []),
     { section: "documents", label: m.portal_hub_nav_documents() },
   ];
+  return opts.externalCrm ? items.filter((n) => !CRM_HUB_SECTIONS.includes(n.section)) : items;
 }
 
 export default function ClientPortalHub({
@@ -167,7 +168,7 @@ export default function ClientPortalHub({
           agent mode: an agent report link has only the report section. */}
       {!agentMode && (
       <nav className="mb-6 flex flex-wrap gap-2 border-b border-ih-border pb-3">
-        {hubNavItems({ repairRequestEnabled: overview.repairRequestEnabled }).map((n) => {
+        {hubNavItems({ repairRequestEnabled: overview.repairRequestEnabled, externalCrm: overview.externalCrm }).map((n) => {
           const active = n.section === activeSection;
           const base =
             "px-3 py-1.5 text-xs font-semibold rounded-full transition-colors";

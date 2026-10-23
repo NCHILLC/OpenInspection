@@ -17,7 +17,7 @@ const STATUS_STYLES = {
     "bg-ih-bg-muted text-ih-fg-3",
 };
 
-export function IntegrationCardsGrid() {
+export function IntegrationCardsGrid({ externalCrm = false }: { externalCrm?: boolean }) {
   const INTEGRATIONS: Integration[] = [
     {
       id: "qbo",
@@ -65,7 +65,7 @@ export function IntegrationCardsGrid() {
   ];
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {INTEGRATIONS.map((i) => (
+      {INTEGRATIONS.filter((i) => !externalCrm || (i.id !== "qbo" && i.id !== "gcal")).map((i) => (
         <div
           key={i.id}
           className="bg-ih-bg-card border border-ih-border rounded-lg p-5 flex flex-col gap-3"
