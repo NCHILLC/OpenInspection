@@ -24,7 +24,12 @@ export interface StatusOverview {
   hasInvoice: boolean;
   /** The repair-request builder is enabled for this company. */
   repairRequestEnabled: boolean;
+  /** Another system is the CRM, so the CRM_HUB_SECTIONS are not shown. Absent = false. */
+  externalCrm?: boolean;
 }
+
+/** Hub sections (and their status tiles) that belong to the CRM. */
+export const CRM_HUB_SECTIONS: readonly string[] = ["agreement", "payment", "messages"];
 
 type CardTone = "ok" | "warn" | "bad" | "neutral";
 
@@ -117,7 +122,7 @@ function reportCardState(ov: StatusOverview): { value: string; tone: CardTone } 
  * agent portal can both consume the same model.
  */
 export function statusCardModels(ov: StatusOverview): StatusCardModel[] {
-  return [
+  const cards: StatusCardModel[] = [
     {
       key: "appointment",
       label: m.portal_status_appointment_label(),
@@ -154,6 +159,7 @@ export function statusCardModels(ov: StatusOverview): StatusCardModel[] {
       tone: "neutral",
     },
   ];
+  return ov.externalCrm ? cards.filter((c) => !CRM_HUB_SECTIONS.includes(c.key)) : cards;
 }
 
 /**

@@ -4,7 +4,7 @@ import type { Route } from "./+types/inspector-portal";
 import { requireToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
 import { formatInspectionDateTime } from "~/lib/format-date";
-import { useDisplayTimeZone, useInspectionDateTimeFormat } from "~/hooks/useSessionContext";
+import { useDisplayTimeZone, useInspectionDateTimeFormat, useSessionContext } from "~/hooks/useSessionContext";
 import {
   deriveBlockStates,
   formatCents,
@@ -646,6 +646,7 @@ export default function InspectionHubPage() {
   const { inspection, people: peopleCard, services, tenantSlug } = hub;
   const displayTz = useDisplayTimeZone();
   const fmt = useInspectionDateTimeFormat();
+  const externalCrm = useSessionContext()?.deployment?.externalCrm != null; // that CRM owns agreements, invoices, messaging
   const blocks = deriveBlockStates(hub);
   const navigate = useNavigate();
   const revalidator = useRevalidator();
@@ -923,7 +924,7 @@ export default function InspectionHubPage() {
             roleProfiles={roleProfiles}
             isAdmin={isAdmin}
           />
-          {peopleCard.client && (
+          {peopleCard.client && !externalCrm && (
             <Card className="p-4" id="client-sms-consent">
               <ClientSmsConsent
                 consent={smsConsent}
@@ -964,7 +965,7 @@ export default function InspectionHubPage() {
         />
 
         {/* 4. Signing requests — the paperwork the visit needs -------- */}
-        <Card className="p-5">
+        {!externalCrm && <Card className="p-5">
           <BlockHeading title={m.inspections_hub_block_agreement()} pill={blocks.agreement} />
           <SigningRequests
             requests={hub.agreementRequests}
@@ -982,7 +983,7 @@ export default function InspectionHubPage() {
             label={m.inspections_hub_gate_agreement()}
             testId="hub-gate-agreement"
           />
-        </Card>
+        </Card>}
 
         {/* 5. Inspection status — the visit itself. Independent of report
             publishing. */}
@@ -995,7 +996,7 @@ export default function InspectionHubPage() {
             Gated on the SERVER's viewCommunication bit (§7.5 item 1): the
             payload endpoint 403s a withdrawn viewer, so rendering the card
             would only produce a section whose every expand errors. */}
-        {canViewCommunication && (
+        {canViewCommunication && !externalCrm && (
           <CommunicationSection
             inspectionId={inspection.id}
             counts={hub.communication ?? { delivered: 0, needsAttention: 0, unread: 0, rulesActive: 0 }}
@@ -1204,7 +1205,7 @@ export default function InspectionHubPage() {
         </Card>
         {/* 7. Invoice — getting paid for it. IA-87 ②: the amount was display
             only; the base price is editable here when nothing outranks it. */}
-        <InvoiceCard
+        {!externalCrm && <InvoiceCard
           pill={blocks.invoice}
           amountCents={invoiceAmountCents}
           currency={hub.invoice?.currency}
@@ -1216,7 +1217,7 @@ export default function InspectionHubPage() {
           basePriceCents={inspection.price}
           canManagePrice={isAdmin && canSeeMoney}
           onRequestPayment={() => paymentModal.setOpen(true)}
-        />
+        />}
 
         {/* 8. Order details — the back-office facts. Last on purpose: nobody
             opens the hub to read a referral source. --------------------- */}

@@ -34,6 +34,7 @@ import depositIntentRoutes from './public/deposit-intent';
 import agreementRoutes from './bookings/agreement';
 import publicGeocodeRoutes from './bookings/geocode';
 import { getDrizzle } from '../lib/route-helpers';
+import { refusePublicBookingWhenExternalCrm } from '../lib/middleware/external-crm';
 
 /**
  * GET /api/public/inspectors
@@ -171,7 +172,12 @@ const getTenantSlotsRoute = createRoute(withMcpMetadata({
     operationId: 'getTenantBookingSlots',
 }, { scopes: ['read'], tier: 'extended' }));
 
-export const bookingsRoutes = createApiRouter()
+const bookingsRouter = createApiRouter();
+// Another system is the CRM: booking 404s. Its own path list decides what.
+// Its own statement: chained, `use()` returns a plain Hono and drops `.openapi`.
+bookingsRouter.use('*', refusePublicBookingWhenExternalCrm);
+
+export const bookingsRoutes = bookingsRouter
     .route('/', bookingProfileRoutes)
     .route('/', depositIntentRoutes)
     .openapi(listInspectorsRoute, async (c) => {

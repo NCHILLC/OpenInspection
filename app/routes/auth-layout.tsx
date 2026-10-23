@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { data, Outlet, useLoaderData, useLocation, useNavigate, useNavigation } from "react-router";
+import { data, Outlet, redirect, useLoaderData, useLocation, useNavigate, useNavigation } from "react-router";
 import { uiLocaleStampFor } from "../../server/lib/i18n/ui-locale";
 import type { Route } from "./+types/auth-layout";
 import { destroyUserSession, requireToken } from "~/lib/session.server";
@@ -9,6 +9,7 @@ import { CommandPalette, CommandPaletteProvider } from "~/components/CommandPale
 import { Sidebar, MobileHeader } from "~/components/Sidebar";
 import { RouteSkeleton } from "~/components/RouteSkeleton";
 import { OutboundCoolingBanner } from "~/components/OutboundCoolingBanner";
+import { isCrmPath } from "~/components/sidebar/nav-items";
 import type { SessionContext } from "~/hooks/useSessionContext";
 
 /**
@@ -55,6 +56,13 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   // session; a 5xx or a throw keeps the defaults, since the token may be fine.
   // Outside the try so the thrown redirect is not swallowed by its catch.
   if (refused) throw await destroyUserSession(context, request);
+  // Another system is the CRM: its pages are hidden, and a typed or bookmarked
+  // URL lands on the same "not available" page the hidden entries imply.
+  // ponytail: document loads only (this loader does not re-run on client-side
+  // navigation); per-route loader guards if a stray in-app link matters.
+  if (sessionContext?.deployment?.externalCrm && isCrmPath(new URL(request.url).pathname)) {
+    throw redirect("/feature-disabled");
+  }
 
   // i18n activation (#269) — the DATABASE half of locale resolution.
   //

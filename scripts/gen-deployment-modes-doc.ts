@@ -65,6 +65,8 @@ const DESCRIPTIONS: Record<keyof DeploymentProfile, string> = {
         'Largest vendor export (JSON) an import accepts, in bytes. Override per deployment with `IMPORT_MAX_VENDOR_EXPORT_BYTES`.',
     importMaxRows:
         'Most entries one import may carry; beyond it the run is refused with the real count. Override per deployment with `IMPORT_MAX_ROWS`.',
+    externalCrm:
+        'Which outside system is the CRM (`isn`), or none. While set, OI hides its booking, contacts, invoicing, dispatch, metrics, messaging and agreement screens and public booking answers 404. Set per deployment with `EXTERNAL_CRM=isn`.',
     botProtectionMandatory:
         'Whether the public booking form and agent signup MUST carry a bot challenge. Saas always challenges — with no `TURNSTILE_SECRET_KEY` it uses Cloudflare\'s published test key rather than skipping, so the mechanism is permissive but never off. Standalone leaves it to the operator: no key, no challenge.',
 };

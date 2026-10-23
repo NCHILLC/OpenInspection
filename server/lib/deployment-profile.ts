@@ -50,6 +50,8 @@ export interface ProfileEnv {
     IMPORT_MAX_CSV_BYTES?: string;
     IMPORT_MAX_VENDOR_EXPORT_BYTES?: string;
     IMPORT_MAX_ROWS?: string;
+    /** `isn` when Inspection Support Network is the company's CRM; anything else is none. */
+    EXTERNAL_CRM?: string;
 }
 
 type DeploymentMode = 'standalone' | 'saas';
@@ -190,6 +192,13 @@ export interface DeploymentProfile {
     /** Most entries one import may carry. Beyond it the run is refused with the
      *  real count, and the assisted route is what that operator wants instead. */
     importMaxRows: number;
+
+    /** Which outside system is this company's CRM, or null when OI is.
+     *  While set, OI's booking, contacts, invoicing, dispatch, metrics,
+     *  messaging and agreement screens are hidden and public booking answers
+     *  404. Hidden, never deleted: the code and its tables stay, and clearing
+     *  the variable brings every screen back. Per deployment, not per mode. */
+    externalCrm: 'isn' | null;
 }
 
 const FIXED_TENANT_FALLBACK = '00000000-0000-0000-0000-000000000000';
@@ -213,6 +222,7 @@ export const STANDALONE_PROFILE: DeploymentProfile = {
     importMaxCsvBytes: 1_000_000,
     importMaxVendorExportBytes: 2_000_000,
     importMaxRows: 1_000,
+    externalCrm: null,
 };
 
 export const SAAS_PROFILE: DeploymentProfile = {
@@ -234,6 +244,7 @@ export const SAAS_PROFILE: DeploymentProfile = {
     importMaxCsvBytes: 5_000_000,
     importMaxVendorExportBytes: 20_000_000,
     importMaxRows: 10_000,
+    externalCrm: null,
 };
 
 /**
@@ -267,6 +278,7 @@ function withImportLimits(base: DeploymentProfile, env: ProfileEnv): DeploymentP
             env.IMPORT_MAX_VENDOR_EXPORT_BYTES, base.importMaxVendorExportBytes,
         ),
         importMaxRows: positiveIntOr(env.IMPORT_MAX_ROWS, base.importMaxRows),
+        externalCrm: env.EXTERNAL_CRM === 'isn' ? 'isn' : null,
     };
 }
 

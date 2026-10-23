@@ -69,3 +69,20 @@ describe('auth layout loader — session the API refuses (ONB-04)', () => {
         expect((res as { data: unknown }).data).toEqual({ context: ctx });
     });
 });
+
+describe('auth layout loader — another system is the CRM', () => {
+    const ctx = { user: { locale: null }, branding: { defaultLocale: null }, deployment: { externalCrm: 'isn' } };
+
+    it('sends a CRM page to /feature-disabled', async () => {
+        contextGet.mockResolvedValue(json({ success: true, data: ctx }));
+        const thrown = await loader(args('/contacts/c1')).then(() => null, (e: unknown) => e);
+        expect((thrown as Response).status).toBe(302);
+        expect((thrown as Response).headers.get('Location')).toBe('/feature-disabled');
+    });
+
+    it('lets the calendar and everything else through', async () => {
+        contextGet.mockResolvedValue(json({ success: true, data: ctx }));
+        const res = await loader(args('/calendar'));
+        expect((res as { data: unknown }).data).toEqual({ context: ctx });
+    });
+});

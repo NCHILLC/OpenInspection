@@ -171,6 +171,14 @@ describe('the deployment payload carries every capability the chrome gates on', 
             .not.toBe(SAAS_PROFILE.hasAssistedMigration);
     });
 
+    it('ships externalCrm, which the nav, hubs, palette and auth layout read', () => {
+        // Not a boolean, so not in GATED_IN_APP: the vendor name is the value.
+        for (const profile of [STANDALONE_PROFILE, SAAS_PROFILE]) {
+            expect(deploymentPayload(profile, {}).externalCrm).toBeNull();
+            expect(deploymentPayload({ ...profile, externalCrm: 'isn' }, {}).externalCrm).toBe('isn');
+        }
+    });
+
     it('does NOT ship the server-only fields of the profile', () => {
         // The positive control for the assertion above. Without it, "ship
         // everything" passes — and that would put `fixedTenantId` and the portal

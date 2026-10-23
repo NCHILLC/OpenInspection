@@ -246,4 +246,13 @@ describe('hubNavItems', () => {
   it('the Repair Request tab label is not reused by the report page toggle', () => {
     expect(m.portal_report_selection_title()).not.toBe(m.portal_hub_nav_repair());
   });
+
+  it('drops the Agreement, Payment and Messages tabs and tiles while another system is the CRM', () => {
+    const sections = hubNavItems({ repairRequestEnabled: false, externalCrm: true }).map(n => n.section);
+    expect(sections).toEqual(['overview','report','progress','documents']);
+    const keys = statusCardModels({ ...BASE, externalCrm: true }).map(c => c.key);
+    expect(keys).toEqual(['appointment','report','progress']);
+    // Control: unset keeps all six tiles.
+    expect(statusCardModels(BASE)).toHaveLength(6);
+  });
 });

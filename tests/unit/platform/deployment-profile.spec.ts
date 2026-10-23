@@ -82,4 +82,12 @@ describe('getDeploymentProfile factory', () => {
         expect(getDeploymentProfile({ APP_MODE: undefined } as any).hasUsageQuota).toBe(false);
         expect(getDeploymentProfile({ APP_MODE: 'saas', PORTAL_API_URL: 'https://p' } as any).hasUsageQuota).toBe(true);
     });
+
+    it('reads EXTERNAL_CRM=isn into externalCrm in both modes, and nothing else', () => {
+        expect(getDeploymentProfile({ EXTERNAL_CRM: 'isn' } as any).externalCrm).toBe('isn');
+        expect(getDeploymentProfile({ APP_MODE: 'saas', EXTERNAL_CRM: 'isn' } as any).externalCrm).toBe('isn');
+        // A typo or an unknown vendor must not hide the CRM screens.
+        expect(getDeploymentProfile({ EXTERNAL_CRM: 'ISN ' } as any).externalCrm).toBeNull();
+        expect(getDeploymentProfile({} as any).externalCrm).toBeNull();
+    });
 });
