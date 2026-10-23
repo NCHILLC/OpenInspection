@@ -172,9 +172,12 @@ const getTenantSlotsRoute = createRoute(withMcpMetadata({
     operationId: 'getTenantBookingSlots',
 }, { scopes: ['read'], tier: 'extended' }));
 
-export const bookingsRoutes = createApiRouter()
-    // Another system is the CRM: booking 404s. Its own path list decides what.
-    .use('*', refusePublicBookingWhenExternalCrm)
+const bookingsRouter = createApiRouter();
+// Another system is the CRM: booking 404s. Its own path list decides what.
+// Its own statement: chained, `use()` returns a plain Hono and drops `.openapi`.
+bookingsRouter.use('*', refusePublicBookingWhenExternalCrm);
+
+export const bookingsRoutes = bookingsRouter
     .route('/', bookingProfileRoutes)
     .route('/', depositIntentRoutes)
     .openapi(listInspectorsRoute, async (c) => {

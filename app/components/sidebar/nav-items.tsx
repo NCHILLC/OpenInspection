@@ -37,7 +37,7 @@ export const WORKSPACE_ITEMS: NavItem[] = [
  * command palette and the auth layout's guard, so no surface offers a door
  * another one closes. `/calendar` is not on it: it stays, fed by the CRM.
  */
-export const CRM_PATHS = [
+const CRM_PATHS = [
   "/calendar/dispatch",
   "/contacts",
   "/invoices",
