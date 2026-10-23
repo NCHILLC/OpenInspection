@@ -31,7 +31,7 @@ beforeEach(() => {
     Object.defineProperty(navigator, "mediaDevices", { value: { getUserMedia }, configurable: true });
     // happy-dom ships no canvas or object-URL implementation; the component only
     // needs drawImage + toBlob + a non-zero videoWidth to take a frame.
-    HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn() })) as never;
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn(), translate: vi.fn(), rotate: vi.fn() })) as never;
     HTMLCanvasElement.prototype.toBlob = function (cb: BlobCallback) {
         cb(new Blob(["frame"], { type: "image/jpeg" }));
     } as never;
