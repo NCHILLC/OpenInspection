@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Icon, IconButton, Button } from "@core/shared-ui";
 import { m } from "~/paraglide/messages";
 import { haptic, HAPTIC_TAP } from "~/lib/haptics";
+import { captureQuarterTurns } from "./cameraTurns";
 
 interface Shot {
   id: string;
@@ -53,6 +54,8 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const shotsRef = useRef<Shot[]>([]);
+  // Latest accelerometer reading, for turning a sideways frame upright at the shutter.
+  const gravityRef = useRef({ x: 0, y: 0 });
   const [shots, setShots] = useState<Shot[]>([]);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
@@ -126,6 +129,16 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [open, facing, startCamera, stopCamera]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onMotion = (e: DeviceMotionEvent): void => {
+      const g = e.accelerationIncludingGravity;
+      if (g) gravityRef.current = { x: g.x ?? 0, y: g.y ?? 0 };
+    };
+    window.addEventListener("devicemotion", onMotion);
+    return () => window.removeEventListener("devicemotion", onMotion);
+  }, [open]);
+
   // Revoke every thumbnail URL on unmount — `open` going false is the common
   // path, but the route can drop the overlay outright.
   useEffect(() => () => clearShots(), [clearShots]);
@@ -136,11 +149,19 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || !video.videoWidth) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // iOS only delivers motion after a permission prompt, which needs this tap;
+    // the first frame goes unturned there, the rest are corrected.
+    void (globalThis.DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> } | undefined)?.requestPermission?.().catch(() => {});
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    const turns = captureQuarterTurns(gravityRef.current.x, gravityRef.current.y, screen.orientation?.angle ?? 0);
+    canvas.width = turns % 2 ? h : w;
+    canvas.height = turns % 2 ? w : h;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.drawImage(video, 0, 0);
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((-turns * Math.PI) / 2);
+    ctx.drawImage(video, -w / 2, -h / 2);
     // toBlob, not toDataURL: the frame goes straight to the upload queue as
     // binary, and the thumbnail is an object URL rather than base64 in state.
     canvas.toBlob(
