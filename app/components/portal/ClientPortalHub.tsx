@@ -220,14 +220,15 @@ function OverviewBody({ overview, ctx }: { overview: StatusOverview; ctx: HubLin
               ? m.portal_report_lock_agreement_body()
               : m.portal_report_lock_payment_body()}
           </p>
-          <Link
+          {/* Another CRM owns signing and payment; its own emails carry the link. */}
+          {!overview.externalCrm && <Link
             to={hubSectionNavHref(lock.section, ctx)}
             className="mt-3 inline-flex items-center justify-center h-9 px-4 rounded-md text-[13px] font-bold text-ih-primary-fg bg-ih-primary hover:opacity-95 transition"
           >
             {lock.reason === "agreement"
               ? m.portal_report_lock_agreement_cta()
               : m.portal_report_lock_payment_cta()}
-          </Link>
+          </Link>}
         </div>
       )}
       <InspectionStatusCards overview={overview} />

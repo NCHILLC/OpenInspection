@@ -131,6 +131,9 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
 
   useEffect(() => {
     if (!open) return;
+    // A reading from the last time the camera was open says nothing about now:
+    // until a fresh sample arrives, trust the screen (captureQuarterTurns' flat case).
+    gravityRef.current = { x: 0, y: 0 };
     const onMotion = (e: DeviceMotionEvent): void => {
       const g = e.accelerationIncludingGravity;
       if (g) gravityRef.current = { x: g.x ?? 0, y: g.y ?? 0 };

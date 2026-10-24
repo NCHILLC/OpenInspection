@@ -15,6 +15,7 @@ import { m } from "~/paraglide/messages";
 import { formatDate } from "~/lib/format";
 import { EMPTY_BRAND } from "~/lib/brand";
 import type { HubSection } from "~/components/portal/ClientPortalHub";
+import { CRM_HUB_SECTIONS } from "~/components/portal/InspectionStatusCards";
 import type { ProgressSection } from "~/components/portal/sections/ProgressView";
 import type {
   LoaderResult as RepairLoaderResult,
@@ -65,6 +66,12 @@ export function parseSection(v: string | null): HubSection {
 // default "overview", which needs no redirect).
 export function isJumpSection(v: string | null): v is HubSection {
   return v !== null && v !== "overview" && (HUB_SECTIONS as string[]).includes(v);
+}
+
+// Another system is the CRM: its sections are hidden from the nav, so neither
+// ?section= nor ?to= may open them either (the client would sign or pay in OI).
+export function hubSectionAllowed(s: HubSection, externalCrm: boolean | undefined): boolean {
+  return !externalCrm || !CRM_HUB_SECTIONS.includes(s);
 }
 
 /* Report section — lives in its own module (it is ~120 lines of wire→view

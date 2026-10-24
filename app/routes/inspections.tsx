@@ -494,7 +494,7 @@ export default function InspectionsPage() {
       templateCount,
       serviceCount,
       inspectionCount,
-      scheduleSet,
+      scheduleSet, externalCrm: sessionCtx?.deployment?.externalCrm != null,
     });
   }, [sessionCtx, templateCount, serviceCount, scheduleSet, allInspections]);
 
