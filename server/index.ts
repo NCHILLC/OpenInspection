@@ -107,6 +107,7 @@ import conciergeRoutes from './api/concierge';
 import sessionContextRoutes from './api/session-context';
 import qboRoutes from './api/qbo';
 import qboWebhookRoutes from './api/qbo-webhook';
+import isnWebhookRoutes from './api/isn-webhook';
 import qboOauthRoutes from './api/qbo-oauth';
 import { QBO_OAUTH_MOUNT } from './lib/qbo-oauth-paths';
 import stripeWebhookRoutes from './api/stripe-webhook';
@@ -464,6 +465,7 @@ const routes = app
   // (they dedupe via processed_webhook_events), and emphatically no
   // subscription gate: a lapsed tenant is when a provider most needs delivery.
   .route('/webhooks/quickbooks', qboWebhookRoutes)
+  .route('/webhooks/isn', isnWebhookRoutes)
   // Browser-facing OAuth pair (/connect, /callback). The redirect_uri Intuit
   // matches byte-for-byte comes from one constant; see lib/qbo-oauth-paths.ts.
   .route(QBO_OAUTH_MOUNT, qboOauthRoutes)

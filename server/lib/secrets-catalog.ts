@@ -68,6 +68,9 @@ export const INTEGRATION_SECRET_KEYS = [
     'ISN_COMPANY_KEY',
     'ISN_ACCESS_KEY',
     'ISN_SECRET_KEY',
+    // Signs ISN's webhook deliveries (ISN: Settings -> Webhooks, shown once on
+    // creation). 64 hex characters, used as the HMAC key string as-is.
+    'ISN_WEBHOOK_SECRET',
 ] as const;
 
 export type IntegrationSecretKey = (typeof INTEGRATION_SECRET_KEYS)[number];

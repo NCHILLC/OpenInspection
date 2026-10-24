@@ -39,6 +39,7 @@ const TENANT_OWNED_KEYS = new Set<string>([
     'ISN_COMPANY_KEY',
     'ISN_ACCESS_KEY',
     'ISN_SECRET_KEY',
+    'ISN_WEBHOOK_SECRET',
 ]);
 
 /**

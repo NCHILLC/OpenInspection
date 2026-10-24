@@ -130,6 +130,7 @@ export interface AppEnv {
     ISN_COMPANY_KEY?: string;
     ISN_ACCESS_KEY?: string;
     ISN_SECRET_KEY?: string;
+    ISN_WEBHOOK_SECRET?: string;
     // `isn` = ISN is the CRM: OI's CRM screens hide (DeploymentProfile.externalCrm).
     EXTERNAL_CRM?: string;
 
