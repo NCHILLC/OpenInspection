@@ -193,7 +193,7 @@ export class InspectionCoreService extends InspectionSubService {
     /**
      * Creates a new inspection.
      */
-    async createInspection(tenantId: string, data: CreateInspectionData & { inspectorId?: string; clientContactId?: string }): Promise<Inspection> {
+    async createInspection(tenantId: string, data: CreateInspectionData & { inspectorId?: string; clientContactId?: string }, opts: { automations?: boolean } = {}): Promise<Inspection> {
         if (!this.sdb) throw new Error('ScopedDB session missing');
         const id = crypto.randomUUID();
         const createdAt = new Date();
@@ -339,7 +339,7 @@ export class InspectionCoreService extends InspectionSubService {
         } catch (e) {
             logger.error('inspection.assignment-sync.failed', { inspectionId: id }, e instanceof Error ? e : undefined);
         }
-        await fireAutomation(this.db, tenantId, id, 'inspection.created');
+        if (opts.automations !== false) await fireAutomation(this.db, tenantId, id, 'inspection.created'); // false: booked and confirmed elsewhere (ISN)
 
         // Soft-upsert the client into Contacts so it shows up in the Contacts list
         // for future re-use (search, agent linking). Idempotent on tenantId+email
