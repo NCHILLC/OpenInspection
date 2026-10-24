@@ -9,11 +9,11 @@ from the Drizzle definitions in `server/lib/db/schema/` — the two that
 
 | | |
 |---|---|
-| Tables | 109 |
-| Columns | 1263 |
-| Indexes (excluding primary keys) | 183 |
+| Tables | 110 |
+| Columns | 1269 |
+| Indexes (excluding primary keys) | 184 |
 | Database foreign keys (all legacy, frozen) | 51 |
-| Columns carrying a source comment | 609 (48%) |
+| Columns carrying a source comment | 611 (48%) |
 
 **Tables without `tenant_id`.** Every table holding tenant data must carry it —
 `npm run lint:tenant-scope` is the gate. These are the tables that are not *about*
@@ -21,10 +21,10 @@ a tenant, which is the only reason to be missing it:
 
 `agent_terms_acceptances` · `deployment_legal_versions` · `discovery_objections` · `marketplace_libraries` · `parked_cmd_events` · `processed_cmd_events` · `processed_webhook_events` · `slug_reservations` · `sms_disclosure_versions` · `statutory_form_sightings` · `statutory_form_versions` · `sync_outbox` · `tenants`
 
-That is 13 of 109. If a table you just added appears here,
+That is 13 of 110. If a table you just added appears here,
 that is the bug, not the list.
 
-**Timestamps.** 205 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
+**Timestamps.** 206 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
 epoch MILLISECONDS, with no legacy `mode: 'timestamp'` columns left.
 Seconds and milliseconds are one multiplication apart and the mistake reads as a
 date tens of thousands of years out, so the Schema Rules allow only the former for
@@ -1479,6 +1479,27 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 - `idx_invoices_inspection` (inspection_id)
 - `idx_invoices_contact` (tenant_id, contact_id)
 - **UNIQUE** `uq_invoices_tenant_number` (tenant_id, invoice_number)
+
+---
+
+## `isn_orders`
+
+<sub>server/lib/db/schema/isn.ts · 6 columns · primary key `id`</sub>
+
+> The last copy of each ISN order this app has read, as ISN's `GET /order/{id}` returned it.
+
+| Column | Type | Flags | Default | Values | Description |
+|---|---|---|---|---|---|
+| `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
+| `tenant_id` | text | NN UQ |  |  | *Tenant isolation key. Every read and write must filter on it.* |
+| `isn_order_id` | text | NN UQ |  |  | ISN's uuid for the order (`order_id` in a webhook, `id` in GET /order). |
+| `inspection_id` | text |  |  |  | The OI inspection this order became. Null until the order is applied to one. |
+| `payload` | text | NN |  |  |  |
+| `fetched_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
+
+**Indexes**
+
+- **UNIQUE** `uq_isn_orders_tenant_order` (tenant_id, isn_order_id)
 
 ---
 

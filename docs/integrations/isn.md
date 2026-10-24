@@ -7,7 +7,25 @@ them.
 
 This is the report half of
 [InspectorHub/OpenInspection#321](https://github.com/InspectorHub/OpenInspection/issues/321).
-Importing ISN's scheduled orders is not built yet.
+Importing ISN's scheduled orders is in progress: the webhook receiver below
+keeps a copy of each changed order, but does not yet turn it into an inspection.
+
+## Order webhook (receiving only)
+
+`POST /webhooks/isn` takes ISN's order webhooks. It checks `X-ISN-Signature`
+against `ISN_WEBHOOK_SECRET`, then re-reads the order with `GET /order/{id}` and
+stores ISN's answer in `isn_orders`. The webhook body is trusted only for which
+order changed. A delivery with `"test": true` is acknowledged and not applied.
+
+- No secret, no tenant, or a bad signature: 401. Nothing is read or written.
+- The re-fetch fails: 500, so ISN retries (8 attempts over about a day).
+- A repeated delivery re-reads the order again; the row holds ISN's latest state.
+
+To turn it on: create the webhook in ISN (Settings → Webhooks → Add Webhook,
+POST, tracked and signed, URL `https://<this app's host>/webhooks/isn`), copy
+the secret ISN shows once, set it as `ISN_WEBHOOK_SECRET` (a Worker secret, or
+stored with the other ISN keys), then use ISN's "Send test event". The bare path
+uses standalone's fixed tenant; SaaS has no per-tenant ISN webhook path.
 
 ## What you need
 
@@ -17,8 +35,9 @@ Importing ISN's scheduled orders is not built yet.
 | `ISN_COMPANY_KEY` | ISN → Settings → My Access Keys |
 | `ISN_ACCESS_KEY` | Same page |
 | `ISN_SECRET_KEY` | Same page |
+| `ISN_WEBHOOK_SECRET` | ISN → Settings → Webhooks, shown once when the webhook is created. Only for the order webhook |
 
-Set them in Settings → Advanced → ISN. All four are **tenant-owned**: the
+Set the first four in Settings → Advanced → ISN. All five are **tenant-owned**: the
 company's own value always beats a Worker env binding, because a platform key
 winning would put every company's reports on one company's ISN account.
 
@@ -79,6 +98,7 @@ than removing it, so the read-back requires the row to be shown.
 - `server/services/isn/api-base.ts` — credentials, the call, error shape
 - `server/services/isn/report-link-payload.ts` — pure: the fields ISN reads
 - `server/services/isn/report-link-sync.ts` — the push and the read-back
+- `server/api/isn-webhook.ts`, `server/services/isn/webhook-signature.ts`, `server/services/isn/order-pull.ts` — the order webhook
 - `app/components/settings/advanced/IsnPanel.tsx`, `app/lib/isn-settings.server.ts` — the settings panel
 - `tests/contract/isn/` — the vendored schema excerpt, its contract spec, and the live spec
 

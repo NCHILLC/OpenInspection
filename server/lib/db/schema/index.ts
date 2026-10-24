@@ -72,6 +72,8 @@ export { erasureLog, smsDisclosureVersions, smsConsentLog, messagingCompliance, 
 // WH-2 — tenant SMS delivery-status ledger + shared webhook idempotency ledger.
 // WH-3 — tenant email suppression list (append-only; hard bounce / complaint).
 export { smsDeliveryStatus, processedWebhookEvents, emailSuppressions } from './messaging';
+// ISN orders as last read over REST (webhook receiver).
+export { isnOrders } from './isn';
 export type { SmsDeliveryStatus, ProcessedWebhookEvent, EmailSuppression, NewEmailSuppression } from './messaging';
 // Usage metering (Phase 1, SaaS-only).
 export { usageCounters } from './usage';
