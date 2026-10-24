@@ -17,6 +17,7 @@ import { inspections, inspectionResults, isnOrders, services, users } from '../.
 import { createScopedDb, type DrizzleDB } from '../../lib/db/scoped';
 import { syncInspectionAssignments } from '../../lib/db/assignment-links';
 import { logger } from '../../lib/logger';
+import { INSPECTION_STATUS } from '../../lib/status/inspection-status';
 import { ContactService } from '../contact.service';
 import { InspectionCoreService } from '../inspection/inspection-core.service';
 import type { CreateInspectionData } from '../inspection/shared';
@@ -118,7 +119,7 @@ export async function applyIsnOrder(
             sellingAgentId: await agentId(sellersAgent),
         } as unknown as CreateInspectionData, { automations: false });
 
-        await db.update(inspections).set({ ...facts, status: 'scheduled', teamMode: inspectorIds.length > 1 })
+        await db.update(inspections).set({ ...facts, status: INSPECTION_STATUS.SCHEDULED, teamMode: inspectorIds.length > 1 })
             .where(and(eq(inspections.id, created.id), eq(inspections.tenantId, tenantId)));
         await syncInspectionAssignments(db, tenantId, created.id, team);
         await db.update(isnOrders).set({ inspectionId: created.id })
@@ -140,6 +141,6 @@ async function cancelIfUntouched(db: ReturnType<typeof drizzle>, tenantId: strin
         logger.warn('ISN order cancelled but the report has writing; left as is', { inspectionId });
         return;
     }
-    await db.update(inspections).set({ status: 'cancelled' })
+    await db.update(inspections).set({ status: INSPECTION_STATUS.CANCELLED })
         .where(and(eq(inspections.id, inspectionId), eq(inspections.tenantId, tenantId)));
 }
