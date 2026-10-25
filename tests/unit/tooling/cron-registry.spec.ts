@@ -28,7 +28,7 @@ describe('cron registry', () => {
      * arrived unannounced" — and the single equality that used to carry both
      * reported the second failure using the first one's name.
      */
-    const ADDED_SINCE = ['statutory-revision-watch', 'content-seed-sweep'];
+    const ADDED_SINCE = ['statutory-revision-watch', 'content-seed-sweep', 'isn-order-reconcile'];
 
     it('declares every job the monolithic handler used to run, in order', () => {
         const keys = CRON_JOBS.map((j) => j.key);
@@ -66,11 +66,13 @@ describe('cron registry', () => {
 
     it('marks the SaaS-only jobs so standalone does not probe for work it cannot do', () => {
         expect(CRON_JOBS.find((j) => j.key === 'portal-outbox')?.modes).toEqual(['saas']);
+        // The ISN reconcile is the reverse: it uses standalone's one fixed tenant.
+        expect(CRON_JOBS.find((j) => j.key === 'isn-order-reconcile')?.modes).toEqual(['standalone']);
         // Everything else runs in both modes. Standalone gating that depends on
         // a binding or a secret stays inside the job's own probe(), not here:
         // `modes` is about topology, not configuration.
-        const bothCount = CRON_JOBS.filter((j) => j.modes.includes('standalone')).length;
-        expect(bothCount, `${bothCount} of ${CRON_JOBS.length} jobs run in standalone`).toBe(CRON_JOBS.length - 1);
+        const bothCount = CRON_JOBS.filter((j) => j.modes.includes('standalone') && j.modes.includes('saas')).length;
+        expect(bothCount, `${bothCount} of ${CRON_JOBS.length} jobs run in both modes`).toBe(CRON_JOBS.length - 2);
     });
 
     it('gives every job a probe and a bounded run', () => {

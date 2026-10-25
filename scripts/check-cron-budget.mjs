@@ -43,11 +43,12 @@ const JOBS_DIR = resolve(ROOT, 'server/cron/jobs');
  * Files outside `server/cron/` whose reads are still part of a cron
  * invocation's own cost. Everything under `server/cron/` is discovered rather
  * than listed, so a new job module cannot be added outside this gate's view;
- * these two are the sweeps those modules delegate to.
+ * these are the sweeps those modules delegate to.
  */
 const EXTRA_READ_SCOPE = [
     'server/lib/media/sweep-orphans.ts',
     'server/lib/media/pending-attachments.ts',
+    'server/services/isn/order-reconcile.ts',
 ];
 
 /**

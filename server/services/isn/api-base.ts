@@ -14,6 +14,8 @@
  *      answers "you must provide a url for the report". The same fields in the
  *      query string are read. See tests/contract/isn/isn-api.live.spec.ts.
  */
+import { loadTenantSecrets } from '../../lib/secrets-cache';
+import { applyIntegrationSecrets } from '../../lib/middleware/integration-secrets';
 
 /** Everything needed to reach one company's ISN. */
 export interface IsnConfig {
@@ -38,6 +40,23 @@ export function isnConfig(env: IsnEnv): IsnConfig | null {
     const secretKey = env.ISN_SECRET_KEY?.trim();
     if (!domain || !companyKey || !accessKey || !secretKey) return null;
     return { domain, companyKey, accessKey, secretKey };
+}
+
+/**
+ * The Worker env with this tenant's stored secrets merged in (ISN keys are
+ * tenant-owned, so the stored value wins). A copy: the Worker env is shared
+ * across requests in an isolate and must never be mutated.
+ */
+export async function isnTenantEnv(
+    env: { DB: D1Database; TENANT_CACHE?: KVNamespace; JWT_SECRET?: string; JWT_SECRET_PREVIOUS?: string },
+    tenantId: string,
+): Promise<Record<string, string | undefined>> {
+    const out: Record<string, string | undefined> = { ...(env as unknown as Record<string, string | undefined>) };
+    if (!env.JWT_SECRET) return out;
+    const stored = await loadTenantSecrets(env.DB, env.TENANT_CACHE, tenantId, env.JWT_SECRET, env.JWT_SECRET_PREVIOUS)
+        .catch(() => null);
+    if (stored) applyIntegrationSecrets(out, stored);
+    return out;
 }
 
 /** ISN's own words, kept whole — see docs/develop/integration-adapters.md. */

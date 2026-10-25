@@ -8,8 +8,8 @@ them.
 This is the report half of
 [InspectorHub/OpenInspection#321](https://github.com/InspectorHub/OpenInspection/issues/321).
 Importing ISN's scheduled orders is in progress: the webhook receiver below
-turns each changed order into an OI inspection. There is no catch-up sweep yet,
-so an order ISN gave up retrying is not picked up.
+turns each changed order into an OI inspection, and an hourly catch-up sweep
+picks up what the webhook missed.
 
 ## Order webhook
 
@@ -21,6 +21,17 @@ order changed. A delivery with `"test": true` is acknowledged and not applied.
 - No secret, no tenant, or a bad signature: 401. Nothing is read or written.
 - The re-fetch fails: 500, so ISN retries (8 attempts over about a day).
 - A repeated delivery re-reads the order again; the row holds ISN's latest state.
+
+**Catch-up sweep.** Once an hour the cron job `isn-order-reconcile` lists ISN's
+orders dated from yesterday on (`GET /orders?datetimeafter=`) and pulls each one
+that OI does not have, whose `modified` differs from the stored copy, or that
+never became an inspection. Its first run is the backfill of today-forward orders.
+It runs only when `ISN_WEBHOOK_SECRET` and the four ISN keys are set: the keys
+alone also serve the report link and must not start importing orders. It pulls
+at most 5 orders per invocation and continues on the queue. It also frees a
+creation claim left by a Worker that died mid-create (older than 15 minutes).
+Not covered: an order dated before yesterday, and an order ISN stops listing
+(not checked whether `GET /orders` lists cancelled or deleted orders).
 
 Each stored order is then applied to its inspection. ISN wins on schedule and
 order facts:

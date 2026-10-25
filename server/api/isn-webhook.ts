@@ -1,10 +1,8 @@
 import { Hono } from 'hono';
 import type { HonoConfig } from '../types/hono';
 import { logger } from '../lib/logger';
-import { loadTenantSecrets } from '../lib/secrets-cache';
-import { applyIntegrationSecrets } from '../lib/middleware/integration-secrets';
 import { IsnWebhookSchema } from '../lib/validations/isn-webhook.schema';
-import { isnConfig } from '../services/isn/api-base';
+import { isnConfig, isnTenantEnv } from '../services/isn/api-base';
 import { verifyIsnSignature } from '../services/isn/webhook-signature';
 import { pullIsnOrder } from '../services/isn/order-pull';
 
@@ -18,7 +16,8 @@ import { pullIsnOrder } from '../services/isn/order-pull';
  *
  * SYNCHRONOUS on purpose: one GET to ISN, well inside its 8 s timeout. A failure
  * answers 500 so ISN retries (8 attempts over about a day); work done in
- * waitUntil after a 200 would be lost for good, and there is no reconcile sweep yet.
+ * waitUntil after a 200 would never be retried by ISN; the hourly reconcile
+ * (`isnOrderReconcileJob`) heals only today-forward orders.
  * No event_id ledger: the re-fetch and upsert are idempotent, so a duplicate
  * delivery just reads the order's current state again.
  */
@@ -27,13 +26,7 @@ const api = new Hono<HonoConfig>();
 api.post('/', async (c) => {
     const tenantId = c.get('tenantId') as string | undefined;
     const header = c.req.header('x-isn-signature');
-    // Copy, never mutate: c.env is shared across requests in an isolate.
-    const env: Record<string, string | undefined> = { ...(c.env as unknown as Record<string, string | undefined>) };
-    if (tenantId) {
-        const stored = await loadTenantSecrets(c.env.DB, c.env.TENANT_CACHE, tenantId, c.env.JWT_SECRET, c.env.JWT_SECRET_PREVIOUS)
-            .catch(() => null);
-        if (stored) applyIntegrationSecrets(env, stored);
-    }
+    const env = tenantId ? await isnTenantEnv(c.env, tenantId) : {};
     const secret = env.ISN_WEBHOOK_SECRET?.trim();
 
     // Raw body BEFORE any parsing: the HMAC covers the exact bytes ISN sent.
