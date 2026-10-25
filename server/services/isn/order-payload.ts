@@ -88,3 +88,17 @@ export function personFromIsn(p: Order | undefined): { name: string; email?: str
     const phone = str(p.mobilephone) ?? str(p.workphone) ?? str(p.homephone);
     return { name, ...(email ? { email } : {}), ...(phone ? { phone } : {}) };
 }
+
+/**
+ * The inspections list's ready check for an inspection that came from ISN: the
+ * order's services that are not on the inspection (OI has no service of that
+ * name, so it was left off at create), and how many ISN inspectors have no OI
+ * user. A warning only; it gates nothing (Aaron, 2026-10-23).
+ */
+export function isnReadyCheck(payload: Order, lineNames: string[], unmatchedInspectors: number | null) {
+    const onInspection = new Set(lineNames.map((n) => n.trim().toLowerCase()));
+    return {
+        unmatchedServices: orderFacts(payload).serviceNames.filter((n) => !onInspection.has(n.toLowerCase())),
+        unmatchedInspectors: unmatchedInspectors ?? 0,
+    };
+}

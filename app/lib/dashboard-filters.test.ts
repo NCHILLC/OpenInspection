@@ -43,6 +43,12 @@ describe("dashboard filter vocabulary", () => {
     expect(matchesFilter(insp("cancelled", "in_progress"), "needs_confirmation" as FilterId, NOW)).toBe(false);
   });
 
+  it("from_isn selects only inspections that came from an ISN order", () => {
+    expect(matchesFilter({ ...insp("scheduled", "in_progress"), isn: { unmatchedServices: [], unmatchedInspectors: 0 } }, "from_isn" as FilterId, NOW)).toBe(true);
+    expect(matchesFilter({ ...insp("scheduled", "in_progress"), isn: null }, "from_isn" as FilterId, NOW)).toBe(false);
+    expect(matchesFilter(insp("scheduled", "in_progress"), "from_isn" as FilterId, NOW)).toBe(false);
+  });
+
   it("each filter's label comes from the catalog, not a per-page string", () => {
     for (const f of INSPECTION_FILTERS) {
       expect(f.label).toBeTruthy();

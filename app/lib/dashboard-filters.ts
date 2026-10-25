@@ -31,6 +31,7 @@ export function matchesFilter(insp: Inspection, filter: FilterId, now: Date): bo
   // the work done with the report not yet out.
   if (filter === "needs_confirmation") return status === INSPECTION_STATUS.SCHEDULED || status === INSPECTION_STATUS.REQUESTED;
   if (filter === "awaiting_report") return status === INSPECTION_STATUS.COMPLETED && !isReportPublished(insp.reportStatus);
+  if (filter === "from_isn") return !!insp.isn;
   if (!insp.date) return false;
   const date = new Date(insp.date);
   if (isNaN(date.getTime())) return false;

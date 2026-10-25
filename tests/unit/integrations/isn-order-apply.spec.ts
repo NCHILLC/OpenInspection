@@ -9,13 +9,14 @@ import * as schema from '../../../server/lib/db/schema';
 import { seedRoleProfiles } from '../../../server/services/seed/seed-role-profiles';
 import { createTestDb, setupSchema } from '../db';
 import { asD1Db } from '../helpers/test-db';
-import { foundationFromIsn, orderFacts } from '../../../server/services/isn/order-payload';
+import { foundationFromIsn, isnReadyCheck, orderFacts } from '../../../server/services/isn/order-payload';
 
 vi.mock('drizzle-orm/d1', () => ({ drizzle: vi.fn() }));
 const fireAutomation = vi.fn(async () => {});
 vi.mock('../../../server/services/inspection/automation-fire', () => ({ fireAutomation }));
 import { drizzle as mockDrizzle } from 'drizzle-orm/d1';
 const { applyIsnOrder } = await import('../../../server/services/isn/order-apply');
+const { isnReadyChecks } = await import('../../../server/services/isn/ready-check');
 
 const TENANT = 't-isn';
 const CFG = { domain: 'https://isn.test', companyKey: 'co', accessKey: 'a', secretKey: 's' };
@@ -82,6 +83,14 @@ describe('orderFacts', () => {
     });
 });
 
+describe('isnReadyCheck', () => {
+    it('names the order services missing from the inspection, by name, ignoring case', () => {
+        expect(isnReadyCheck(ORDER, ['essential residential - full structural and mechanical inspection '], 1))
+            .toEqual({ unmatchedServices: ['FlexFund'], unmatchedInspectors: 1 });
+        expect(isnReadyCheck({ ...ORDER, services: [] }, [], null)).toEqual({ unmatchedServices: [], unmatchedInspectors: 0 });
+    });
+});
+
 describe('applyIsnOrder', () => {
     it('creates one scheduled inspection with the matched inspector, service, client and agent, and no booking emails', async () => {
         const id = await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER });
@@ -101,7 +110,14 @@ describe('applyIsnOrder', () => {
             .where(eq(schema.inspectionPeople.inspectionId, id!)).all().map((p) => p.email).sort();
         expect(people).toEqual(['ann@realty.test', 'pat@buyer.test']);
         expect(fireAutomation).not.toHaveBeenCalled();
-        expect(db.select().from(schema.isnOrders).where(eq(schema.isnOrders.id, 'row1')).get()?.inspectionId).toBe(id);
+        expect(db.select().from(schema.isnOrders).where(eq(schema.isnOrders.id, 'row1')).get())
+            .toMatchObject({ inspectionId: id, unmatchedInspectors: 1 });
+    });
+
+    it('the list ready check names the service and counts the inspector that did not match', async () => {
+        const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER }))!;
+        const checks = await isnReadyChecks(db as never, TENANT);
+        expect([...checks.entries()]).toEqual([[id, { unmatchedServices: ['FlexFund'], unmatchedInspectors: 1 }]]);
     });
 
     it('a second delivery updates the same inspection: ISN wins on time, and a cancel cancels an untouched report', async () => {

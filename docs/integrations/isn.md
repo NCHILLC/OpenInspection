@@ -52,6 +52,15 @@ order facts:
   with a template sets the inspection's template. Others are logged. Services
   are set at creation only.
 
+On the inspections list, **From ISN** (in the filter strip, shown once any
+inspection came from ISN) lists those inspections. A row whose order has a
+service missing from the inspection, or an inspector with no OI user, carries a
+warning chip with the counts; hovering it names the services. It is a warning
+only: nothing is blocked. To clear a service warning, add the service to the
+inspection by hand (renaming the OI service does not add it to inspections that
+already exist). An inspector warning clears on the next ISN delivery once that
+person's email is an OI user.
+
 To turn it on: create the webhook in ISN (Settings → Webhooks → Add Webhook,
 POST, tracked and signed, URL `https://<this app's host>/webhooks/isn`), copy
 the secret ISN shows once, set it as `ISN_WEBHOOK_SECRET` (a Worker secret, or

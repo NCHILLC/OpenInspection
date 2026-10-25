@@ -10,10 +10,10 @@ from the Drizzle definitions in `server/lib/db/schema/` — the two that
 | | |
 |---|---|
 | Tables | 110 |
-| Columns | 1269 |
+| Columns | 1270 |
 | Indexes (excluding primary keys) | 184 |
 | Database foreign keys (all legacy, frozen) | 51 |
-| Columns carrying a source comment | 611 (48%) |
+| Columns carrying a source comment | 612 (48%) |
 
 **Tables without `tenant_id`.** Every table holding tenant data must carry it —
 `npm run lint:tenant-scope` is the gate. These are the tables that are not *about*
@@ -1484,7 +1484,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `isn_orders`
 
-<sub>server/lib/db/schema/isn.ts · 6 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/isn.ts · 7 columns · primary key `id`</sub>
 
 > The last copy of each ISN order this app has read, as ISN's `GET /order/{id}` returned it.
 
@@ -1496,6 +1496,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `inspection_id` | text |  |  |  | The OI inspection this order became. Null until the order is applied to one. |
 | `payload` | text | NN |  |  |  |
 | `fetched_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
+| `unmatched_inspectors` | integer |  |  |  | How many of the order's ISN inspectors have no OI user with the same email, as of the last apply. |
 
 **Indexes**
 

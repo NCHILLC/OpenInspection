@@ -304,6 +304,10 @@ const InspectionListItemSchema = z.object({
     inspectorName: z.string().nullable().describe('Display name of the assigned inspector. Null when unassigned.'),
     requestId:     z.string().nullable().describe('Multi-inspection request this booking belongs to. Null for a standalone booking.'),
     siblingCount:  z.number().nullable().describe('How many inspections share this `requestId`, including this one. Null when there is no request.'),
+    isn:           z.object({
+        unmatchedServices:   z.array(z.string()).describe('ISN service names on the order that are not on this inspection (no OI service of that name).'),
+        unmatchedInspectors: z.number().describe('How many ISN inspectors on the order have no OI user with the same email.'),
+    }).nullable().describe('Set when this inspection came from an ISN order: its ready check. Null otherwise.'),
 }).passthrough().openapi('InspectionListItem');
 
 // Sub-spec B Task 5 (B-4) — portfolio defectStats aggregated per top card.

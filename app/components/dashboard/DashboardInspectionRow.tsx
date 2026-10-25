@@ -117,6 +117,14 @@ export function DashboardInspectionRow({
               because the cache tier reads 0 on real data: "$0" looks the same
               whichever unit you think it is in, and fixing the source is what
               turned it into "$45000". */}
+          {/* ISN ready check: a warning only, it gates nothing. */}
+          {insp.isn && (insp.isn.unmatchedServices.length > 0 || insp.isn.unmatchedInspectors > 0) && (
+            <span title={insp.isn.unmatchedServices.join(", ")}>
+              <Pill tone="warning">
+                {m.dashboard_row_isn_unmatched({ services: insp.isn.unmatchedServices.length, inspectors: insp.isn.unmatchedInspectors })}
+              </Pill>
+            </span>
+          )}
           {isColumnVisible("price") && insp.price != null && (
             <span className="text-[11px] font-medium text-ih-fg-3">
               {formatDollars(insp.price, { locale, currency })}

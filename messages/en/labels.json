@@ -20,6 +20,7 @@
   "label_filter_this_week": "This Week",
   "label_filter_future": "Future",
   "label_filter_needs_confirmation": "Needs confirmation",
+  "label_filter_from_isn": "From ISN",
   "label_filter_awaiting_report": "Awaiting report",
   "label_tab_all": "All",
   "label_tab_active": "Active",
