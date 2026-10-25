@@ -9,10 +9,13 @@ type Order = Record<string, unknown>;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null);
 const int = (v: unknown): number | null => {
-    const n = typeof v === 'number' ? v : Number(str(v));
+    const n = typeof v === 'number' ? v : Number(str(v)?.replace(/,/g, ''));
     return Number.isInteger(n) && n > 0 ? n : null;
 };
-const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+const num = (v: unknown): number | null => {
+    const n = typeof v === 'number' ? v : Number(str(v) ?? NaN);
+    return Number.isFinite(n) ? n : null;
+};
 
 /** OI's foundation vocabulary (see getPropertyFacts) from ISN's free-text `foundationtype`. */
 export function foundationFromIsn(v: unknown): 'basement' | 'slab' | 'crawlspace' | 'other' | null {

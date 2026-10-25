@@ -74,6 +74,12 @@ describe('orderFacts', () => {
         expect(foundationFromIsn('Slab on grade')).toBe('slab');
         expect(foundationFromIsn('')).toBeNull();
     });
+
+    it('reads numbers ISN sends as strings, with or without thousands separators', () => {
+        expect(orderFacts({ ...ORDER, latitude: '35.29', longitude: '-81.15', squarefeet: '2,400' }))
+            .toMatchObject({ sqft: 2400, address: { addressLat: 35.29, addressLng: -81.15 } });
+        expect(orderFacts({ ...ORDER, latitude: '' }).address.addressLat).toBeNull();
+    });
 });
 
 describe('applyIsnOrder', () => {
@@ -120,6 +126,38 @@ describe('applyIsnOrder', () => {
         expect(await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER })).toBeNull();
         expect(await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: 'pending:x', payload: ORDER })).toBeNull();
         expect(db.select().from(schema.inspections).all()).toHaveLength(0);
+    });
+
+    it('a later delivery keeps OI values ISN leaves blank, and the team when an ISN inspector has no OI user', async () => {
+        const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER }))!;
+        await db.update(schema.inspections).set({ inspectorId: 'u-lead' }).where(eq(schema.inspections.id, id));
+        await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: id, payload: { ...ORDER, squarefeet: '', county: '', inspector1: 'isn-user-unknown', inspector2: '' } });
+        expect(inspectionRow(id)).toMatchObject({ sqft: 3121, addressCounty: 'Gaston', inspectorId: 'u-lead' });
+    });
+
+    it('an order reinstated in ISN is scheduled again', async () => {
+        const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER }))!;
+        await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: id, payload: { ...ORDER, canceled: 'yes' } });
+        expect(inspectionRow(id)?.status).toBe('cancelled');
+        await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: id, payload: ORDER });
+        expect(inspectionRow(id)?.status).toBe('scheduled');
+    });
+
+    it('the creating delivery applies a payload stored while it held the claim', async () => {
+        await db.update(schema.isnOrders).set({ payload: { ...ORDER, datetime: '2026-10-29 09:00:00', canceled: 'yes' } });
+        const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER }))!;
+        expect(inspectionRow(id)).toMatchObject({ date: '2026-10-29T09:00:00', status: 'cancelled' });
+    });
+
+    it('a failure after the inspection exists keeps the link, and the retry finishes the same inspection', async () => {
+        const broken = { ...ORDER, inspector1: 'isn-user-missing' };
+        await db.update(schema.isnOrders).set({ payload: broken });
+        await expect(applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: broken })).rejects.toThrow();
+        const linked = db.select().from(schema.isnOrders).get()?.inspectionId;
+        expect(linked).toBeTruthy();
+        expect(await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: linked!, payload: ORDER })).toBe(linked);
+        expect(db.select().from(schema.inspections).all()).toHaveLength(1);
+        expect(inspectionRow(linked!)).toMatchObject({ status: 'scheduled', inspectorId: 'u-lead' });
     });
 
     it('a failed ISN lookup creates nothing and releases nothing it did not claim', async () => {
