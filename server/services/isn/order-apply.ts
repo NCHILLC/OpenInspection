@@ -82,8 +82,8 @@ async function createFromOrder(
 
     // Claim the row so two deliveries for one new order (ORDER_CREATED and
     // ORDER_SCHEDULED arrive together) cannot both create an inspection.
-    // ponytail: a Worker killed between claim and create leaves the row claimed
-    // (`pending:`); the reconcile cron (slice 3) should clear stale claims.
+    // A Worker killed between claim and create leaves the row claimed; the
+    // reconcile cron frees claims older than STALE_CLAIM_MS (order-reconcile.ts).
     const claim = `pending:${crypto.randomUUID()}`;
     const claimed = await db.update(isnOrders).set({ inspectionId: claim })
         .where(and(eq(isnOrders.id, row.id), eq(isnOrders.tenantId, tenantId), isNull(isnOrders.inspectionId)))

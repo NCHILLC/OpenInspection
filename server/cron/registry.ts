@@ -36,7 +36,7 @@ import { automationFlushJob, reminderEnqueueJob } from './jobs/automation';
 import { r2UsageJob, retentionLogsJob } from './jobs/daily';
 import { reportGenerationJob } from './jobs/inspections';
 import {
-    calendarSyncJob, managedComplianceJob, portalOutboxJob, qboCdcJob,
+    calendarSyncJob, isnOrderReconcileJob, managedComplianceJob, portalOutboxJob, qboCdcJob,
 } from './jobs/integrations';
 import { orphanMediaJob, pendingAttachmentsJob } from './jobs/media';
 import { statutoryRevisionWatchJob } from './jobs/statutory';
@@ -76,4 +76,6 @@ export const CRON_JOBS: CronJob[] = [
     // stops, and it has something to do only in the ticks after an upgrade that
     // moved STARTER_CONTENT_VERSION.
     contentSeedSweepJob,
+    // Last: fork-only (NCHILLC), and idle unless ISN order intake is switched on.
+    isnOrderReconcileJob,
 ];

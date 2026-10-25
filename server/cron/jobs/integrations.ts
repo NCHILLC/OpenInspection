@@ -2,7 +2,7 @@
  * Cron jobs that reconcile state with something outside this Worker: an
  * accounting system, the portal, a messaging carrier, a calendar.
  *
- * All four share one property worth naming - their cost is dominated by network
+ * They share one property worth naming - their cost is dominated by network
  * I/O, which does NOT count against the Workers CPU budget. What counts is the
  * per-row work around it, which is what their batch caps bound.
  */
@@ -14,6 +14,8 @@ import { calendarConnections } from '../../lib/db/schema/calendar';
 import { SYNC_OUTBOX_STATUS } from '../../lib/status/sync-outbox-status';
 import { runQBOCDC } from '../../services/qbo/cron-cdc';
 import { logger } from '../../lib/logger';
+import { getDeploymentProfile } from '../../lib/deployment-profile';
+import { isIntervalDue, markRan } from '../cursor';
 import { TICK, db, exists, type CronJob } from '../types';
 
 // 2. QBO CDC payment sync (was hourly)
@@ -162,5 +164,44 @@ export const calendarSyncJob: CronJob = {
         });
         if (swept.attempted > 0) logger.info('[cron] calendar sync sweep', swept);
         return { processed: swept.attempted, nextCursor: null };
+    },
+};
+
+/** How often the ISN reconcile starts a fresh pass. The webhook is the main path. */
+const ISN_RECONCILE_INTERVAL_MS = 60 * 60 * 1000;
+/** Orders pulled per invocation: each pull is 2-6 ISN GETs, against the 50-subrequest Free cap. */
+const ISN_RECONCILE_BATCH = 5;
+
+// 8. ISN order reconcile + today-forward backfill: heals a missed or dropped
+//    webhook delivery (ISN gives up after about a day). Body in
+//    services/isn/order-reconcile.
+export const isnOrderReconcileJob: CronJob = {
+    key: 'isn-order-reconcile',
+    label: 'Pull ISN orders the webhook missed',
+    trigger: TICK,
+    // The bare webhook path and this job both rely on standalone's one fixed
+    // tenant; SaaS would need a per-tenant loop, which nobody uses yet.
+    modes: ['standalone'],
+    maxBatch: ISN_RECONCILE_BATCH,
+    // ISN keys live encrypted in tenant secrets, which no probe may decrypt, so
+    // due-ness is a clock; run() decides whether ISN intake is on at all.
+    probe: async (env) => {
+        if (!env.JWT_SECRET) return 0;
+        return (await isIntervalDue(env, 'isn-order-reconcile', ISN_RECONCILE_INTERVAL_MS, Date.now())) ? 1 : 0;
+    },
+    run: async (env, cursor) => {
+        const { isnConfig, isnTenantEnv } = await import('../../services/isn/api-base');
+        const tenantId = getDeploymentProfile(env).fixedTenantId;
+        const tenantEnv = tenantId ? await isnTenantEnv(env, tenantId) : {};
+        const cfg = isnConfig(tenantEnv);
+        // The webhook secret is the "orders come from ISN" switch: keys alone
+        // also serve the report-link sync, and must not start creating inspections.
+        let result = { processed: 0, nextCursor: null as string | null };
+        if (tenantId && cfg && tenantEnv.ISN_WEBHOOK_SECRET?.trim()) {
+            const { reconcileIsnOrders } = await import('../../services/isn/order-reconcile');
+            result = await reconcileIsnOrders(env.DB, tenantId, cfg, cursor, ISN_RECONCILE_BATCH);
+        }
+        if (result.nextCursor === null) await markRan(env, 'isn-order-reconcile', ISN_RECONCILE_INTERVAL_MS, Date.now());
+        return result;
     },
 };
