@@ -22,6 +22,15 @@ describe('computeOnboardingSteps', () => {
     expect(ids).toEqual(['company', 'timezone', 'template', 'services', 'schedule', 'first-inspection']);
   });
 
+  it('drops the schedule step while another system is the CRM (its page is hidden)', () => {
+    const ids = computeOnboardingSteps({
+      companyNameSet: true, timezoneSet: true, templateCount: 1, serviceCount: 1,
+      inspectionCount: 1, scheduleSet: false, externalCrm: true,
+    }).map((s) => s.id);
+    expect(ids).not.toContain('schedule');
+    expect(ids).toHaveLength(5);
+  });
+
   it('marks all steps done when all criteria are met', () => {
     const steps = computeOnboardingSteps({
       companyNameSet: true,

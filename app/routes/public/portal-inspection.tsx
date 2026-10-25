@@ -42,7 +42,7 @@ import type { ReportLoaderResult } from "~/components/portal/sections/ReportView
 import type { LoaderResult as RepairLoaderResult } from "~/components/portal/sections/RepairBuilderSection";
 import {
   parseSection,
-  isJumpSection,
+  isJumpSection, hubSectionAllowed,
   loadReportSection,
   loadProgressSection,
   loadRepairSection,
@@ -113,7 +113,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   const { overview: resolvedOverview, overviewToken, signerToken, isAgentToken, cookieToForward, cookieForApi } =
     await resolvePortalSession(context, api, tenant, inspectionId, token, browserCookie);
   let overview = resolvedOverview;
-  if (isAgentToken) section = "report";
+  if (isAgentToken) section = "report"; else if (!hubSectionAllowed(section, overview.externalCrm)) section = "overview";
 
   // Prefer the server-issued persistent per-inspection token (always present for
   // an accessible inspection, including magic-link sessions that carry no
@@ -126,7 +126,7 @@ export async function loader({ params, request, context }: Route.LoaderArgs) {
   // section active INLINE (carrying the token), forwarding any freshly-issued
   // session cookie. Email CTAs use ?to so the URL the client lands on is a clean
   // ?section= Hub URL rather than a ?to= one.
-  if (isJumpSection(to)) {
+  if (isJumpSection(to) && hubSectionAllowed(to, overview.externalCrm)) {
     throw redirect(hubSectionNavHref(to, ctx), {
       headers: cookieToForward ? { "Set-Cookie": cookieToForward } : undefined,
     });

@@ -19,6 +19,8 @@ export interface OnboardingInput {
   timezoneSet: boolean;
   /** True when the user has weekly availability or a connected calendar. */
   scheduleSet: boolean;
+  /** Another system is the CRM: availability lives there, and /settings/schedule is hidden. */
+  externalCrm?: boolean;
 }
 
 export interface OnboardingStep {
@@ -32,10 +34,11 @@ export interface OnboardingStep {
 
 /**
  * Derives the ordered onboarding steps from raw counts/flags.
- * Always returns every step in fixed order so the UI never shifts.
+ * Always returns every step in fixed order so the UI never shifts; the one
+ * exception is `schedule`, dropped when another system is the CRM.
  */
 export function computeOnboardingSteps(input: OnboardingInput): OnboardingStep[] {
-  return [
+  const steps: OnboardingStep[] = [
     {
       id: 'company',
       label: m.helper_onboarding_company_label(),
@@ -76,6 +79,7 @@ export function computeOnboardingSteps(input: OnboardingInput): OnboardingStep[]
       href: '#new-inspection',
     },
   ];
+  return input.externalCrm ? steps.filter((s) => s.id !== 'schedule') : steps;
 }
 
 /**

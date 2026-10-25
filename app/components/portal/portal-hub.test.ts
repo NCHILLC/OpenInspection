@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { statusCardModels, reportLockNotice } from '../../../app/components/portal/InspectionStatusCards';
 import { hubSectionNavHref, hubNavItems } from '../../../app/components/portal/ClientPortalHub';
+import { hubSectionAllowed } from '../../../app/lib/section-loaders';
 // Static, not a dynamic import inside the test body: a module import in a test
 // is billed against testTimeout, while collection has no timeout at all.
 import { m } from '../../../app/paraglide/messages';
@@ -254,5 +255,13 @@ describe('hubNavItems', () => {
     expect(keys).toEqual(['appointment','report','progress']);
     // Control: unset keeps all six tiles.
     expect(statusCardModels(BASE)).toHaveLength(6);
+  });
+
+  it('refuses ?section= and ?to= for the hidden CRM sections, so a lock CTA or old email link cannot open them', () => {
+    for (const s of ['agreement', 'payment', 'messages'] as const) {
+      expect(hubSectionAllowed(s, true)).toBe(false);
+      expect(hubSectionAllowed(s, false)).toBe(true);
+    }
+    expect(hubSectionAllowed('report', true)).toBe(true);
   });
 });
