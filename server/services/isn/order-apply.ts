@@ -28,8 +28,8 @@ type Db = DrizzleD1Database;
 
 /** ISN user id -> OI user id, by email. Unmatched inspectors are logged and left off. */
 async function matchInspectors(db: Db, cfg: IsnConfig, tenantId: string, isnUserIds: string[]): Promise<string[]> {
-    const out: string[] = [];
-    for (const isnId of isnUserIds) {
+    // Concurrent, in ISN's order: the first matched inspector becomes the lead.
+    const ids = await Promise.all(isnUserIds.map(async (isnId) => {
         const body = await isnCall(cfg, 'GET', `/user/${encodeURIComponent(isnId)}`);
         // The spec shows the fields flat on the body; some ISN endpoints wrap them. Accept both.
         const email = String(((body.user as Rec | undefined) ?? body).emailaddress ?? '').trim().toLowerCase();
@@ -37,10 +37,10 @@ async function matchInspectors(db: Db, cfg: IsnConfig, tenantId: string, isnUser
             ? await db.select({ id: users.id }).from(users)
                 .where(and(eq(users.tenantId, tenantId), sql`lower(${users.email}) = ${email}`)).get()
             : undefined;
-        if (row) out.push(row.id);
-        else logger.warn('ISN order: inspector has no OI user with that email', { isnUserId: isnId, hasEmail: !!email });
-    }
-    return out;
+        if (!row) logger.warn('ISN order: inspector has no OI user with that email', { isnUserId: isnId, hasEmail: !!email });
+        return row?.id;
+    }));
+    return ids.filter((id): id is string => !!id);
 }
 
 async function fetchPerson(cfg: IsnConfig, kind: 'client' | 'agent', id: string | null) {
@@ -74,11 +74,11 @@ async function createFromOrder(
     // Never create an inspection for an order that was cancelled before OI saw it.
     if (f.canceled || !f.propertyAddress) return null;
 
-    const [client, buyersAgent, sellersAgent] = [
-        await fetchPerson(cfg, 'client', f.clientId),
-        await fetchPerson(cfg, 'agent', f.buyersAgentId),
-        await fetchPerson(cfg, 'agent', f.sellersAgentId),
-    ];
+    const [client, buyersAgent, sellersAgent] = await Promise.all([
+        fetchPerson(cfg, 'client', f.clientId),
+        fetchPerson(cfg, 'agent', f.buyersAgentId),
+        fetchPerson(cfg, 'agent', f.sellersAgentId),
+    ]);
 
     // Claim the row so two deliveries for one new order (ORDER_CREATED and
     // ORDER_SCHEDULED arrive together) cannot both create an inspection.
