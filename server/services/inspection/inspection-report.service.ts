@@ -8,7 +8,7 @@ import { buildUnitConditionMatrix, defectCountsByUnit } from '../../lib/unit-sco
 import { Errors } from '../../lib/errors';
 import { resolveTenantTimeZone } from '../../lib/tz';
 import { parseReinspectionStatuses } from '../../lib/reinspection-status';
-import { computeReportStats, getRatingColor, getRatingBucket, getNaKind, mapCustomDefectsForReport, type RatingLevel } from '../../lib/report-utils';
+import { computeReportStats, getRatingColor, getRatingBucket, getNaKind, mapCustomDefectsForReport, notInspectedReasonFor, type RatingLevel } from '../../lib/report-utils';
 import { mapRatingSystemLevels } from '../../lib/map-rating-levels';
 import { renderTemplate } from '../../lib/mustache';
 import { mapRepairItems } from '../../lib/report-repair-items';
@@ -420,7 +420,7 @@ export class InspectionReportService extends InspectionSubService {
                     ratingLabel: level?.label ?? ratingId,
                     severityBucket: bucket,
                     naKind: getNaKind(ratingId, levels),
-                    notInspectedReason: (res as { notInspectedReason?: string | null }).notInspectedReason ?? null,
+                    notInspectedReason: notInspectedReasonFor((res as { notInspectedReason?: string | null }).notInspectedReason, limitations, (res as { customComments?: { limitations?: Array<{ title?: string; comment?: string; included?: boolean }> } }).customComments?.limitations),
                     notes: res.notes ?? null,
                     photos,
                     recommendation: itemRecommendation,

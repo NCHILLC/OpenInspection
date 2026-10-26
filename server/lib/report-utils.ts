@@ -288,3 +288,27 @@ export function computeReportStats(
 
   return stats;
 }
+
+/**
+ * The reason printed beside a Not Inspected rating.
+ *
+ * The editor records an NI reason as a LIMITATION (see `app/lib/limitations`):
+ * a tapped or typed custom one, or a template limitation the inspector
+ * included. An explicit `notInspectedReason` on the result wins; otherwise the
+ * included limitations are the reason, in that order. Null when there is none,
+ * so the report prints the bare "Not inspected" rather than an empty dash.
+ */
+export function notInspectedReasonFor(
+  explicit: string | null | undefined,
+  templateLimitations: ReadonlyArray<{ title?: string; included: boolean }>,
+  customLimitations: ReadonlyArray<{ title?: string; comment?: string; included?: boolean }> | undefined,
+): string | null {
+  if (explicit?.trim()) return explicit.trim();
+  const parts = [
+    ...templateLimitations.filter((l) => l.included).map((l) => l.title?.trim() ?? ''),
+    // An absent `included` reads as included, as everywhere a custom entry is read.
+    ...(customLimitations ?? []).filter((l) => l.included !== false)
+      .map((l) => [l.title?.trim(), l.comment?.trim()].filter(Boolean).join(': ')),
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join('; ') : null;
+}

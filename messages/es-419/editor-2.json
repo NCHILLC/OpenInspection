@@ -270,5 +270,8 @@
   "editor_settings_sync_mode_wifi": "Solo con wi-fi (pregunta si este dispositivo no puede saberlo)",
   "editor_mobile_sync_held": "{count} en espera · toca para sincronizar",
   "editor_sync_held_toast": "{count} fotos esperan para subirse.",
-  "editor_sync_held_toast_action": "Sincronizar ahora"
+  "editor_sync_held_toast_action": "Sincronizar ahora",
+  "editor_ni_reason_title": "¿Por qué no se inspeccionó {label}?",
+  "editor_ni_reason_needed": "No inspeccionado necesita un motivo",
+  "editor_ni_reason_add": "Agregar motivo"
 }
