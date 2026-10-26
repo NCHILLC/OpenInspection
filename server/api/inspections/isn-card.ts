@@ -33,6 +33,7 @@ const isnCardRoute = createRoute(withMcpMetadata({
     path: '/{id}/isn',
     tags: ['inspections'],
     summary: "Read-only facts from the inspection's ISN order",
+    description: 'Returns the order facts OI last read from Inspection Support Network for this inspection (order number, access code, occupancy, utilities, payment and signature status, policy, directions), or null when the inspection did not come from an ISN order. Staff only, because the access code is a gate or lockbox code.',
     middleware: [requireRole('owner', 'manager', 'inspector')] as const,
     request: { params: z.object({ id: z.string().min(1).describe('Inspection identifier.') }) },
     responses: {
