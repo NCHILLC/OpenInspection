@@ -6,8 +6,8 @@
   ],
   "globalMiddlewareUse": 12,
   "fanOutTotals": {
-    "files": 136,
-    "dollarMethods": 543,
+    "files": 137,
+    "dollarMethods": 545,
     "apiWorker": 9
   },
   "fanOut": {
@@ -132,6 +132,10 @@
       "apiWorker": 0
     },
     "app/routes/inspection-edit/action-followup.server.ts": {
+      "dollarMethods": 1,
+      "apiWorker": 0
+    },
+    "app/routes/inspection-edit/action-isn.server.ts": {
       "dollarMethods": 1,
       "apiWorker": 0
     },
@@ -428,7 +432,7 @@
       "apiWorker": 0
     },
     "app/routes/settings-advanced.tsx": {
-      "dollarMethods": 10,
+      "dollarMethods": 11,
       "apiWorker": 0
     },
     "app/routes/settings-automations.tsx": {
