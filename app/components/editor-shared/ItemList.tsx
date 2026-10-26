@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button, IconButton, MenuItem } from "@core/shared-ui";
 import type { EditorMode } from "./editor-mode";
@@ -76,6 +76,8 @@ interface SharedItemListProps {
   groups?: readonly EditorGroup[];
   /** Add another instance of a group. Called with the group's id. */
   onAddGroupInstance?: (groupId: string) => void;
+  /** A strip under each row: the phone checklist's inline rating. Hidden while batch-selecting. */
+  rowFooter?: (itemId: string) => ReactNode;
 }
 
 /**
@@ -144,6 +146,7 @@ export function ItemList({
   activeUnitId = null,
   groups,
   onAddGroupInstance,
+  rowFooter,
 }: SharedItemListProps) {
   const { heading: slotHeading, closes: groupClosedBy } = slotHeadings(groups, items);
   const grouped = Boolean(groups?.length);
@@ -186,11 +189,8 @@ export function ItemList({
     // Full-bleed below md — see the note on SectionRail. At 280px fixed this
     // left 63px of dead space on a 375px screen.
     <div data-shortcut-scope className="w-full md:w-[280px] md:flex-shrink-0 md:border-r border-ih-border overflow-y-auto flex flex-col">
-      {/* Filter chips live in the inspection-edit header row (with per-filter
-          counts + a working Flagged filter); this shared list only renders the
-          items it is handed, already filtered by the parent. */}
-
-      {/* Item list */}
+      {/* Filter chips live in the inspection-edit header row; this list renders
+          the items it is handed, already filtered by the parent. */}
       <div ref={containerRef} className="flex-1 overflow-y-auto p-2 space-y-0.5">
         {items.map((item) => {
           const result = scopedResult(item.id);
@@ -206,7 +206,6 @@ export function ItemList({
               </div>
             )}
             <div
-              key={item.id}
               data-sortable-item
               data-sortable-id={item.id}
               onKeyDown={(e) => {
@@ -387,6 +386,7 @@ export function ItemList({
                 </div>
               )}
             </div>
+            {!batchMode && rowFooter?.(item.id)}
             {closingGroup && onAddGroupInstance && (
               <div className="px-2 pt-2">
                 <Button

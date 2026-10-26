@@ -29,11 +29,11 @@ export interface MobileDrillShellProps {
     onOpenSearch: () => void;
     onOpenPreview: () => void;
     /**
-     * Walk forward: the next item in the report, or where the walk starts.
-     * `null` only at the very last item, where there is nowhere left to go.
+     * Walk forward: the next item inside an item, the next checklist with
+     * unrated items on a list screen. `null` where there is nowhere left to go.
      */
     onNext: (() => void) | null;
-    /** Name of the item Next goes to, shown under "Next" so the tap is predictable. */
+    /** Name of the item or section Next goes to, shown under "Next" so the tap is predictable. */
     nextLabel?: string;
     /** Whole-inspection completion, 0–100. Rendered as the root screen's ring. */
     percentComplete: number;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nextItemTarget } from "./next-item";
+import { nextItemTarget, nextUnratedSection } from "./next-item";
 
 const SECTIONS = [
     { id: "s1", items: [{ id: "a" }, { id: "b" }] },
@@ -55,5 +55,31 @@ describe("nextItemTarget", () => {
         const named = [{ id: "s1", items: [{ id: "a", label: "Roof Covering" }, { id: "b", name: "Flashing" }] }];
         expect(nextItemTarget(named, "s1", null)?.label).toBe("Roof Covering");
         expect(nextItemTarget(named, "s1", "a")?.label).toBe("Flashing");
+    });
+});
+
+describe("nextUnratedSection", () => {
+    const S = [
+        { id: "s1", title: "Roof", items: [{ id: "a" }] },
+        { id: "s2", title: "Empty", items: [] },
+        { id: "s3", title: "Exterior", items: [{ id: "b" }, { id: "c" }] },
+    ];
+    const rated = (ids: string[]) => (_s: string, i: string) => ids.includes(i);
+
+    it("opens the first section with an unrated item from the inspection", () => {
+        expect(nextUnratedSection(S, rated(["a"]), null)).toEqual({ sectionId: "s3", label: "Exterior" });
+    });
+
+    it("leaves the current checklist even when it still has unrated items", () => {
+        expect(nextUnratedSection(S, rated([]), "s1")?.sectionId).toBe("s3");
+    });
+
+    it("wraps to an earlier section rather than dead-ending", () => {
+        expect(nextUnratedSection(S, rated(["b", "c"]), "s3")?.sectionId).toBe("s1");
+    });
+
+    it("is null once every item is rated", () => {
+        expect(nextUnratedSection(S, rated(["a", "b", "c"]), null)).toBeNull();
+        expect(nextUnratedSection(S, rated(["a", "b"]), "s3")).toBeNull();
     });
 });

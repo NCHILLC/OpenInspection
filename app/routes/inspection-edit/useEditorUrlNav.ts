@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { nextItemTarget } from "~/lib/next-item";
+import { nextItemTarget, nextUnratedSection } from "~/lib/next-item";
 
 /** Which screen of the phone drill-down stack is showing. */
 export type EditorNavLevel = "sections" | "items" | "item";
@@ -13,6 +13,8 @@ export interface EditorUrlNavDeps {
     activeItemId: string | null;
     setCurrentSectionIdx: (idx: number) => void;
     setActiveItemId: (id: string | null) => void;
+    /** Whether an item has a rating; the list screens' Next walks to unrated work. */
+    isRated: (sectionId: string, itemId: string) => boolean;
 }
 
 export interface EditorUrlNav {
@@ -22,12 +24,13 @@ export interface EditorUrlNav {
     /** Jump to an item in any section — one history entry. */
     goToItemIn: (sectionId: string, itemId: string) => void;
     /**
-     * Walk forward to the next item in the REPORT, crossing section boundaries.
-     * Null at the last item of the last section — the one place with nowhere to
-     * go — so the control can disable itself rather than lie.
+     * Walk forward. Inside an item: the next item in the REPORT, crossing
+     * section boundaries, null at the very last item. On a list screen: the
+     * next checklist with unrated items, null once everything is rated. Null
+     * lets the control disable itself rather than lie.
      */
     goNext: (() => void) | null;
-    /** Name of the item `goNext` walks to; undefined where there is none. */
+    /** Name of the item or section `goNext` walks to; undefined where there is none. */
     nextLabel: string | undefined;
     /** Up one level — pops real history where there is any to pop. */
     goUp: () => void;
@@ -80,6 +83,7 @@ export function useEditorUrlNav({
     activeItemId,
     setCurrentSectionIdx,
     setActiveItemId,
+    isRated,
 }: EditorUrlNavDeps): EditorUrlNav {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -165,8 +169,17 @@ export function useEditorUrlNav({
     // The forward walk lives here with the rest of the navigation rather than in
     // the route: this hook already knows the sections and where the inspector
     // is, and "next" is a move like any other.
-    const next = nextItemTarget(sections as never, currentSectionId, activeItemId);
-    const goNext = next ? () => goToItemIn(next.sectionId, next.itemId) : null;
+    //
+    // Inside an item, Next is the next item in the report. On the two list
+    // screens it opens the checklist that still has unrated items: the rows
+    // rate inline there, so the work is choosing the next checklist, not
+    // stepping into an item.
+    const onList = !searchParams.get("item");
+    const nextSection = onList ? nextUnratedSection(sections as never, isRated, searchParams.get("section")) : null;
+    const next = onList ? null : nextItemTarget(sections as never, currentSectionId, activeItemId);
+    const goNext = nextSection
+        ? () => goToSection(nextSection.sectionId)
+        : next ? () => goToItemIn(next.sectionId, next.itemId) : null;
 
     // Derived from the URL, not from state: the screen must match the address
     // bar on the render the params land, not one commit later.
@@ -204,5 +217,5 @@ export function useEditorUrlNav({
         void navigate("/inspections");
     }, [currentSectionId, navigate, searchParams, setSearchParams, paramsForState]);
 
-    return { level, goToSection, goToItem, goToItemIn, goNext, nextLabel: next?.label, goUp };
+    return { level, goToSection, goToItem, goToItemIn, goNext, nextLabel: nextSection?.label ?? next?.label, goUp };
 }
