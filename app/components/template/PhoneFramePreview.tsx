@@ -70,6 +70,7 @@ export function PhoneFramePreview({
                 className="max-w-full shrink-0 overflow-x-hidden overflow-y-auto max-h-[70vh] rounded-xl border border-ih-border bg-ih-bg-app p-3"
             >
                 <ItemEditor
+                    initialTab="defects"
                     item={selectedItem as never}
                     sectionTitle={sectionTitle}
                     result={{}}

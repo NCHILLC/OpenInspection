@@ -111,10 +111,7 @@ interface ItemEditorProps {
   *  (incl. imported libraries); powers the "From your library" group under
   *  the Defects-tab search. */
  onSearchLibrary?: (query: string) => Promise<LibraryMatch[]>;
- /**
-  * Task 4 — local blob previews for photos queued while offline.
-  * Rendered in the photo strip after confirmed server photos.
-  */
+ /** Task 4 — local blob previews for photos queued offline, shown in the strip after confirmed server photos. */
  queuedPreviews?: Array<{ name: string; objectUrl: string }>;
  /** Task 6 — repair items already snapshotted onto this finding. */
  attachedRepairItems?: AttachedRepairItem[];
@@ -146,6 +143,8 @@ interface ItemEditorProps {
  /** Accepted but unused since the AI wording panel was unmounted — callers
   *  still pass it, and it is what the panel would need if restored. */
  resultId?: string | null;
+ /** The tab the item opens on. The phone passes "defects": in the field, finding what is wrong is the job. */
+ initialTab?: CannedTabId;
 }
 
 /* ------------------------------------------------------------------ */
@@ -201,8 +200,9 @@ export function ItemEditor({
  onBulkMovePhotos,
  videoPosterUrl,
  pendingPhotoUrl,
+ initialTab = "information",
 }: ItemEditorProps) {
- const [activeTab, setActiveTab] = useState<CannedTabId>("information");
+ const [activeTab, setActiveTab] = useState<CannedTabId>(initialTab);
  const [defectQuery, setDefectQuery] = useState("");
  const [customFormOpen, setCustomFormOpen] = useState(false);
  const [customTitle, setCustomTitle] = useState("");
