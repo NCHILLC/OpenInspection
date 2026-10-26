@@ -13,7 +13,7 @@
  */
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1';
-import { inspections, inspectionResults, isnOrders, services, users } from '../../lib/db/schema';
+import { inspections, inspectionResults, inspectionServices, isnOrders, services, users } from '../../lib/db/schema';
 import { createScopedDb, type DrizzleDB } from '../../lib/db/scoped';
 import { syncInspectionAssignments } from '../../lib/db/assignment-links';
 import { logger } from '../../lib/logger';
@@ -142,6 +142,7 @@ async function updateFromOrder(db: Db, cfg: IsnConfig, tenantId: string, rowId: 
     const facts: Partial<typeof inspections.$inferInsert> = Object.fromEntries(Object.entries({
         date: f.date, propertyAddress: f.propertyAddress, ...f.address,
         yearBuilt: f.yearBuilt, sqft: f.sqft, foundationType: f.foundationType, referenceNumber: f.referenceNumber,
+        price: f.totalCents,
     }).filter(([, v]) => v !== null));
     // Once someone is assigned, the team follows ISN only when every ISN inspector
     // has an OI user: one mismatched email must not unassign whoever OI staff put on the job.
@@ -153,11 +154,37 @@ async function updateFromOrder(db: Db, cfg: IsnConfig, tenantId: string, rowId: 
 
     if (Object.keys(facts).length > 0) await db.update(inspections).set(facts).where(where);
     if (team) await syncInspectionAssignments(db, tenantId, inspectionId, team);
+    if (f.totalCents !== null) await priceLinesFromIsn(db, tenantId, inspectionId, f.fees, f.totalCents);
     if (f.canceled) await cancelIfUntouched(db, tenantId, inspectionId);
     // New (still Requested) or reinstated in ISN: the order is on the calendar.
     else await db.update(inspections).set({ status: INSPECTION_STATUS.SCHEDULED })
         .where(and(where, inArray(inspections.status, [INSPECTION_STATUS.REQUESTED, INSPECTION_STATUS.CANCELLED])));
     return inspectionId;
+}
+
+/**
+ * ISN bills the order, so its fees are the price. Each fee goes on the line whose
+ * service shares its first word (fee "Termite Inspection (WDIR letter)", service
+ * "Termite (WDIR letter)"); what is left of `totalfee` (unmatched fees, discounts,
+ * tax) goes on the dearest line, so the lines always sum to ISN's total.
+ */
+// ponytail: first-word match, a fee <-> service map in ISN settings if two services ever share a first word.
+async function priceLinesFromIsn(db: Db, tenantId: string, inspectionId: string, fees: { name: string; cents: number }[], totalCents: number): Promise<void> {
+    const lines = await db.select({ id: inspectionServices.id, name: inspectionServices.nameSnapshot }).from(inspectionServices)
+        .where(and(eq(inspectionServices.tenantId, tenantId), eq(inspectionServices.inspectionId, inspectionId), eq(inspectionServices.active, true)));
+    if (lines.length === 0) return;
+    const word = (s: string) => s.trim().split(/\s+/)[0]!.toLowerCase();
+    const price = new Map(lines.map((l) => [l.id, 0]));
+    for (const fee of fees) {
+        const line = lines.find((l) => word(l.name) === word(fee.name));
+        if (line) price.set(line.id, price.get(line.id)! + fee.cents);
+    }
+    const dearest = [...price.entries()].reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+    price.set(dearest, price.get(dearest)! + totalCents - [...price.values()].reduce((a, b) => a + b, 0));
+    for (const [id, cents] of price) {
+        await db.update(inspectionServices).set({ priceOverride: cents })
+            .where(and(eq(inspectionServices.id, id), eq(inspectionServices.tenantId, tenantId)));
+    }
 }
 
 /** S3: an ISN cancel never cancels a report that has writing in it; that one is only logged. */
