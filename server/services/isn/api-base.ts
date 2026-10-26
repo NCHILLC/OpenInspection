@@ -59,6 +59,20 @@ export async function isnTenantEnv(
     return out;
 }
 
+/**
+ * The ISN order page for "Open in ISN". `pq` is base64 of the zlib-compressed,
+ * PHP-serialized `{oid: <n>}` (decoded from a real link, 2026-10-26; NCHI's
+ * order 139 reproduces byte for byte). Null for a non-numeric oid: PHP's `i:`
+ * takes digits only.
+ */
+export async function isnOrderPageUrl(cfg: Pick<IsnConfig, 'domain' | 'companyKey'>, oid: string): Promise<string | null> {
+    if (!/^\d+$/.test(oid)) return null;
+    const packed = new Response(new Blob([`a:1:{s:3:"oid";i:${oid};}`]).stream().pipeThrough(new CompressionStream('deflate')));
+    const bytes = new Uint8Array(await packed.arrayBuffer());
+    const pq = btoa(String.fromCharCode(...bytes));
+    return `${cfg.domain}/${encodeURIComponent(cfg.companyKey)}/order/view?pq=${encodeURIComponent(pq)}`;
+}
+
 /** ISN's own words, kept whole — see docs/develop/integration-adapters.md. */
 export class IsnError extends Error {
     constructor(readonly operation: string, readonly isnMessage: string, readonly httpStatus: number) {

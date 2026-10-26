@@ -61,8 +61,9 @@ coordinates or address). It is read-only: change these in ISN. Empty fields are
 not shown. Staff only (`GET /api/inspections/{id}/isn`); the access code never
 reaches the inspection row or the public report. Not shown yet: ISN's
 id-valued fields (escrow officer, insurance agent, refer reason, cost center,
-order type), order notes, attachments, and an "Open in ISN" link (the ISN order
-page's URL is not known).
+order type), order notes and attachments. **Open in ISN** links to the order's
+page in ISN (`/<company key>/order/view?pq=`, where `pq` is base64 of the
+zlib-compressed, PHP-serialized order number); it shows once the ISN keys are set.
 
 On the inspections list, **From ISN** (in the filter strip, shown once any
 inspection came from ISN) lists those inspections. A row whose order has a
@@ -74,9 +75,15 @@ already exist). An inspector warning clears on the next ISN delivery once that
 person's email is an OI user.
 
 To turn it on: create the webhook in ISN (Settings → Webhooks → Add Webhook,
-POST, tracked and signed, URL `https://<this app's host>/webhooks/isn`), copy
-the secret ISN shows once, set it as `ISN_WEBHOOK_SECRET` (a Worker secret, or
-stored with the other ISN keys), then use ISN's "Send test event". The bare path
+POST, URL `https://<this app's host>/webhooks/isn`) for the order events. If ISN
+offers "Add signing secret", tick it and set the secret it shows as
+`ISN_WEBHOOK_SECRET`. Older ISN offices have no signing option on that screen and
+no REST `/webhooks` (it answers "missing or invalid action specified"; seen
+2026-10-26): there, set `ISN_WEBHOOK_SECRET` to a long random string and use
+`https://<this app's host>/webhooks/isn?key=<that string>` as each webhook's URL.
+The key is checked only on a delivery with no `X-ISN-Signature`; it is safe
+enough because the body only names an order, which OI then re-fetches with its
+own ISN keys. Then use ISN's "Send test event" if your ISN has it. The bare path
 uses standalone's fixed tenant; SaaS has no per-tenant ISN webhook path.
 
 ## What you need
@@ -87,7 +94,7 @@ uses standalone's fixed tenant; SaaS has no per-tenant ISN webhook path.
 | `ISN_COMPANY_KEY` | ISN → Settings → My Access Keys |
 | `ISN_ACCESS_KEY` | Same page |
 | `ISN_SECRET_KEY` | Same page |
-| `ISN_WEBHOOK_SECRET` | ISN → Settings → Webhooks, shown once when the webhook is created. Only for the order webhook |
+| `ISN_WEBHOOK_SECRET` | ISN's signing secret, or (older ISN, unsigned webhooks) a random string you also put in the webhook URL as `?key=`. Only for the order webhook |
 
 Set the first four in Settings → Advanced → ISN. All five are **tenant-owned**: the
 company's own value always beats a Worker env binding, because a platform key

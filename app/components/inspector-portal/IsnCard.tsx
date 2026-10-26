@@ -48,7 +48,9 @@ export function IsnCard({ inspectionId }: { inspectionId: string }) {
                 {d.directionsUrl
                     ? <a href={d.directionsUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-ih-primary">{m.inspections_isn_card_directions()}</a>
                     : <span />}
-                <span className="text-ih-fg-3">{m.inspections_isn_card_change_in_isn()}</span>
+                {d.orderUrl
+                    ? <a href={d.orderUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-ih-primary">{m.inspections_isn_card_open_in_isn()}</a>
+                    : <span className="text-ih-fg-3">{m.inspections_isn_card_change_in_isn()}</span>}
             </div>
         </Card>
     );
