@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, IconButton, MenuItem } from '@core/shared-ui';
+import { Button, Icon, IconButton, MenuItem } from '@core/shared-ui';
 import { SectionDonut } from '../editor/SectionDonut';
 import { sectionIconFor } from '../editor/section-icons';
 import type { EditorMode } from './editor-mode';
@@ -13,6 +13,9 @@ import { m } from '~/paraglide/messages';
 // or progress donut. On desktop the glyph shows on hover; on touch (no hover) it
 // is always shown. Space is reserved either way, so nothing shifts or overlaps.
 const REVEAL = 'invisible group-hover:visible focus-within:visible [@media(hover:none)]:visible';
+// Below md the rail is the phone's inspection screen (canvas S02): each glyph
+// sits in a 40px tile, so the rows read as destinations rather than a list.
+const TILE = 'max-md:mr-0 max-md:w-10 max-md:h-10 max-md:rounded-lg max-md:bg-ih-bg-muted max-md:flex max-md:items-center max-md:justify-center max-md:text-ih-fg-2 max-md:[&>svg]:w-[22px] max-md:[&>svg]:h-[22px]';
 
 interface SharedSectionRailProps {
  mode: EditorMode;
@@ -124,7 +127,7 @@ export function SectionRail({
  // 143px of dead space and a stray vertical rule down the middle of the
  // phone screen; the rail is a whole SCREEN there, not a column.
  <aside data-shortcut-scope className="w-full md:w-[200px] md:flex-shrink-0 md:border-r border-ih-border overflow-y-auto bg-ih-bg-app/50">
- <nav className="p-2 space-y-0.5">
+ <nav className="p-2 max-md:p-0 space-y-0.5">
   {/* Report-scoped overview entry — sits above section list, no progress donut */}
   {mode === 'fill' && (
   <>
@@ -133,21 +136,26 @@ export function SectionRail({
    aria-current={overviewActive ? "true" : undefined}
    onClick={onSelectOverview}
    title={m.editor_shared_inspection_details()}
-   className={`w-full text-left px-3 py-2 rounded-md text-[16px] transition-all ${
+   className={`w-full text-left px-3 py-2 rounded-md text-[16px] transition-all max-md:min-h-16 max-md:bg-ih-bg-card max-md:border max-md:border-ih-border-strong max-md:rounded-lg ${
     overviewActive
      ? "bg-ih-primary-tint text-ih-primary-text font-bold border-l-2 border-ih-primary"
      : "text-ih-fg-3 hover:bg-ih-bg-muted"
    }`}
   >
-   <div className="flex items-center gap-1">
-    <span className="mr-1 shrink-0 text-ih-fg-3"><OverviewIcon /></span>
-    <span className="truncate">{m.editor_shared_inspection_details()}</span>
+   <div className="flex items-center gap-1 max-md:gap-3">
+    <span className={`mr-1 shrink-0 text-ih-fg-3 ${TILE}`}><OverviewIcon /></span>
+    <span className="min-w-0 flex-1 flex flex-col">
+     <span className="truncate max-md:text-[18px] max-md:font-semibold max-md:text-ih-fg-1">{m.editor_shared_inspection_details()}</span>
+     <span className="md:hidden text-[15px] text-ih-fg-3">{m.editor_shared_inspection_details_hint()}</span>
+    </span>
+    <Icon name="chevR" size={22} className="md:hidden shrink-0 text-ih-fg-4" />
    </div>
   </button>
-  <hr className="my-1 border-ih-border" />
+  <hr className="my-1 border-ih-border max-md:hidden" />
+  <h2 className="md:hidden mt-5 mb-2 px-1 text-[14px] font-bold tracking-[0.08em] uppercase text-ih-fg-3">{m.editor_route_drawer_sections()}</h2>
   </>
   )}
- <div ref={containerRef} className="space-y-0.5">
+ <div ref={containerRef} className="space-y-0.5 max-md:space-y-0 max-md:bg-ih-bg-card max-md:border max-md:border-ih-border max-md:rounded-lg max-md:overflow-hidden max-md:divide-y max-md:divide-ih-border">
  {sections.map((section, idx) => {
  // Calculate completion
  const progress = sectionProgress?.(section.id);
@@ -184,10 +192,10 @@ export function SectionRail({
     setEditingId(section.id);
    }
   }}
-  className={`group relative flex items-stretch rounded-md text-[16px] transition-all ${
+  className={`group relative flex items-stretch rounded-md max-md:rounded-none text-[16px] max-md:text-[18px] transition-all ${
    activeSection === section.id
     ? "bg-ih-primary-tint text-ih-primary-text font-bold border-l-2 border-ih-primary"
-    : "text-ih-fg-3 hover:bg-ih-bg-muted"
+    : "text-ih-fg-3 max-md:text-ih-fg-1 hover:bg-ih-bg-muted"
   }`}
  >
   {/* Reserved drag-handle slot — its own column, so it never covers the name or
@@ -218,23 +226,32 @@ export function SectionRail({
     onClick={() => onSelect(section.id)}
     onDoubleClick={onRenameSection ? () => setEditingId(section.id) : undefined}
     title={`${section.title}: ${tipParts.join(', ')}`}
-    className={`min-w-0 flex-1 text-left py-2 min-h-14 md:min-h-0 flex items-center gap-1 ${onReorderSection ? 'pr-1' : 'px-3'}`}
+    className={`min-w-0 flex-1 text-left py-2 min-h-16 md:min-h-0 flex items-center gap-1 max-md:gap-3 ${onReorderSection ? 'pr-1' : 'px-3'}`}
    >
     {/* Icon + donut are ALWAYS visible — the handle/⋮ have their own slots. */}
-    <span className="shrink-0 text-ih-fg-3">{sectionIconFor(section.title ?? section.id)}</span>
-    <span className="truncate flex-1">{section.title}</span>
+    <span className={`shrink-0 text-ih-fg-3 ${TILE}`}>{sectionIconFor(section.title ?? section.id)}</span>
+    <span className="min-w-0 flex-1 flex flex-col">
+     <span className="truncate max-md:font-semibold">{section.title}</span>
+     {/* The phone row says the counts in words; the desktop rail keeps n/m + "!". */}
+     {mode === 'fill' && (
+      <span className="md:hidden text-[15px] font-normal text-ih-fg-3">
+       {m.editor_shared_section_fraction({ rated, total })}
+       {defects > 0 && <> · <span className="text-ih-bad-fg">{m.editor_shared_section_findings({ count: defects, s: defects === 1 ? '' : 's' })}</span></>}
+      </span>
+     )}
+    </span>
     <span className="ml-1 shrink-0 flex items-center">
     {mode === 'fill'
      ? <>
       {/* A number first, then the ring. Status has to read at arm's length in
           glare, and a 2.5px stroke does not. */}
-      <span className="text-[13px] font-mono tabular-nums text-ih-fg-2 mr-1">{rated}/{total}</span>
-      <SectionDonut rated={rated} total={total} />
+      <span className="max-md:hidden text-[13px] font-mono tabular-nums text-ih-fg-2 mr-1">{rated}/{total}</span>
+      <span className="flex max-md:[&>svg]:w-[30px] max-md:[&>svg]:h-[30px]"><SectionDonut rated={rated} total={total} /></span>
       {hasDefect && (
        <span
         aria-label={m.editor_shared_section_has_defect()}
         title={m.editor_shared_section_has_defect()}
-        className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1 rounded bg-ih-bad-bg text-ih-bad-fg text-[11px] font-bold"
+        className="ml-1 max-md:hidden inline-flex items-center justify-center min-w-5 h-5 px-1 rounded bg-ih-bad-bg text-ih-bad-fg text-[11px] font-bold"
        >!</span>
       )}
       {/* The flag the inspector set on a comment, carried up to a screen they
@@ -254,6 +271,7 @@ export function SectionRail({
      </>
      : <span className="text-[13px] text-ih-fg-3 font-mono">{section.items.length}</span>}
     </span>
+    <Icon name="chevR" size={22} className="md:hidden shrink-0 text-ih-fg-4" />
    </button>
   )}
 
