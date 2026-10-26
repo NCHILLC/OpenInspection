@@ -20,11 +20,11 @@ function sign(body: string, t = Math.floor(Date.now() / 1000), secret = SECRET) 
     return `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}`;
 }
 
-function send(body: string, headers: Record<string, string>, env: Record<string, string | undefined> = { ISN_WEBHOOK_SECRET: SECRET, ...ISN_KEYS }, tenantId: string | undefined = 't1') {
+function send(body: string, headers: Record<string, string>, env: Record<string, string | undefined> = { ISN_WEBHOOK_SECRET: SECRET, ...ISN_KEYS }, tenantId: string | undefined = 't1', query = '') {
     const app = new Hono();
     app.use('*', async (c, next) => { if (tenantId) c.set('tenantId' as never, tenantId as never); await next(); });
     app.route('/webhooks/isn', isnWebhookRoutes as unknown as Hono);
-    return app.request('/webhooks/isn', { method: 'POST', body, headers: { 'content-type': 'application/json', ...headers } }, { DB: {}, ...env });
+    return app.request(`/webhooks/isn${query}`, { method: 'POST', body, headers: { 'content-type': 'application/json', ...headers } }, { DB: {}, ...env });
 }
 
 afterEach(() => pull.mockClear());
@@ -68,6 +68,19 @@ describe('POST /webhooks/isn', () => {
         expect((await send(body, {})).status).toBe(401);
         expect((await send(body, { 'x-isn-signature': sign('{}') })).status).toBe(401);
         expect((await send(body, { 'x-isn-signature': sign(body) }, undefined, '')).status).toBe(401);
+        expect(pull).not.toHaveBeenCalled();
+    });
+
+    it('accepts an unsigned event whose URL carries the secret as ?key=', async () => {
+        const res = await send(body, {}, undefined, 't1', `?key=${SECRET}`);
+        expect(res.status).toBe(200);
+        expect(pull).toHaveBeenCalledWith({}, 't1', expect.anything(), 'order-uuid');
+    });
+
+    it('answers 401 to a wrong ?key=, an unset secret, and a bad signature beside a good key', async () => {
+        expect((await send(body, {}, undefined, 't1', `?key=${'b'.repeat(64)}`)).status).toBe(401);
+        expect((await send(body, {}, { ...ISN_KEYS }, 't1', '?key=')).status).toBe(401);
+        expect((await send(body, { 'x-isn-signature': sign('{}') }, undefined, 't1', `?key=${SECRET}`)).status).toBe(401);
         expect(pull).not.toHaveBeenCalled();
     });
 
