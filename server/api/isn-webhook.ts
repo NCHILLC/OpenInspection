@@ -4,11 +4,13 @@ import { logger } from '../lib/logger';
 import { IsnWebhookSchema } from '../lib/validations/isn-webhook.schema';
 import { isnConfig, isnTenantEnv } from '../services/isn/api-base';
 import { verifyIsnSignature } from '../services/isn/webhook-signature';
+import { constantTimeEquals } from '../lib/email/webhook-crypto';
 import { pullIsnOrder } from '../services/isn/order-pull';
 
 /**
  * ISN webhook: "this order changed". Authenticity is the `X-ISN-Signature` HMAC
- * keyed with the tenant's `ISN_WEBHOOK_SECRET`; the body is then used only to
+ * keyed with the tenant's `ISN_WEBHOOK_SECRET`, or for an unsigned webhook that
+ * same secret as the URL's `?key=`; the body is then used only to
  * learn WHICH order, and the order itself is re-fetched over REST.
  *
  * Tenant: the bare path relies on standalone's fixed tenant. SaaS would need a
@@ -26,13 +28,20 @@ const api = new Hono<HonoConfig>();
 api.post('/', async (c) => {
     const tenantId = c.get('tenantId') as string | undefined;
     const header = c.req.header('x-isn-signature');
+    const key = c.req.query('key');
     const env = tenantId ? await isnTenantEnv(c.env, tenantId) : {};
     const secret = env.ISN_WEBHOOK_SECRET?.trim();
 
     // Raw body BEFORE any parsing: the HMAC covers the exact bytes ISN sent.
     const rawBody = await c.req.text();
-    if (!tenantId || !secret || !header || !(await verifyIsnSignature(secret, header, rawBody))) {
-        logger.info('ISN webhook: rejected', { hasTenant: !!tenantId, hasSecret: !!secret, hasHeader: !!header });
+    // Offices on older ISN can only make unsigned webhooks (no "Add signing secret", no
+    // REST /webhooks), so the secret may ride in the URL as `?key=` instead. A sent
+    // signature still has to verify.
+    const authentic = !!secret && (header
+        ? await verifyIsnSignature(secret, header, rawBody)
+        : !!key && constantTimeEquals(key, secret));
+    if (!tenantId || !authentic) {
+        logger.info('ISN webhook: rejected', { hasTenant: !!tenantId, hasSecret: !!secret, hasHeader: !!header, hasKey: !!key });
         return c.json({ success: false, error: { message: 'Invalid signature' } }, 401);
     }
 
