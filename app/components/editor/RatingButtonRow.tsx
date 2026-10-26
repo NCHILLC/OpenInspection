@@ -21,6 +21,8 @@ export interface RatingButtonRowProps {
   levels: EditorRatingLevel[];
   activeLevel: EditorRatingLevel | null | undefined;
   onRating: (rating: string) => void;
+  /** Names the group when several rows share a screen (the phone checklist). */
+  ariaLabel?: string;
 }
 
 /* Rating buttons — driven by the rating system's levels (C-14a). Delegates to
@@ -30,7 +32,7 @@ export interface RatingButtonRowProps {
    radiogroup a11y semantics (role="radio"/aria-checked + roving tabindex +
    Arrow/Home/End key support) in place of the former plain-button +
    aria-pressed markup. */
-export function RatingButtonRow({ levels, activeLevel, onRating }: RatingButtonRowProps) {
+export function RatingButtonRow({ levels, activeLevel, onRating, ariaLabel }: RatingButtonRowProps) {
   const ratings: RatingOption[] = levels.map((r, idx) => {
     const full = r.label ?? r.name ?? r.id;
     return {
@@ -51,7 +53,7 @@ export function RatingButtonRow({ levels, activeLevel, onRating }: RatingButtonR
         ratings={ratings}
         value={activeLevel?.id ?? null}
         onChange={onRating}
-        ariaLabel={m.editor_rating_aria()}
+        ariaLabel={ariaLabel ?? m.editor_rating_aria()}
         className="flex-nowrap gap-3"
       />
     </div>

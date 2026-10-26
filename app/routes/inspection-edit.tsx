@@ -72,6 +72,7 @@ import { SectionPickerModal } from "~/components/editor/SectionPickerModal";
 import { TagPickerModal } from "~/components/editor/TagPickerModal";
 import { useIsMobile } from "~/hooks/useBreakpoint";
 import { MobileDrillShell, type MobileDrawerId } from "~/components/editor/MobileDrillShell";
+import { checklistRowRating } from "~/components/editor/ChecklistRowRating";
 import { MobileReportSearch } from "~/components/editor/MobileReportSearch";
 import { useEditorUrlNav } from "./inspection-edit/useEditorUrlNav";
 import { MobileFinishDrawer } from "~/components/editor/MobileFinishDrawer";
@@ -808,6 +809,7 @@ export default function InspectionEditPage() {
  activeItemId: state.activeItemId,
  setCurrentSectionIdx: state.setCurrentSectionIdx,
  setActiveItemId: state.setActiveItemId,
+ isRated: (sectionId, itemId) => Boolean(findings.getResult(itemId, sectionId).rating),
  });
 
  const toggleTag = useCallback((tag: { id: string; name: string; color: string }) => {
@@ -1190,10 +1192,7 @@ export default function InspectionEditPage() {
  items={visibleItems}
  sectionId={state.currentSection?.id || ""}
  activeItemId={state.activeItemId}
- onSelect={(id) => {
- if (isMobile) { urlNav.goToItem(id); return; }
- state.setActiveItemId(id);
- }}
+ onSelect={(id) => (isMobile ? urlNav.goToItem(id) : state.setActiveItemId(id))}
  results={state.results}
  activeUnitId={activeUnitId}
  batchMode={state.batchMode}
@@ -1208,6 +1207,7 @@ export default function InspectionEditPage() {
  onRenameItem={canEditStructure ? (itemId, label) => structure.renameItem(state.currentSection?.id || "", itemId, label) : undefined}
  groups={statutoryGroups}
  onAddGroupInstance={(groupId) => setAddingToGroup(groupId)}
+ rowFooter={isMobile ? checklistRowRating(state.currentSection?.id || "", visibleItems, state.ratingLevels, findings) : undefined}
  />
  );
 

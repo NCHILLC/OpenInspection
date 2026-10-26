@@ -24,9 +24,9 @@ export interface NextItemTarget {
  * press it twice.
  *
  * Called with no active item, this answers "where does the walk start": the
- * first item of the section they are looking at, or of the report. That is what
- * makes the same control mean "begin" on the section list and "next" inside an
- * item, instead of being dead on two screens out of three.
+ * first item of the section they are looking at, or of the report. The phone's
+ * list screens no longer ask it that; they rate inline and walk checklists with
+ * `nextUnratedSection` below.
  */
 export function nextItemTarget(
     sections: NextItemSection[],
@@ -56,4 +56,30 @@ export function nextItemTarget(
     }
 
     return flat[0];
+}
+
+interface UnratedSection {
+    id: string;
+    title?: string;
+    items?: Array<{ id: string }>;
+}
+
+/**
+ * Where Next goes from a list screen: the checklist that still has work in it.
+ *
+ * From the inspection (`fromSectionId` null) that is the first section with an
+ * unrated item. From a checklist it is the next such section AFTER this one,
+ * wrapping to earlier ones: the inspector is leaving this checklist on purpose,
+ * and sending them back into it would make Next a no-op. Null once every item
+ * in the report is rated; there is no checklist left to walk to.
+ */
+export function nextUnratedSection(
+    sections: UnratedSection[],
+    isRated: (sectionId: string, itemId: string) => boolean,
+    fromSectionId: string | null,
+): { sectionId: string; label?: string } | null {
+    const at = fromSectionId ? sections.findIndex((s) => s.id === fromSectionId) : -1;
+    const order = at < 0 ? sections : [...sections.slice(at + 1), ...sections.slice(0, at)];
+    const hit = order.find((s) => (s.items ?? []).some((i) => !isRated(s.id, i.id)));
+    return hit ? { sectionId: hit.id, label: hit.title } : null;
 }
