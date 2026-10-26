@@ -56,13 +56,13 @@ export async function applyIsnOrder(
     // Another delivery is creating this order's inspection right now; it applies
     // the newest stored payload once it is done (below), this one included.
     if (row.inspectionId?.startsWith('pending:')) return null;
-    if (row.inspectionId) return updateFromOrder(db, cfg, tenantId, row.inspectionId, row.payload);
+    if (row.inspectionId) return updateFromOrder(db, cfg, tenantId, row.id, row.inspectionId, row.payload);
 
     const created = await createFromOrder(d1, db, cfg, tenantId, row);
     if (!created) return null;
     const latest = await db.select({ payload: isnOrders.payload }).from(isnOrders)
         .where(and(eq(isnOrders.id, row.id), eq(isnOrders.tenantId, tenantId))).get();
-    return updateFromOrder(db, cfg, tenantId, created, (latest?.payload as Rec | undefined) ?? row.payload);
+    return updateFromOrder(db, cfg, tenantId, row.id, created, (latest?.payload as Rec | undefined) ?? row.payload);
 }
 
 /** Creates the bare inspection and links it to the order; facts, team and status come from `updateFromOrder`. */
@@ -126,9 +126,11 @@ async function createFromOrder(
     return createdId;
 }
 
-async function updateFromOrder(db: Db, cfg: IsnConfig, tenantId: string, inspectionId: string, payload: Rec): Promise<string> {
+async function updateFromOrder(db: Db, cfg: IsnConfig, tenantId: string, rowId: string, inspectionId: string, payload: Rec): Promise<string> {
     const f = orderFacts(payload);
     const inspectorIds = await matchInspectors(db, cfg, tenantId, f.inspectorIds);
+    await db.update(isnOrders).set({ unmatchedInspectors: f.inspectorIds.length - inspectorIds.length })
+        .where(and(eq(isnOrders.id, rowId), eq(isnOrders.tenantId, tenantId)));
     const where = and(eq(inspections.id, inspectionId), eq(inspections.tenantId, tenantId));
 
     // A blank ISN field means ISN does not know, not that OI's value is wrong.

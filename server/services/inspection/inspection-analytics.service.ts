@@ -9,6 +9,7 @@ import { INSPECTION_STATUS } from '../../lib/status/inspection-status';
 import { REPORT_STATUS, isReportPublished } from '../../lib/status/report-status';
 import { InspectionSubService } from './base';
 import type { InspectionService } from '../inspection.service';
+import { isnReadyChecks, type IsnReadyCheck } from '../isn/ready-check';
 
 type DefectCategory = 'safety' | 'recommendation' | 'maintenance';
 type DefectCounts = Record<DefectCategory, number>;
@@ -638,9 +639,7 @@ export class InspectionAnalyticsService extends InspectionSubService {
             else serviceLinesByInspection.set(key, [line]);
         }
 
-        // Round-2 backlog #2 — Inspector name lookup so the "Inspector" column
-        // (Customize Columns) can render the assigned inspector without a
-        // second round-trip. Self-assigned (inspectorId NULL) renders blank.
+        // Round-2 backlog #2 — inspector names for the "Inspector" column, one read; NULL renders blank.
         const inspectorIdSet = new Set<string>();
         for (const i of all) {
             if (i.inspectorId) inspectorIdSet.add(i.inspectorId as string);
@@ -658,9 +657,8 @@ export class InspectionAnalyticsService extends InspectionSubService {
             }
         }
 
-        // Sprint 2 S2-2 — count sibling inspections per request_id so list rows
-        // can show a "(2 inspections)" hint when the inspection belongs to a
-        // multi-service booking. Built once for the entire bucket sweep.
+        const isnById = await isnReadyChecks(db, tenantId); // "From ISN" filter + ready check
+        // Sprint 2 S2-2 — sibling counts per request_id, for the "(2 inspections)" hint.
         const requestSiblingCounts = new Map<string, number>();
         for (const i of all) {
             const rid = (i as typeof inspections.$inferSelect).requestId;
@@ -677,6 +675,7 @@ export class InspectionAnalyticsService extends InspectionSubService {
             statusFlags:    { reportPublished: boolean; reportReady: boolean; agreementSigned: boolean; paid: boolean; sent: boolean; flagged: boolean; canceled: boolean };
             requestId:      string | null;
             siblingCount:   number | null;
+            isn:            IsnReadyCheck | null;
         }> =>
             rows.map(r => {
                 const id = r.id as string;
@@ -714,6 +713,7 @@ export class InspectionAnalyticsService extends InspectionSubService {
                     // null, not 1: an inspection in no request has no sibling group.
                     requestId:    reqId ?? null,
                     siblingCount: reqId ? siblingCount : null,
+                    isn:          isnById.get(id) ?? null,
                 };
             });
 

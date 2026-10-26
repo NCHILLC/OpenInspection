@@ -19,6 +19,11 @@ export const isnOrders = sqliteTable('isn_orders', {
     inspectionId: text('inspection_id'),
     payload:     text('payload', { mode: 'json' }).$type<Record<string, unknown>>().notNull(),
     fetchedAt:   integer('fetched_at', { mode: 'timestamp_ms' }).notNull(),
+    // How many of the order's ISN inspectors have no OI user with the same email,
+    // as of the last apply. Feeds the inspections list's ISN ready-check warning;
+    // null until the order has been applied. Not derivable later: matching needs
+    // ISN's `GET /user/{id}`, which the list must not call.
+    unmatchedInspectors: integer('unmatched_inspectors'),
 }, (t) => [
     uniqueIndex('uq_isn_orders_tenant_order').on(t.tenantId, t.isnOrderId),
 ]);

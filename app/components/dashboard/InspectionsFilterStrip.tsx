@@ -25,7 +25,8 @@ export function InspectionsFilterStrip({
 }) {
     return (
         <div className="flex items-center gap-0 flex-wrap border-b border-ih-border">
-            {INSPECTION_FILTERS.map((f) => (
+            {/* "From ISN" only where some inspection came from ISN. */}
+            {INSPECTION_FILTERS.filter((f) => f.id !== "from_isn" || activeFilter === f.id || (filterCounts[f.id] ?? 0) > 0).map((f) => (
                 <button
                     key={f.id}
                     onClick={() => setActiveFilter(f.id)}

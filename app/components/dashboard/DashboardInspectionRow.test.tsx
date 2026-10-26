@@ -155,3 +155,31 @@ describe("DashboardInspectionRow — recovery is a control, not a status pick", 
     expect(button?.closest(".opacity-0")).toBeNull();
   });
 });
+
+describe("DashboardInspectionRow — ISN ready check", () => {
+  function renderIsn(isn: Inspection["isn"]) {
+    const Stub = createRoutesStub([{
+      path: "/",
+      Component: () => (
+        <DashboardInspectionRow insp={{ ...INSPECTION, isn } as Inspection} tenantSlug={null} selectedIds={new Set<string>()}
+          isColumnVisible={() => true} toggleSelect={() => {}} transitionStatus={() => {}} timeZone="UTC" />
+      ),
+    }]);
+    return render(<Stub initialEntries={["/"]} />);
+  }
+
+  it("warns with the counts and names the services on hover", async () => {
+    const { findByText } = renderIsn({ unmatchedServices: ["FlexFund", "Radon"], unmatchedInspectors: 1 });
+    const chip = await findByText("Not matched from ISN: services 2, inspectors 1");
+    expect(chip.closest("[title]")?.getAttribute("title")).toBe("FlexFund, Radon");
+  });
+
+  it("says nothing when everything matched, or the inspection is not from ISN", async () => {
+    for (const isn of [{ unmatchedServices: [], unmatchedInspectors: 0 }, null]) {
+      const { findByText, queryByText, unmount } = renderIsn(isn);
+      expect(await findByText("742 Evergreen Terrace")).toBeTruthy();
+      expect(queryByText(/Not matched from ISN/)).toBeNull();
+      unmount();
+    }
+  });
+});

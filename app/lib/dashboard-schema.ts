@@ -20,6 +20,8 @@ export interface Inspection {
   agentId?: string | null;
   tagIds?: string[];
   defectStats?: { safety: number; recommendation: number; maintenance: number };
+  /** Set when the inspection came from an ISN order: what of the order did not match OI. */
+  isn?: { unmatchedServices: string[]; unmatchedInspectors: number } | null;
 }
 
 export interface Tag {
@@ -105,6 +107,7 @@ export const INSPECTION_FILTERS = [
   { id: "future", get label() { return m.label_filter_future(); } },
   { id: "needs_confirmation", get label() { return m.label_filter_needs_confirmation(); } },
   { id: "awaiting_report", get label() { return m.label_filter_awaiting_report(); } },
+  { id: "from_isn", get label() { return m.label_filter_from_isn(); } },
 ] as const;
 
 export type FilterId = (typeof INSPECTION_FILTERS)[number]["id"];
