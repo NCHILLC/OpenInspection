@@ -73,7 +73,7 @@
 
   /* ── Borders / shadows ── */
   --color-ih-border: var(--ih-border-color, #e2e8f0);
-  --color-ih-border-strong: var(--ih-border-strong-color, #cbd5e1);
+  --color-ih-border-strong: var(--ih-border-strong-color, #64748b);
 
   /* ── Overlay backdrop (single source for every modal/drawer scrim) ── */
   --color-ih-backdrop: var(--ih-backdrop);
@@ -169,7 +169,10 @@
   --ih-agent-accent-fg: #451a03;
 
   --ih-border-color: #e2e8f0;
-  --ih-border-strong-color: #cbd5e1;
+  /* Control outlines (.ih-input, checkboxes, outlined buttons): WCAG 1.4.11
+     asks 3:1 of a control's edge. #cbd5e1 was 1.48:1 on white; #64748b is
+     4.76:1. Card edges and dividers stay on --ih-border-color. */
+  --ih-border-strong-color: #64748b;
 
   --ih-backdrop: rgba(15, 23, 42, 0.55);
 }
@@ -234,7 +237,8 @@ html[data-color-scheme="dark"], html[data-color-scheme="field"], .dark {
   --ih-status-info-fg: #38bdf8;
 
   --ih-border-color: #334155;
-  --ih-border-strong-color: #475569;
+  /* 3.07:1 on the #1e293b card (was #475569, 1.93:1). See :root. */
+  --ih-border-strong-color: #64748b;
 
   --ih-backdrop: rgba(2, 6, 23, 0.65);
 }
@@ -412,7 +416,9 @@ html[data-color-scheme="field"] select option,
   height: 36px;
   padding: 0 12px;
   border-radius: var(--radius-ih-input);
-  border: 1px solid var(--ih-border-color);
+  /* Strong, not the card-edge token: --ih-border-color is under 3:1 in every
+     theme but sun (field #475569 on #0f172a was 2.36:1). */
+  border: 1px solid var(--ih-border-strong-color);
   background: var(--ih-bg-card);
   color: var(--ih-fg-1);
   font-size: 13px;
