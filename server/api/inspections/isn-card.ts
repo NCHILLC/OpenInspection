@@ -18,6 +18,7 @@ import { isnOrders, reports } from '../../lib/db/schema';
 import { Errors } from '../../lib/errors';
 import { requireCapability } from '../../lib/middleware/require-capability';
 import { isnCardFields } from '../../services/isn/order-payload';
+import { isnConfig, isnOrderPageUrl } from '../../services/isn/api-base';
 import { safeTimestamp } from '../../lib/date';
 
 const yn = z.boolean().nullable();
@@ -31,6 +32,7 @@ const IsnCardSchema = z.object({
     policyHolder: z.string().nullable(),
     policyNumber: z.string().nullable(),
     directionsUrl: z.string().nullable(),
+    orderUrl: z.string().nullable().describe("The order's page in ISN, or null when ISN keys are not set."),
     fetchedAt: z.number().describe('Epoch-ms OI last read the order from ISN.'),
 });
 
@@ -78,8 +80,11 @@ const isnCardRoutes = createApiRouter()
             .from(isnOrders)
             .where(and(eq(isnOrders.tenantId, c.get('tenantId')), eq(isnOrders.inspectionId, id)))
             .get();
-        const data = row ? { ...isnCardFields(row.payload), fetchedAt: safeTimestamp(row.fetchedAt) } : null;
-        return c.json({ success: true as const, data }, 200);
+        if (!row) return c.json({ success: true as const, data: null }, 200);
+        const fields = isnCardFields(row.payload);
+        const cfg = isnConfig(c.env);
+        const orderUrl = cfg && fields.orderNumber ? await isnOrderPageUrl(cfg, fields.orderNumber) : null;
+        return c.json({ success: true as const, data: { ...fields, orderUrl, fetchedAt: safeTimestamp(row.fetchedAt) } }, 200);
     })
     .openapi(reportLinkRoute, async (c) => {
         const { id } = c.req.valid('param');

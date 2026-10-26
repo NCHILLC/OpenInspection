@@ -3,7 +3,7 @@
  * 2026-09-18 (ids replaced); every one arrived with HTTP 200, errors included.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isnCall, isnConfig, IsnError } from '../../../server/services/isn/api-base';
+import { isnCall, isnConfig, IsnError, isnOrderPageUrl } from '../../../server/services/isn/api-base';
 import { addReportLinkToIsnOrder } from '../../../server/services/isn/report-link-sync';
 
 const cfg = { domain: 'https://inspectionsupport.com', companyKey: 'co', accessKey: 'a', secretKey: 's' };
@@ -77,5 +77,17 @@ describe('isnConfig', () => {
     it('is off unless all four are set — there is no default domain', () => {
         expect(isnConfig({ ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'a', ISN_SECRET_KEY: 's' })).toBeNull();
         expect(isnConfig({ ISN_DOMAIN: 'https://inspectionsupport.com/', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'a', ISN_SECRET_KEY: 's' })).toEqual(cfg);
+    });
+});
+
+describe('isnOrderPageUrl', () => {
+    it("rebuilds the link ISN shows for an order (NCHI's order 139, taken from the address bar)", async () => {
+        expect(await isnOrderPageUrl({ domain: 'https://inspectionsupport.com', companyKey: 'newcharlottehome' }, '139'))
+            .toBe('https://inspectionsupport.com/newcharlottehome/order/view?pq=eJxLtDK0qi62MrZSys9MUbLOtDI0trSuBQBJXwZP');
+    });
+
+    it('URL-encodes base64 padding, and gives no link for a non-numeric order number', async () => {
+        expect(await isnOrderPageUrl(cfg, '1234')).toBe('https://inspectionsupport.com/co/order/view?pq=eJxLtDK0qi62MrZSys9MUbLOtDI0MjaxrgUAT3UGfA%3D%3D');
+        expect(await isnOrderPageUrl(cfg, 'A-12')).toBeNull();
     });
 });
