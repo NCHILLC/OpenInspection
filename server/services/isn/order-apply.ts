@@ -114,6 +114,11 @@ async function createFromOrder(
             clientPhone: client?.phone ?? null,
             referredByAgentId: await agentId(buyersAgent),
             sellingAgentId: await agentId(sellersAgent),
+            // ISN takes the payment and the agreement, and OI offers no way to do
+            // either while it is the CRM, so the company's block defaults would
+            // hold this report forever.
+            paymentRequired: false,
+            agreementRequired: false,
         } as unknown as Parameters<InspectionCoreService['createInspection']>[1], { automations: false })).id;
     } catch (e) {
         // Nothing was created, so the next delivery may try again.
