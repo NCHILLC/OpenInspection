@@ -102,3 +102,37 @@ export function isnReadyCheck(payload: Order, lineNames: string[], unmatchedInsp
         unmatchedInspectors: unmatchedInspectors ?? 0,
     };
 }
+
+const yesNo = (v: unknown): boolean | null => {
+    const s = str(v)?.toLowerCase();
+    return s === 'yes' ? true : s === 'no' ? false : null;
+};
+
+/**
+ * What the inspection page's ISN card shows: the order facts OI keeps nowhere
+ * else. Read-only; ISN owns them. ISN's id-valued fields (escrow officer,
+ * insurance agent, refer reason, cost center, order type) are left out: showing
+ * them needs a lookup per id.
+ */
+export function isnCardFields(o: Order) {
+    const f = orderFacts(o);
+    const mapUrl = str(o.mapurl);
+    const where = f.address.addressLat !== null && f.address.addressLng !== null
+        ? `${f.address.addressLat},${f.address.addressLng}` : f.propertyAddress;
+    return {
+        orderNumber: f.referenceNumber,
+        reportNumber: str(o.reportnumber),
+        canceled: f.canceled,
+        accessCode: str(o.gatecode),
+        occupied: yesNo(o.propertyoccupied),
+        utilitiesOn: yesNo(o.utilitieson),
+        crossStreets: str(o.majorcrossstreets),
+        policyHolder: str(o.policyholder),
+        policyNumber: str(o.policynumber),
+        paid: yesNo(o.paid),
+        signed: yesNo(o.signature),
+        // ISN's own map link when it is https, else a maps search on the address.
+        directionsUrl: mapUrl?.startsWith('https://') ? mapUrl
+            : where ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(where)}` : null,
+    };
+}

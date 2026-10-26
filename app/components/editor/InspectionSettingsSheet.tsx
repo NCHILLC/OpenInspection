@@ -6,6 +6,7 @@ import { CoverCropper, coverCropFor, type StoredCoverCrop } from "~/components/m
 import { fullResUrl } from "~/components/media-studio/cropImage";
 import { ORIGINAL_QUALITY_KEY } from "~/routes/inspection-edit";
 import { PhotoSyncModeSelect } from "./PhotoSyncModeSelect";
+import { IsnCard } from "~/components/inspector-portal/IsnCard";
 import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
 import { m } from "~/paraglide/messages";
 import { CLIENT_PROFILE_LIST } from "~/lib/report-style/profiles-client";
@@ -252,6 +253,7 @@ export function InspectionSettingsSheet({ open, onClose, inspectionId, onTemplat
           </>
         )}
       >
+        {open && <IsnCard inspectionId={inspectionId} />}
         {loading ? (
           <div className="space-y-2 py-4" aria-busy="true">
             <div className="h-4 bg-ih-bg-muted rounded animate-pulse" style={{ width: "50%" }} />

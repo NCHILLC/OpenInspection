@@ -9,7 +9,7 @@ import * as schema from '../../../server/lib/db/schema';
 import { seedRoleProfiles } from '../../../server/services/seed/seed-role-profiles';
 import { createTestDb, setupSchema } from '../db';
 import { asD1Db } from '../helpers/test-db';
-import { foundationFromIsn, isnReadyCheck, orderFacts } from '../../../server/services/isn/order-payload';
+import { foundationFromIsn, isnCardFields, isnReadyCheck, orderFacts } from '../../../server/services/isn/order-payload';
 
 vi.mock('drizzle-orm/d1', () => ({ drizzle: vi.fn() }));
 const fireAutomation = vi.fn(async () => {});
@@ -182,5 +182,19 @@ describe('applyIsnOrder', () => {
         expect(id).toBeInstanceOf(Error);
         expect(db.select().from(schema.inspections).all()).toHaveLength(0);
         expect(db.select().from(schema.isnOrders).get()?.inspectionId).toBeNull();
+    });
+});
+
+describe('isnCardFields', () => {
+    it('reads the card facts, trimming the \r ISN leaves on yes/no values', () => {
+        expect(isnCardFields({ ...ORDER, gatecode: '1234#', propertyoccupied: 'yes\r', utilitieson: 'no', paid: 'no', signature: 'yes', reportnumber: '' }))
+            .toMatchObject({ orderNumber: '146', accessCode: '1234#', occupied: true, utilitiesOn: false, paid: false, signed: true, reportNumber: null, canceled: false });
+    });
+
+    it('links directions to ISN\'s https map, else to a maps search on the coordinates or address', () => {
+        expect(isnCardFields({ ...ORDER, mapurl: 'https://maps.isn.test/146' }).directionsUrl).toBe('https://maps.isn.test/146');
+        expect(isnCardFields({ ...ORDER, mapurl: 'javascript:alert(1)' }).directionsUrl).toContain('destination=35.29%2C-81.15');
+        expect(isnCardFields({ ...ORDER, latitude: '', longitude: '' }).directionsUrl).toContain(encodeURIComponent('2419 Rhyneland Street'));
+        expect(isnCardFields({}).directionsUrl).toBeNull();
     });
 });

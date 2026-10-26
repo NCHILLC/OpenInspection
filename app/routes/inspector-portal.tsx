@@ -65,6 +65,7 @@ import { ReportsCard, type ReportRow } from "~/components/inspector-portal/Repor
 import { VisitsCard } from "~/components/inspector-portal/VisitsCard";
 import { loadVisits, handleVisitAdd, handleVisitStatus } from "~/lib/inspection-visits";
 import { OrderDetailsCard } from "~/components/inspector-portal/OrderDetailsCard";
+import { IsnCard } from "~/components/inspector-portal/IsnCard";
 import { InvoiceCard } from "~/components/inspector-portal/InvoiceCard";
 import { GateToggle } from "~/components/inspector-portal/GateToggle";
 import { ReportGateUnlock } from "~/components/inspector-portal/ReportGateUnlock";
@@ -964,6 +965,7 @@ export default function InspectionHubPage() {
           formatDate={(iso) => formatInspectionDateTime(iso, undefined, displayTz, fmt)}
         />
 
+        <IsnCard inspectionId={inspection.id} />
         {/* 4. Signing requests — the paperwork the visit needs -------- */}
         {!externalCrm && <Card className="p-5">
           <BlockHeading title={m.inspections_hub_block_agreement()} pill={blocks.agreement} />

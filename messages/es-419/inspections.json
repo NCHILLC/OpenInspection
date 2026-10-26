@@ -334,5 +334,21 @@
   "inspections_repair_log_items_one": "1 elemento",
   "inspections_repair_log_items_other": "{count} elementos",
   "inspections_repair_log_list_empty": "Esta lista se creó y no se le agregó nada.",
-  "inspections_repair_log_ask_heading": "Solicitó"
+  "inspections_repair_log_ask_heading": "Solicitó",
+  "inspections_isn_card_title": "Desde ISN",
+  "inspections_isn_card_order": "Orden de ISN",
+  "inspections_isn_card_access": "Código de acceso",
+  "inspections_isn_card_occupied": "Ocupada",
+  "inspections_isn_card_utilities": "Servicios conectados",
+  "inspections_isn_card_cross_streets": "Calles transversales",
+  "inspections_isn_card_paid": "Pagada en ISN",
+  "inspections_isn_card_signed": "Acuerdo firmado en ISN",
+  "inspections_isn_card_report_number": "Número de informe",
+  "inspections_isn_card_policy_holder": "Titular de la póliza",
+  "inspections_isn_card_policy_number": "Número de póliza",
+  "inspections_isn_card_canceled": "Cancelada en ISN",
+  "inspections_isn_card_directions": "Cómo llegar",
+  "inspections_isn_card_change_in_isn": "Cámbielos en ISN.",
+  "inspections_isn_card_yes": "Sí",
+  "inspections_isn_card_no": "No"
 }
