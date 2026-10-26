@@ -1,11 +1,13 @@
 interface NextItemSection {
     id: string;
-    items?: Array<{ id: string }>;
+    items?: Array<{ id: string; label?: string; name?: string }>;
 }
 
 export interface NextItemTarget {
     sectionId: string;
     itemId: string;
+    /** What the item is called, for the control that walks to it. */
+    label?: string;
 }
 
 /**
@@ -34,7 +36,7 @@ export function nextItemTarget(
     const flat: NextItemTarget[] = [];
     for (const section of sections) {
         for (const item of section.items ?? []) {
-            flat.push({ sectionId: section.id, itemId: item.id });
+            flat.push({ sectionId: section.id, itemId: item.id, label: item.label || item.name });
         }
     }
     if (flat.length === 0) return null;

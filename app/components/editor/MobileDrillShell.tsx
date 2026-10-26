@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { m } from "~/paraglide/messages";
 import { MobileAppBar } from "./MobileAppBar";
 import { MobileSyncPill } from "./MobileSyncPill";
+import { SectionDonut } from "./SectionDonut";
+import { Icon } from "@core/shared-ui";
 import type { EditorNavLevel } from "~/routes/inspection-edit/useEditorUrlNav";
 import type { PresenceStatus } from "~/hooks/usePresence";
 
@@ -31,6 +33,8 @@ export interface MobileDrillShellProps {
      * `null` only at the very last item, where there is nowhere left to go.
      */
     onNext: (() => void) | null;
+    /** Name of the item Next goes to, shown under "Next" so the tap is predictable. */
+    nextLabel?: string;
     /** Whole-inspection completion, 0–100. Rendered as the root screen's ring. */
     percentComplete: number;
     /**
@@ -77,6 +81,7 @@ export function MobileDrillShell({
     onOpenSearch,
     onOpenPreview,
     onNext,
+    nextLabel,
     percentComplete,
     onCapture,
     children,
@@ -96,7 +101,7 @@ export function MobileDrillShell({
         // screen is showing is otherwise only inferable from whichever list
         // happens to be rendered, and a text selector for that breaks the first
         // time a template renames a section.
-        <div className="min-h-screen pb-14" data-testid="mobile-drill" data-level={level}>
+        <div className="min-h-screen pb-18" data-testid="mobile-drill" data-level={level}>
             <MobileAppBar
                 eyebrow={eyebrow}
                 title={title}
@@ -104,7 +109,6 @@ export function MobileDrillShell({
                 onMore={onMore}
                 onSearch={onOpenSearch}
                 backLabel={backLabel}
-                syncPill={<MobileSyncPill inspectionId={inspectionId} connection={connection} />}
             />
             {/* Item screens reserve extra clearance: a rich item pins its
                 rating strip (ItemEditor) in the same fixed band as the
@@ -114,16 +118,17 @@ export function MobileDrillShell({
             {/* The most-used control on the screen, in the one place a thumb
                 reaches without a regrip — and at a FIXED position, unlike the
                 add tile in the photo strip, which sits behind a scroll and used
-                to move every fourth photo. Shares the rating strip's `bottom-14`
+                to move every fourth photo. Shares the rating strip's `bottom-18`
                 band (to its right) rather than floating above it — see
-                ItemEditor's rating-row wrapper. */}
+                ItemEditor's rating-row wrapper. `bottom-18` (72px) is the nav's
+                height, below. */}
             {level === "item" && onCapture && (
                 <button
                     type="button"
                     onClick={onCapture}
                     data-testid="mobile-capture-fab"
                     aria-label={m.media_strip_add_photo_aria()}
-                    className="fixed right-4 bottom-14 z-40 w-14 h-14 rounded-full bg-ih-primary text-ih-primary-fg shadow-ih-popover flex items-center justify-center active:scale-95 transition-transform"
+                    className="fixed right-4 bottom-18 z-40 w-14 h-14 rounded-full bg-ih-primary text-ih-primary-fg shadow-ih-popover flex items-center justify-center active:scale-95 transition-transform"
                 >
                     <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -132,41 +137,45 @@ export function MobileDrillShell({
                 </button>
             )}
 
-            <nav className="fixed left-0 right-0 bottom-0 z-30 h-14 bg-ih-bg-card border-t border-ih-border flex items-center">
+            <nav className="fixed left-0 right-0 bottom-0 z-30 h-18 bg-ih-bg-card border-t border-ih-border flex items-center gap-2 px-3">
                 {/* Completion reads as a number, not only a ring: a ring alone
-                    cannot be read at a glance in direct sun on a roof. */}
-                <div className="flex-1 flex items-center justify-center gap-2" aria-live="polite">
-                    <span
-                        className="inline-block w-4 h-4 rounded-full border-2 border-ih-ok"
-                        style={{
-                            background: `conic-gradient(var(--color-ih-ok) ${percentComplete}%, transparent 0)`,
-                        }}
-                        aria-hidden="true"
-                    />
-                    <span className="text-[15px] font-bold tabular-nums text-ih-fg-2">
-                        {m.editor_mobile_percent_complete({ percent: percentComplete })}
-                    </span>
+                    cannot be read at a glance in direct sun on a roof. The sync
+                    readout sits under it — never hidden, see MobileSyncPill. */}
+                <div className="flex-1 min-w-0 flex items-center gap-2.5" aria-live="polite">
+                    <SectionDonut rated={percentComplete} total={100} size={32} />
+                    <div className="flex flex-col items-start gap-0.5 min-w-0">
+                        <span className="text-[18px] leading-tight font-bold tabular-nums whitespace-nowrap">
+                            {m.editor_mobile_percent_complete({ percent: percentComplete })}
+                        </span>
+                        <MobileSyncPill inspectionId={inspectionId} connection={connection} />
+                    </div>
                 </div>
                 <button
+                    type="button"
                     onClick={onOpenPreview}
-                    className="flex-1 flex flex-col items-center justify-center text-ih-fg-2 hover:bg-ih-bg-muted active:bg-ih-bg-muted min-h-11"
+                    className="w-[76px] h-14 shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-md text-ih-fg-2 hover:bg-ih-bg-muted active:bg-ih-bg-muted"
                 >
-                    <span className="text-[16px]" aria-hidden="true">👁</span>
-                    <span className="text-[13px] uppercase tracking-[0.1em]">{m.editor_route_drawer_preview()}</span>
+                    <Icon name="file" size={22} />
+                    <span className="text-[14px] font-semibold">{m.editor_route_drawer_preview()}</span>
                 </button>
-                {/* Forward, in the slot Theme used to hold. Walking to the next
-                    item is the single most repeated action of an inspection —
-                    hundreds of times per property — and it was costing a trip
-                    back up the stack. Theme is a once-a-day preference and now
-                    lives in the ⋮ menu, which is what a preference deserves. */}
+                {/* Forward, as the primary button. Walking to the next item is
+                    the single most repeated action of an inspection — hundreds
+                    of times per property — so it is the one filled control in
+                    the bar, and it names where it goes. Theme is a once-a-day
+                    preference and lives in the ⋮ menu. */}
                 <button
+                    type="button"
                     onClick={() => onNext?.()}
                     disabled={!onNext}
                     data-testid="mobile-next-item"
-                    className="flex-1 flex flex-col items-center justify-center text-ih-fg-2 hover:bg-ih-bg-muted active:bg-ih-bg-muted min-h-11 disabled:opacity-40"
+                    aria-label={nextLabel ? m.editor_mobile_next_to({ label: nextLabel }) : undefined}
+                    className="h-[52px] shrink-0 max-w-[170px] flex items-center gap-2.5 pl-4 pr-3 rounded-md bg-ih-primary text-ih-primary-fg disabled:opacity-40"
                 >
-                    <span className="text-[16px]" aria-hidden="true">→</span>
-                    <span className="text-[13px] uppercase tracking-[0.1em]">{m.editor_mobile_next_item()}</span>
+                    <span className="flex flex-col items-start min-w-0 leading-tight">
+                        <span className="text-[18px] font-extrabold">{m.editor_mobile_next_item()}</span>
+                        {nextLabel && <span className="text-[14px] font-semibold truncate max-w-full">{nextLabel}</span>}
+                    </span>
+                    <Icon name="arrowR" size={22} />
                 </button>
             </nav>
 

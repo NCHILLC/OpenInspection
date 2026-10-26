@@ -49,4 +49,11 @@ describe("nextItemTarget", () => {
     it("falls forward from an empty current section", () => {
         expect(nextItemTarget(SECTIONS, "s2", null)).toEqual({ sectionId: "s1", itemId: "a" });
     });
+
+    // The phone's Next button names its target, so the label rides along.
+    it("carries the target's label, falling back to its name", () => {
+        const named = [{ id: "s1", items: [{ id: "a", label: "Roof Covering" }, { id: "b", name: "Flashing" }] }];
+        expect(nextItemTarget(named, "s1", null)?.label).toBe("Roof Covering");
+        expect(nextItemTarget(named, "s1", "a")?.label).toBe("Flashing");
+    });
 });
