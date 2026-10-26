@@ -539,7 +539,7 @@ export class InspectionAnalyticsService extends InspectionSubService {
 
         // Sub-spec B Task 7 (B-6) — list row metadata: agent name lookup +
         // status flags + invoice paid lookup. We surface:
-        //   agentName  → from inspection_people (listing_agent, else buyer_agent)
+        //   agentName  → from inspection_people (listing_agent, else buyer_agent); clientName → the client role
         //   statusFlags = { reportPublished, agreementSigned, paid, flagged, canceled }
         //
         // Task 9c-X3 — replaces the legacy inspections.sellingAgentId /
@@ -554,6 +554,7 @@ export class InspectionAnalyticsService extends InspectionSubService {
         // set and threw past ~95 inspections, breaking the dashboard (#258 review).
         const listingAgentNameByInspection = new Map<string, string>();
         const buyerAgentNameByInspection   = new Map<string, string>();
+        const clientNameByInspection       = new Map<string, string>();
         const AGENT_ROLE_ID_CHUNK = 90; // headroom for the fixed binds (tenantId ×2, role keys ×2)
         for (let off = 0; off < uniqueIds.length; off += AGENT_ROLE_ID_CHUNK) {
             const chunk = uniqueIds.slice(off, off + AGENT_ROLE_ID_CHUNK);
@@ -567,7 +568,7 @@ export class InspectionAnalyticsService extends InspectionSubService {
                     eq(contactRoleProfiles.id, inspectionPeople.roleProfileId),
                     eq(contactRoleProfiles.tenantId, tenantId),
                     eq(contactRoleProfiles.active, true),
-                    inArray(contactRoleProfiles.key, ['listing_agent', 'buyer_agent']),
+                    inArray(contactRoleProfiles.key, ['listing_agent', 'buyer_agent', 'client']),
                 ))
                 .leftJoin(contacts, and(
                     eq(contacts.id, inspectionPeople.contactId),
@@ -579,7 +580,7 @@ export class InspectionAnalyticsService extends InspectionSubService {
                 ));
             for (const r of agentRoleRows) {
                 if (!r.contactName) continue;
-                const map = r.roleKey === 'listing_agent' ? listingAgentNameByInspection : buyerAgentNameByInspection;
+                const map = r.roleKey === 'listing_agent' ? listingAgentNameByInspection : r.roleKey === 'client' ? clientNameByInspection : buyerAgentNameByInspection;
                 map.set(r.inspectionId as string, r.contactName as string);
             }
         }
@@ -671,6 +672,7 @@ export class InspectionAnalyticsService extends InspectionSubService {
             // optional. Why that is load-bearing rather than a style choice is
             // written on `InspectionListItemSchema` in validations/inspection/read.ts.
             agentName:      string | null;
+            clientName:     string | null;
             inspectorName:  string | null;
             statusFlags:    { reportPublished: boolean; reportReady: boolean; agreementSigned: boolean; paid: boolean; sent: boolean; flagged: boolean; canceled: boolean };
             requestId:      string | null;
@@ -700,6 +702,7 @@ export class InspectionAnalyticsService extends InspectionSubService {
                     }),
                     defectStats: statsMap.get(id) ?? zeroCounts(),
                     agentName:     agentName ?? null,
+                    clientName:    clientNameByInspection.get(id) ?? null,
                     inspectorName: inspectorName ?? null,
                     statusFlags: {
                         reportPublished: reportReady,

@@ -280,7 +280,7 @@ const InspectionListItemSchema = z.object({
     id:           z.string().describe('TODO describe id field for the OpenInspection MCP integration'),
     date:         z.string().nullable().describe('TODO describe date field for the OpenInspection MCP integration'),
     address:      z.string().nullable().optional().describe('TODO describe address field for the OpenInspection MCP integration'),
-    clientName:   z.string().nullable().optional().describe('TODO describe clientName field for the OpenInspection MCP integration'),
+    clientName:   z.string().nullable().optional().describe('The client on this inspection (inspection_people, client role). Null when none is recorded.'),
     status:       z.string().describe('TODO describe status field for the OpenInspection MCP integration'),
     confirmedAt:  z.string().nullable().optional().describe('TODO describe confirmedAt field for the OpenInspection MCP integration'),
     cancelReason: z.string().nullable().optional().describe('TODO describe cancelReason field for the OpenInspection MCP integration'),
