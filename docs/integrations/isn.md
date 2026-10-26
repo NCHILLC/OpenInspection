@@ -74,11 +74,14 @@ inspection by hand (renaming the OI service does not add it to inspections that
 already exist). An inspector warning clears on the next ISN delivery once that
 person's email is an OI user.
 
-To turn it on: create the webhook in ISN (Settings → Webhooks → Add Webhook,
-POST, tracked and signed, URL `https://<this app's host>/webhooks/isn`), copy
-the secret (tick "Add signing secret"; Reveal/Copy on the webhook's page), set it as
-`ISN_WEBHOOK_SECRET` (a Worker secret, or stored with the other ISN keys), then use ISN's "Send test event". The bare path
-uses standalone's fixed tenant; SaaS has no per-tenant ISN webhook path.
+To turn it on: create the webhook through ISN's REST API, not its web screen. The
+Web Hooks screen makes one unsigned webhook per event type and has no signing
+option (checked 2026-10-26). `POST /rest/webhooks` with an OWNER access key and
+`{"url": "https://<this app's host>/webhooks/isn", "events": [...order events]}`
+is tracked and signed by default and returns the signing secret once, as
+`secret`. Set it as `ISN_WEBHOOK_SECRET` (a Worker secret, or stored with the
+other ISN keys), then use ISN's "Send test event". The bare path uses
+standalone's fixed tenant; SaaS has no per-tenant ISN webhook path.
 
 ## What you need
 
@@ -88,7 +91,7 @@ uses standalone's fixed tenant; SaaS has no per-tenant ISN webhook path.
 | `ISN_COMPANY_KEY` | ISN → Settings → My Access Keys |
 | `ISN_ACCESS_KEY` | Same page |
 | `ISN_SECRET_KEY` | Same page |
-| `ISN_WEBHOOK_SECRET` | ISN → Settings → Webhooks → the webhook's page (Reveal). ISN's UI makes one webhook per event type, each with its own secret: list them all, comma-separated. Only for the order webhooks |
+| `ISN_WEBHOOK_SECRET` | Returned once by `POST /rest/webhooks` (the web screen cannot sign). Only for the order webhook |
 
 Set the first four in Settings → Advanced → ISN. All five are **tenant-owned**: the
 company's own value always beats a Worker env binding, because a platform key

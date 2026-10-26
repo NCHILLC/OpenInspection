@@ -6,18 +6,11 @@
  */
 import { bytesToHex, constantTimeEquals, hmacSha256, withinReplayWindow } from '../../lib/email/webhook-crypto';
 
-/**
- * `secrets` may list several, comma- or space-separated: ISN's UI makes one
- * webhook per event type, and each signed webhook has its own secret.
- */
-export async function verifyIsnSignature(secrets: string, header: string, rawBody: string, nowMs = Date.now()): Promise<boolean> {
+export async function verifyIsnSignature(secret: string, header: string, rawBody: string, nowMs = Date.now()): Promise<boolean> {
     const parts = Object.fromEntries(header.split(',').map((p) => p.trim().split('=', 2) as [string, string]));
     const t = parts.t;
     const v1 = parts.v1;
     if (!t || !v1 || !/^\d+$/.test(t) || !withinReplayWindow(Number(t), nowMs)) return false;
-    for (const secret of secrets.split(/[\s,]+/).filter(Boolean)) {
-        const expected = bytesToHex(await hmacSha256(new TextEncoder().encode(secret), `${t}.${rawBody}`));
-        if (constantTimeEquals(expected, v1.toLowerCase())) return true;
-    }
-    return false;
+    const expected = bytesToHex(await hmacSha256(new TextEncoder().encode(secret), `${t}.${rawBody}`));
+    return constantTimeEquals(expected, v1.toLowerCase());
 }
