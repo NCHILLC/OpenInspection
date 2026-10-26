@@ -245,6 +245,7 @@
   "editor_search_result_count_one": "1 resultado",
   "editor_search_result_count_other": "{count} resultados",
   "editor_mobile_next_item": "Siguiente",
+  "editor_mobile_next_to": "Siguiente: {label}",
   "editor_limitation_required_notice": "Marcado como No Inspeccionado. Indique el motivo antes de publicar el informe.",
   "editor_limitation_add": "Agregar",
   "editor_limitation_placeholder": "Otro motivo…",

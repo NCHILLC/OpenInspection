@@ -1821,7 +1821,7 @@ export default function InspectionEditPage() {
  onMore={() => setMobileDrawer("actions")}
  onOpenSearch={() => setMobileDrawer("search")}
  onOpenPreview={() => setMobileDrawer("preview")}
- onNext={urlNav.goNext}
+ onNext={urlNav.goNext} nextLabel={urlNav.nextLabel}
  percentComplete={state.progress.pct}
  onCapture={() => { clearPhotoTarget(); state.setCameraItemId(state.activeItemId); state.setCameraOpen(true); }}
  overlays={<>

@@ -245,6 +245,7 @@
   "editor_search_result_count_one": "1 result",
   "editor_search_result_count_other": "{count} results",
   "editor_mobile_next_item": "Next",
+  "editor_mobile_next_to": "Next: {label}",
   "editor_limitation_required_notice": "Marked Not Inspected. Give the reason before the report is published.",
   "editor_limitation_add": "Add",
   "editor_limitation_placeholder": "Another reason…",

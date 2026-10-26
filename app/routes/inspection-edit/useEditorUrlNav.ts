@@ -27,6 +27,8 @@ export interface EditorUrlNav {
      * go — so the control can disable itself rather than lie.
      */
     goNext: (() => void) | null;
+    /** Name of the item `goNext` walks to; undefined where there is none. */
+    nextLabel: string | undefined;
     /** Up one level — pops real history where there is any to pop. */
     goUp: () => void;
 }
@@ -202,5 +204,5 @@ export function useEditorUrlNav({
         void navigate("/inspections");
     }, [currentSectionId, navigate, searchParams, setSearchParams, paramsForState]);
 
-    return { level, goToSection, goToItem, goToItemIn, goNext, goUp };
+    return { level, goToSection, goToItem, goToItemIn, goNext, nextLabel: next?.label, goUp };
 }
