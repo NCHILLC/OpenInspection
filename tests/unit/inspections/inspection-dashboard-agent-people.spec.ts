@@ -119,4 +119,15 @@ describe('InspectionAnalyticsService.getDashboardBuckets — agent attribution v
         expect(Object.hasOwn(row!, 'agentName'), 'agentName key was omitted, not set to null').toBe(true);
         expect(row!.agentName).toBeNull();
     });
+
+    it('resolves clientName from the client inspection_people row, null when none', async () => {
+        await testDb.insert(schema.contacts).values({ id: 'contact-client-9c3', tenantId: TENANT, type: 'client', name: 'Cora Client', createdAt: new Date() });
+        await new PeopleService({ DB: {} as D1Database }).addPerson(TENANT, INSP_LISTING, 'contact-client-9c3', roleProfileId('client'));
+        const buckets = await svc.getDashboardBuckets(TENANT);
+        expect(buckets.today.find(r => r.id === INSP_LISTING)!.clientName).toBe('Cora Client');
+        expect(buckets.today.find(r => r.id === INSP_LISTING)!.agentName).toBe('Lisa Listing');
+        const none = buckets.today.find(r => r.id === INSP_NONE)!;
+        expect(Object.hasOwn(none, 'clientName')).toBe(true);
+        expect(none.clientName).toBeNull();
+    });
 });
