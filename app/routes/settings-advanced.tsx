@@ -222,6 +222,13 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (intent === "save-isn") return putSecrets(ISN_SECRET_KEYS, m.settings_isn_save_error());
 
+  if (intent === "pull-isn") {
+    const res = await api.integrations.isn.pull.$post({ json: { cursor: String(fd.get("cursor") ?? "") || null } });
+    const body = (await res.json().catch(() => null)) as { data?: { processed: number; nextCursor: string | null } } | null;
+    if (!res.ok || !body?.data) return { intent, success: false, error: m.settings_isn_pull_error(), field: null, test: null };
+    return { intent, success: true, error: null, field: null, test: null, pull: body.data };
+  }
+
   if (intent === "save-advanced-secrets") {
     return putSecrets(["GOOGLE_PLACES_API_KEY", "ESTATED_API_KEY", "APP_BASE_URL"], m.settings_advanced_integration_keys_save_error());
   }
