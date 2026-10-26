@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getNaKind, type RatingLevel } from '../../../server/lib/report-utils';
+import { getNaKind, notInspectedReasonFor, type RatingLevel } from '../../../server/lib/report-utils';
 
 const levels: RatingLevel[] = [
   { id: 'ni', label: 'Not Inspected', abbreviation: 'NI', color: '#94a3b8', severity: 'minor', isDefect: false },
@@ -77,5 +77,23 @@ describe('getNaKind', () => {
       { id: 'x', label: 'Not Inspected', color: '#ccc', severity: 'minor', isDefect: false },
     ] as unknown as RatingLevel[];
     expect(getNaKind('x', noAbbr)).toBe('not_inspected');
+  });
+});
+
+// The editor records an NI reason as a limitation; the report reads it through
+// notInspectedReasonFor. Before it, a reason typed on the phone never printed.
+describe('notInspectedReasonFor', () => {
+  it('prints the included limitations, template first, then custom', () => {
+    expect(notInspectedReasonFor(null,
+      [{ title: 'Roof too steep', included: true }, { title: 'Excluded', included: false }],
+      [{ title: 'Locked', comment: '', included: true }, { title: 'Snow', comment: 'six inches' }, { title: 'Off', included: false }],
+    )).toBe('Roof too steep; Locked; Snow: six inches');
+  });
+  it('an explicit reason wins', () => {
+    expect(notInspectedReasonFor(' Padlocked ', [], [{ title: 'Locked', included: true }])).toBe('Padlocked');
+  });
+  it('is null when nothing was recorded', () => {
+    expect(notInspectedReasonFor(null, [], undefined)).toBeNull();
+    expect(notInspectedReasonFor('  ', [{ title: 'x', included: false }], [])).toBeNull();
   });
 });

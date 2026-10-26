@@ -270,5 +270,8 @@
   "editor_settings_sync_mode_wifi": "Only on wi-fi (asks if this device cannot tell)",
   "editor_mobile_sync_held": "{count} waiting · tap to sync",
   "editor_sync_held_toast": "{count} photos are waiting to upload.",
-  "editor_sync_held_toast_action": "Sync now"
+  "editor_sync_held_toast_action": "Sync now",
+  "editor_ni_reason_title": "Why wasn't {label} inspected?",
+  "editor_ni_reason_needed": "Not inspected needs a reason",
+  "editor_ni_reason_add": "Add reason"
 }

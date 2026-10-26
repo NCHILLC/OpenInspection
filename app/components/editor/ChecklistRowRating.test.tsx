@@ -19,13 +19,17 @@ const LEVELS = [
 ];
 const ITEMS = [{ id: "a", label: "Chimney" }, { id: "b", label: "Gutters" }];
 
-function setup(ratings: Record<string, string>) {
+function setup(ratings: Record<string, string>, levels = LEVELS, limitations: Record<string, unknown[]> = {}) {
     const setRating = vi.fn();
-    const findings = { getResult: (id: string) => (ratings[id] ? { rating: ratings[id] } : {}), setRating };
-    const footer = checklistRowRating("s1", ITEMS, LEVELS, findings as never);
-    render(<>{footer("a")}{footer("b")}</>);
-    return setRating;
+    const addCustomLimitation = vi.fn();
+    const getResult = (id: string) => ({ ...(ratings[id] ? { rating: ratings[id] } : {}), customComments: { limitations: limitations[id] ?? [] } });
+    const findings = { getResult, setRating, addCustomLimitation };
+    const footer = checklistRowRating("s1", ITEMS, levels, findings as never);
+    const view = render(<>{footer("a")}{footer("b")}</>);
+    return Object.assign(setRating, { addCustomLimitation, view });
 }
+
+const NI_LEVELS = [...LEVELS, { id: "NI", label: "Not Inspected", abbreviation: "NI", severity: "minor", isDefect: false }];
 
 beforeEach(() => { toasts.length = 0; });
 
@@ -59,5 +63,27 @@ describe("checklistRowRating", () => {
         fireEvent.click(screen.getByRole("radiogroup", { name: "Rate Chimney" }).querySelectorAll('[role="radio"]')[0]);
         expect(setRating).not.toHaveBeenCalled();
         expect(toasts).toHaveLength(0);
+    });
+
+    it("a Not Inspected tap opens the reason sheet; a chip records the reason and closes it", () => {
+        const { addCustomLimitation } = setup({}, NI_LEVELS);
+        fireEvent.click(screen.getByRole("radiogroup", { name: "Rate Chimney" }).querySelectorAll('[role="radio"]')[2]);
+        const sheet = screen.getByRole("dialog", { name: "Why wasn't Chimney inspected?" });
+        fireEvent.click(within(sheet).getAllByRole("button")[0]);
+        expect(addCustomLimitation).toHaveBeenCalledWith("s1", "a", expect.objectContaining({ included: true }));
+        expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("an NI row without a reason keeps the prompt; one with a reason does not", () => {
+        setup({ a: "NI", b: "NI" }, NI_LEVELS, { b: [{ id: "x", title: "Locked", comment: "", included: true }] });
+        expect(screen.getAllByText("Not inspected needs a reason")).toHaveLength(1);
+        fireEvent.click(screen.getByText("Add reason"));
+        expect(screen.getByRole("dialog", { name: "Why wasn't Chimney inspected?" })).toBeTruthy();
+    });
+
+    it("rating anything else never asks for a reason", () => {
+        setup({}, NI_LEVELS);
+        fireEvent.click(screen.getByRole("radiogroup", { name: "Rate Chimney" }).querySelectorAll('[role="radio"]')[1]);
+        expect(screen.queryByRole("dialog")).toBeNull();
     });
 });
