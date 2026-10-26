@@ -14,6 +14,9 @@ import { useSessionContext, useChromeDateTimeFormat, useDisplayTimeZone } from "
  */
 export type PublishExtras = Record<string, string>;
 
+/** Whether the publish put the report link on the ISN order; null when ISN does not apply. */
+export type IsnSync = { ok: boolean; isnReportId?: string; error?: string };
+
 export interface PublishModalProps {
  open: boolean;
  progress: { rated: number; total: number; pct: number };
@@ -55,9 +58,14 @@ export interface PublishModalProps {
  autoSign: boolean;
  /** Handler for the auto-sign checkbox. */
  onAutoSignToggle: (checked: boolean) => void;
+ /** The last publish's ISN step (`isnSync` on the publish response). */
+ isnSync?: IsnSync | null;
+ /** "Send to ISN again": the ISN step alone, without republishing. */
+ onIsnRetry?: () => void;
+ isnRetrying?: boolean;
 }
 
-export function PublishModal({ open, progress, status, publishError, isSubmitting, onClose, onPublish, autoSign, onAutoSignToggle, isAmendment }: PublishModalProps) {
+export function PublishModal({ open, progress, status, publishError, isSubmitting, onClose, onPublish, autoSign, onAutoSignToggle, isAmendment, isnSync: isn = null, onIsnRetry, isnRetrying = false }: PublishModalProps) {
  // The order lifecycle does not gate publishing (report and order axes are
  // independent). When the on-site work is not yet marked complete, offer an
  // advisory choice — do both, or just publish — but never block.
@@ -252,6 +260,11 @@ export function PublishModal({ open, progress, status, publishError, isSubmittin
    {m.report_publish_receipt_goto()}
    </a>
   )}
+  {isn && !isn.ok && onIsnRetry && (
+   <Button variant="secondary" disabled={isnRetrying} onClick={onIsnRetry}>
+   {m.report_publish_receipt_isn_retry()}
+   </Button>
+  )}
   </>
  }
  >
@@ -260,6 +273,11 @@ export function PublishModal({ open, progress, status, publishError, isSubmittin
      receipt have to agree word for word, or one of the two is where the reader
      learns something new at the wrong moment. */}
  <p className="mt-2 text-[13px] text-ih-fg-3">{m.report_publish_body_delivery()}</p>
+ {isn && (
+  <Banner tone={isn.ok ? "success" : "danger"} className="mt-3 text-[13px]">
+  {isn.ok ? m.report_publish_receipt_isn_ok() : m.report_publish_receipt_isn_failed({ error: isn.error ?? "" })}
+  </Banner>
+ )}
  </Modal>
  </>
  );

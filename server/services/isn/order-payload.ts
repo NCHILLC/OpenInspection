@@ -97,9 +97,13 @@ export function personFromIsn(p: Order | undefined): { name: string; email?: str
  */
 export function isnReadyCheck(payload: Order, lineNames: string[], unmatchedInspectors: number | null) {
     const onInspection = new Set(lineNames.map((n) => n.trim().toLowerCase()));
+    const f = orderFacts(payload);
     return {
-        unmatchedServices: orderFacts(payload).serviceNames.filter((n) => !onInspection.has(n.toLowerCase())),
+        unmatchedServices: f.serviceNames.filter((n) => !onInspection.has(n.toLowerCase())),
         unmatchedInspectors: unmatchedInspectors ?? 0,
+        // S3 conflict: a cancel OI did not follow because the report has writing
+        // (order-apply.ts cancelIfUntouched). The list shows it when the row is not cancelled.
+        canceledInIsn: f.canceled,
     };
 }
 

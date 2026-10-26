@@ -86,8 +86,11 @@ describe('orderFacts', () => {
 describe('isnReadyCheck', () => {
     it('names the order services missing from the inspection, by name, ignoring case', () => {
         expect(isnReadyCheck(ORDER, ['essential residential - full structural and mechanical inspection '], 1))
-            .toEqual({ unmatchedServices: ['FlexFund'], unmatchedInspectors: 1 });
-        expect(isnReadyCheck({ ...ORDER, services: [] }, [], null)).toEqual({ unmatchedServices: [], unmatchedInspectors: 0 });
+            .toEqual({ unmatchedServices: ['FlexFund'], unmatchedInspectors: 1, canceledInIsn: false });
+        expect(isnReadyCheck({ ...ORDER, services: [] }, [], null)).toEqual({ unmatchedServices: [], unmatchedInspectors: 0, canceledInIsn: false });
+    });
+    it('flags an order cancelled in ISN (the S3 conflict when OI kept the inspection)', () => {
+        expect(isnReadyCheck({ ...ORDER, canceled: 'yes' }, [], null).canceledInIsn).toBe(true);
     });
 });
 
@@ -117,7 +120,7 @@ describe('applyIsnOrder', () => {
     it('the list ready check names the service and counts the inspector that did not match', async () => {
         const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER }))!;
         const checks = await isnReadyChecks(db as never, TENANT);
-        expect([...checks.entries()]).toEqual([[id, { unmatchedServices: ['FlexFund'], unmatchedInspectors: 1 }]]);
+        expect([...checks.entries()]).toEqual([[id, { unmatchedServices: ['FlexFund'], unmatchedInspectors: 1, canceledInIsn: false }]]);
     });
 
     it('a second delivery updates the same inspection: ISN wins on time, and a cancel cancels an untouched report', async () => {

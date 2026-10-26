@@ -21,7 +21,7 @@ export interface Inspection {
   tagIds?: string[];
   defectStats?: { safety: number; recommendation: number; maintenance: number };
   /** Set when the inspection came from an ISN order: what of the order did not match OI. */
-  isn?: { unmatchedServices: string[]; unmatchedInspectors: number } | null;
+  isn?: { unmatchedServices: string[]; unmatchedInspectors: number; canceledInIsn?: boolean } | null;
 }
 
 export interface Tag {

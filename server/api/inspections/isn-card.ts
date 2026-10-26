@@ -3,6 +3,10 @@
  * ISN order this inspection came from, or null when it came from nowhere.
  * Staff only: the payload carries the property's gate/lockbox code, which is
  * why it lives in `isn_orders` and not on the inspection row.
+ *
+ * POST /api/inspections/:id/isn/report-link — sends the published report's link
+ * to ISN again, the retry for a publish whose ISN step failed. Republishing is
+ * not a retry: it makes a new version and fires the delivery automations.
  */
 import { createRoute, z } from '@hono/zod-openapi';
 import { and, eq } from 'drizzle-orm';
@@ -10,7 +14,9 @@ import { createApiRouter } from '../../lib/openapi-router';
 import { requireRole } from '../../lib/middleware/rbac';
 import { withMcpMetadata } from '../../lib/route-metadata-standards';
 import { getDrizzle } from '../../lib/route-helpers';
-import { isnOrders } from '../../lib/db/schema';
+import { isnOrders, reports } from '../../lib/db/schema';
+import { Errors } from '../../lib/errors';
+import { requireCapability } from '../../lib/middleware/require-capability';
 import { isnCardFields } from '../../services/isn/order-payload';
 import { safeTimestamp } from '../../lib/date';
 
@@ -45,6 +51,26 @@ const isnCardRoute = createRoute(withMcpMetadata({
     operationId: 'getInspectionIsnCard',
 }, { scopes: ['read'], tier: 'extended' }));
 
+const reportLinkRoute = createRoute(withMcpMetadata({
+    method: 'post',
+    path: '/{id}/isn/report-link',
+    tags: ['inspections'],
+    summary: "Send the published report's link to its ISN order again",
+    description: "Retries the step publishing runs last: adds the inspection's published report link to the ISN order named in its Reference Number and reads it back. For a publish whose ISN step failed (for example a mistyped order number or a missing client email, fixed since). Does not republish, so no new version and no delivery automations. Returns null when ISN is not configured or the inspection has no Reference Number; 409 when the report is not published.",
+    middleware: [requireRole('owner', 'manager', 'inspector'), requireCapability('publish')] as const,
+    request: { params: z.object({ id: z.string().min(1).describe('Inspection identifier.') }) },
+    responses: {
+        200: {
+            content: { 'application/json': { schema: z.object({ success: z.literal(true), data: z.object({
+                ok: z.boolean(), isnReportId: z.string().optional(), error: z.string().optional(),
+            }).nullable() }) } },
+            description: 'Outcome of the ISN step (ok false carries the reason), or null when ISN does not apply',
+        },
+        409: { description: 'The report is not published' },
+    },
+    operationId: 'retryInspectionIsnReportLink',
+}, { scopes: ['write'], tier: 'extended', capability: 'publish' }));
+
 const isnCardRoutes = createApiRouter()
     .openapi(isnCardRoute, async (c) => {
         const { id } = c.req.valid('param');
@@ -54,6 +80,15 @@ const isnCardRoutes = createApiRouter()
             .get();
         const data = row ? { ...isnCardFields(row.payload), fetchedAt: safeTimestamp(row.fetchedAt) } : null;
         return c.json({ success: true as const, data }, 200);
+    })
+    .openapi(reportLinkRoute, async (c) => {
+        const { id } = c.req.valid('param');
+        const tenantId = c.get('tenantId');
+        const published = await getDrizzle(c).select({ id: reports.id }).from(reports)
+            .where(and(eq(reports.tenantId, tenantId), eq(reports.inspectionId, id), eq(reports.kind, 'primary'), eq(reports.status, 'published')))
+            .get();
+        if (!published) throw Errors.Conflict('Publish the report before sending it to ISN');
+        return c.json({ success: true as const, data: await (await import('../../services/isn/report-link-sync')).syncPublishedReportToIsn(c, tenantId, id) }, 200);
     });
 
 export default isnCardRoutes;

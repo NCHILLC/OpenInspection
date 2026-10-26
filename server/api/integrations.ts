@@ -7,13 +7,14 @@
  * `POST /api/integrations/stripe/test` — on-demand "Test connection" diagnostic.
  * `GET  /api/integrations/stripe/webhook-log` — recent delivery log (diagnostics).
  * `POST /api/integrations/email/validate` — validate stored BYO email provider creds.
+ * `POST /api/integrations/isn/pull` — "Pull ISN orders now": one batch of the hourly ISN reconcile.
  */
 import { createRoute, z } from '@hono/zod-openapi';
 import { createApiRouter } from '../lib/openapi-router';
 import { Errors } from '../lib/errors';
 import { withMcpMetadata } from '../lib/route-metadata-standards';
 import { requireRole } from '../lib/middleware/rbac';
-import { EmailValidateBodySchema, EmailValidateOkSchema } from '../lib/validations/integrations.schema';
+import { EmailValidateBodySchema, EmailValidateOkSchema, IsnPullBodySchema } from '../lib/validations/integrations.schema';
 import { resolveEmailProvider } from '../lib/email/resolve-provider';
 import { logger } from '../lib/logger';
 import { recordIntegrationTest, listIntegrationTestResults, type IntegrationTarget } from '../lib/integration-test-results';
@@ -162,9 +163,40 @@ const testResultsRoute = createRoute(withMcpMetadata({
     description: 'Returns the retained "Test connection" history for the active tenant (≤5 per integration, newest first). Backs the persisted "Last tested …" status shown next to each Test connection button.',
 }, { scopes: ['read'], tier: 'extended' }));
 
+// ─── POST /isn/pull ───────────────────────────────────────────────────────────
+
+const isnPullRoute = createRoute(withMcpMetadata({
+    method: 'post',
+    path: '/isn/pull',
+    tags: ['integrations'],
+    summary: 'Pull ISN orders now',
+    middleware: [requireRole('owner', 'manager')],
+    request: { body: { content: { 'application/json': { schema: IsnPullBodySchema } } } },
+    responses: {
+        200: { content: { 'application/json': { schema: z.object({ success: z.literal(true), data: z.object({
+            processed: z.number().describe('Orders pulled from ISN and applied in this batch.'),
+            nextCursor: z.string().nullable().describe('Pass back to pull the next batch; null when every due order is done.'),
+        }) }) } }, description: 'One batch pulled' },
+        503: { description: 'ISN keys or ISN_WEBHOOK_SECRET not set: ISN intake is off' },
+    },
+    operationId: 'pullIsnOrders',
+    description: "Runs one batch (5 orders) of the hourly ISN reconcile on demand: lists ISN's orders from yesterday forward and pulls every one OI is missing or holds an older copy of, creating or updating its inspection. Needs the ISN keys AND ISN_WEBHOOK_SECRET, the switch that turns ISN intake on (keys alone only send report links). Call again with `nextCursor` until it is null.",
+}, { scopes: ['admin'], tier: 'extended' }));
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 const integrationsRoutes = createApiRouter()
+    .openapi(isnPullRoute, async (c) => {
+        const tenantId = c.get('tenantId');
+        if (!tenantId) throw Errors.Unauthorized('Missing tenant scope');
+        const { isnConfig } = await import('../services/isn/api-base');
+        const cfg = isnConfig(c.env);
+        // Same switch as the cron (cron/jobs/integrations.ts): keys alone must not create inspections.
+        if (!cfg || !c.env.ISN_WEBHOOK_SECRET?.trim()) throw Errors.ServiceUnavailable('ISN intake is off: set the ISN keys and ISN_WEBHOOK_SECRET first');
+        const { reconcileIsnOrders } = await import('../services/isn/order-reconcile');
+        const data = await reconcileIsnOrders(c.env.DB, tenantId, cfg, c.req.valid('json').cursor ?? null, 5);
+        return c.json({ success: true as const, data }, 200);
+    })
     .openapi(statusRoute, async (c) => {
         const tenantId = c.get('tenantId');
         if (!tenantId) throw Errors.Unauthorized('Missing tenant scope');

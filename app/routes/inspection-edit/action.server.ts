@@ -6,6 +6,8 @@ import { unwrapResultsResponse } from "~/lib/results";
 import { mapPool } from "~/lib/map-pool";
 import { handleStatutoryIntent } from "./action-statutory.server";
 import { handleFollowupIntent } from "./action-followup.server";
+import { handleIsnIntent } from "./action-isn.server";
+import type { IsnSync } from "~/components/editor/PublishModal";
 
 export async function action({ request, params, context }: Route.ActionArgs) {
  const token = await requireToken(context, request);
@@ -30,6 +32,7 @@ export async function action({ request, params, context }: Route.ActionArgs) {
  // #119 — a re-inspection's follow-up verdict; see action-followup.server.ts.
  const followup = await handleFollowupIntent(String(intent ?? ""), formData, api, params.id);
  if (followup) return followup;
+ const isn = await handleIsnIntent(String(intent ?? ""), api, params.id); if (isn) return isn;
 
  if (intent === "complete") {
  // Advisory order-lifecycle move; decoupled from publishing, never a gate.
@@ -72,7 +75,8 @@ export async function action({ request, params, context }: Route.ActionArgs) {
  }
  return { ok: false as const, intent: "publish", error: message };
  }
- return { ok: true as const, intent: "publish" };
+ const published = (await res.json().catch(() => null)) as { data?: { isnSync?: IsnSync | null } } | null; // shown on the receipt
+ return { ok: true as const, intent: "publish", isnSync: published?.data?.isnSync ?? null };
  }
 
  // B-22 follow-up (C-12 class): the settings sheet's "Save changes" used to

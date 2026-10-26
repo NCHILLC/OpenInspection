@@ -311,6 +311,9 @@
   "report_publish_body_delivery": "No envía el informe por sí mismo. Los avisos del informe se ponen en cola según sus automatizaciones y salen en la próxima tanda de envíos — para que el informe llegue ahora a la bandeja de alguien, use Enviar informe en la página de la inspección.",
   "report_publish_receipt_title": "Informe publicado",
   "report_publish_receipt_nothing_sent": "El informe es definitivo y se registró una nueva versión. Este paso no envió ningún correo.",
+  "report_publish_receipt_isn_ok": "El enlace del informe se agregó a la orden de ISN.",
+  "report_publish_receipt_isn_failed": "El enlace del informe no llegó a ISN: {error}",
+  "report_publish_receipt_isn_retry": "Enviar a ISN de nuevo",
   "report_publish_receipt_goto": "Ir a la inspección",
   "report_publish_checking": "Comprobando…"
 }

@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // branching — which endpoints it calls, in what order, for a given intent.
 const completePost = vi.fn();
 const publishPost = vi.fn();
+const isnReportLinkPost = vi.fn();
 const inspectionPatch = vi.fn();
 /** Call order across endpoints — the whole point of the auto-sign specs. */
 const calls: string[] = [];
@@ -19,6 +20,7 @@ vi.mock('~/lib/api-client.server', () => ({
             ':id': {
                 complete: { $post: completePost },
                 publish: { $post: publishPost },
+                isn: { 'report-link': { $post: isnReportLinkPost } },
                 $patch: inspectionPatch,
             },
         },
@@ -59,6 +61,19 @@ describe('editor action — order-lifecycle intents (IA-30 Task 4)', () => {
         expect(publishPost).toHaveBeenCalledTimes(1);
         expect(completePost).not.toHaveBeenCalled();
         expect(res).toMatchObject({ ok: true, intent: 'publish' });
+    });
+
+    it('intent=publish carries the publish response isnSync to the receipt', async () => {
+        publishPost.mockResolvedValue(Response.json({ success: true, data: { isnSync: { ok: false, error: 'no client email' } } }));
+        expect(await post({ intent: 'publish' })).toMatchObject({ ok: true, isnSync: { ok: false, error: 'no client email' } });
+    });
+
+    it('intent=isn-report-link retries the ISN step without republishing', async () => {
+        isnReportLinkPost.mockResolvedValue(Response.json({ success: true, data: { ok: true, isnReportId: 'r1' } }));
+        expect(await post({ intent: 'isn-report-link' })).toMatchObject({ ok: true, isnSync: { ok: true, isnReportId: 'r1' } });
+        expect(publishPost).not.toHaveBeenCalled();
+        isnReportLinkPost.mockResolvedValue(Response.json({ error: { message: 'Publish the report before sending it to ISN' } }, { status: 409 }));
+        expect(await post({ intent: 'isn-report-link' })).toMatchObject({ ok: false, isnSync: { ok: false, error: 'Publish the report before sending it to ISN' } });
     });
 
     it('intent=publish with markComplete fires complete first, then publishes', async () => {

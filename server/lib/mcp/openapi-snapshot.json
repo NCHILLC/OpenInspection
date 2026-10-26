@@ -16848,6 +16848,32 @@
     "description": "Auto-generated placeholder for publishInspection (POST /{id}/publish, inspections domain). TODO: replace with a real description sourced from the handler."
   },
   {
+    "operationId": "pullIsnOrders",
+    "method": "POST",
+    "pathTemplate": "/api/integrations/isn/pull",
+    "scopes": [
+      "admin"
+    ],
+    "tag": "integrations",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200,
+            "description": "`nextCursor` from the previous batch; omit to start from the first order."
+          }
+        }
+      }
+    },
+    "summary": "Pull ISN orders now",
+    "description": "Runs one batch (5 orders) of the hourly ISN reconcile on demand: lists ISN's orders from yesterday forward and pulls every one OI is missing or holds an older copy of, creating or updating its inspection. Needs the ISN keys AND ISN_WEBHOOK_SECRET, the switch that turns ISN intake on (keys alone only send report links). Call again with `nextCursor` until it is null."
+  },
+  {
     "operationId": "putInspectorServiceOrigin",
     "method": "PUT",
     "pathTemplate": "/api/admin/booking-routing/service-origin",
@@ -18087,6 +18113,34 @@
     },
     "summary": "Resume managed SMS compliance provisioning from the first missing step",
     "description": "Idempotent re-run of the managed provisioning chain (waitUntil background). Skips any step whose SID is already persisted, resuming from the first missing step. SaaS-only; requires TWILIO_ACCOUNT_SID / TWILIO_API_KEY_SID / TWILIO_API_KEY_SECRET env vars."
+  },
+  {
+    "operationId": "retryInspectionIsnReportLink",
+    "method": "POST",
+    "pathTemplate": "/api/inspections/{id}/isn/report-link",
+    "scopes": [
+      "write"
+    ],
+    "tag": "inspections",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Inspection identifier.",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Inspection identifier."
+          }
+        }
+      ],
+      "body": null
+    },
+    "summary": "Send the published report's link to its ISN order again",
+    "description": "Retries the step publishing runs last: adds the inspection's published report link to the ISN order named in its Reference Number and reads it back. For a publish whose ISN step failed (for example a mistyped order number or a missing client email, fixed since). Does not republish, so no new version and no delivery automations. Returns null when ISN is not configured or the inspection has no Reference Number; 409 when the report is not published."
   },
   {
     "operationId": "returnReport",

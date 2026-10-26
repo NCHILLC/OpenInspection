@@ -696,5 +696,11 @@
   "settings_isn_keys_hint": "In ISN: Settings → My Access Keys. The keys carry the full permissions of the ISN user who owns them.",
   "settings_isn_access_key_label": "Access key",
   "settings_isn_secret_key_label": "Secret access key",
+  "settings_isn_pull_desc": "Orders arrive from ISN on their own once ISN intake is on. Pull now to fetch any that are missing, five at a time.",
+  "settings_isn_pull_button": "Pull ISN orders now",
+  "settings_isn_pull_pulling": "Pulling…",
+  "settings_isn_pull_done": "Pulled {count} orders. Every order is up to date.",
+  "settings_isn_pull_more": "Pulled {count} orders. More are waiting: press again.",
+  "settings_isn_pull_error": "Could not pull ISN orders. ISN intake needs the ISN keys and the webhook secret.",
   "settings_isn_save_error": "Could not save the ISN settings."
 }

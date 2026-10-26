@@ -311,6 +311,9 @@
   "report_publish_body_delivery": "It does not send the report itself. Report notices are queued to your automations and go out on the next delivery pass — to put the report in someone's inbox now, use Send report on the inspection page.",
   "report_publish_receipt_title": "Report published",
   "report_publish_receipt_nothing_sent": "The report is final and a new version is recorded. Nothing has been emailed by this step.",
+  "report_publish_receipt_isn_ok": "The report link was added to the ISN order.",
+  "report_publish_receipt_isn_failed": "The report link did not reach ISN: {error}",
+  "report_publish_receipt_isn_retry": "Send to ISN again",
   "report_publish_receipt_goto": "Go to the inspection",
   "report_publish_checking": "Checking…"
 }
