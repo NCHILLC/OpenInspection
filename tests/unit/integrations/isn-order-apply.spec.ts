@@ -117,6 +117,12 @@ describe('applyIsnOrder', () => {
             .toMatchObject({ inspectionId: id, unmatchedInspectors: 1 });
     });
 
+    it('does not hold the report for payment or an agreement, whatever the company blocks by default', async () => {
+        await db.insert(schema.tenantConfigs).values({ tenantId: TENANT, blockUnpaid: true, blockUnsignedAgreement: true, updatedAt: new Date() } as never);
+        const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER }))!;
+        expect(inspectionRow(id)).toMatchObject({ paymentRequired: false, agreementRequired: false });
+    });
+
     it('the list ready check names the service and counts the inspector that did not match', async () => {
         const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER }))!;
         const checks = await isnReadyChecks(db as never, TENANT);
