@@ -16,11 +16,8 @@ import {
 import type { CustomDefect, CustomDefectCategory } from "../../lib/custom-defects";
 import type { DefectTrade } from "../../lib/defect-fields";
 import type { ExtraTab } from "./PhoneItemParts";
+import { PhoneDefectSearch } from "./PhoneDefectSearch";
 import { m } from "~/paraglide/messages";
-
-/* ------------------------------------------------------------------ */
-/* Canned comment types */
-/* ------------------------------------------------------------------ */
 
 /* These three moved down to editor-shared so `item-tab-projections` can read a
    template's entries without editor-shared importing upward out of its layer.
@@ -129,9 +126,12 @@ export interface CannedCommentTabsProps {
   onDetachRepairItem?: (recommendationId: string) => void;
   /** Phone only (see PhoneItemParts): a tab after the canned ones whose panel replaces the list. */
   extraTab?: ExtraTab;
+  /** Phone only: the item's name; set, the Defects search opens full screen (PhoneDefectSearch). */
+  phoneItemLabel?: string;
 }
 
-export function CannedCommentTabs({
+export function CannedCommentTabs(props: CannedCommentTabsProps) {
+  const {
   visibleTabs,
   activeTab,
   onChangeTab,
@@ -180,8 +180,8 @@ export function CannedCommentTabs({
   onSubmitCustomDefect,
   attachedRepairItems,
   onAttachRepairItem,
-  onDetachRepairItem, extraTab,
-}: CannedCommentTabsProps) {
+  onDetachRepairItem, extraTab, phoneItemLabel,
+  } = props;
   // Which row's inline text-edit textarea is open — one at a time, tab-agnostic.
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
@@ -193,7 +193,7 @@ export function CannedCommentTabs({
       </div>
       {extraTab?.active ? extraTab.panel : (<>
       {/* B-20 — searchable defect library */}
-      {activeTab === "defects" && rawTabEntries.length > 0 && (
+      {activeTab === "defects" && (phoneItemLabel !== undefined ? <PhoneDefectSearch {...props} itemLabel={phoneItemLabel} /> : rawTabEntries.length > 0 && (
         <input
           value={defectQuery}
           onChange={(e) => onDefectQueryChange(e.target.value)}
@@ -201,7 +201,7 @@ export function CannedCommentTabs({
           aria-label={m.editor_canned_search_aria()}
           className="w-full h-9 px-3 mb-2 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] focus:shadow-ih-focus focus:border-ih-primary outline-none placeholder:text-ih-fg-4"
         />
-      )}
+      ))}
 
       {/* Tab content: list of canned comments with toggles */}
       <div className="space-y-1.5">

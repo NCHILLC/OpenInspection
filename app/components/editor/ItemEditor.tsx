@@ -578,6 +578,7 @@ export function ItemEditor({
  activeTab={activeTab}
  onChangeTab={(id) => { setNotesTab(false); setActiveTab(id); }}
  extraTab={isPhone ? { id: "notes", label: m.editor_item_tab_notes(), active: notesTab, onSelect: () => setNotesTab(true), panel: notesBlock } : undefined}
+ phoneItemLabel={isPhone ? item.label : undefined}
  rawTabEntries={rawTabEntries}
  currentTabEntries={currentTabEntries}
  includedSet={includedSet}
