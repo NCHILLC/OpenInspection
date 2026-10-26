@@ -42,6 +42,8 @@ import type { DefectTrade } from "../../lib/defect-fields";
 import { ItemHeading } from "./ItemHeading";
 import { FollowupPanel, hasCarriedBaseline } from "./FollowupPanel";
 import { FormField, type ItemOptions, type TemplateItem } from "../form/FormField";
+import { useIsMobile } from "../../hooks/useBreakpoint";
+import { phoneTabs, missingLocationCount, LocationNeededBar } from "./PhoneItemParts";
 import { m } from "~/paraglide/messages";
 
 export type { LibraryMatch };
@@ -211,6 +213,9 @@ export function ItemEditor({
  // IA-85 — "" means the inspector picked no trade; the defect is written without the key.
  const [customTrade, setCustomTrade] = useState<DefectTrade | "">("");
  const [saveToLibrary, setSaveToLibrary] = useState(false);
+ // Phone only: Notes is a fourth tab there (canvas S05); on desktop the field stays under the tabs.
+ const isPhone = useIsMobile();
+ const [notesTab, setNotesTab] = useState(false);
 
  // Task 4 — inline comment typeahead on the notes textarea (Tier 1 item.tabs).
  const notesRef = useRef<HTMLTextAreaElement | null>(null);
@@ -329,9 +334,7 @@ export function ItemEditor({
  setCustomFormOpen(false);
  };
 
- // Visible canned tabs (only tabs with entries). A plain derivation, NOT a
- // hook: it sits after the `if (!item) return null` early return, so a useMemo
- // here would be a conditional hook (rules-of-hooks). The 3-id map is cheap.
+ // Visible canned tabs (only those with entries). Not a useMemo: it sits after the early return (rules-of-hooks).
  const visibleTabs = CANNED_TAB_IDS
   .filter((id) => ((tabs[id] || []) as unknown[]).length > 0)
   .map((id) => ({ id, label: cannedTabLabel(id), count: getIncludedSet(tabs, result, id).size || undefined }));
@@ -339,8 +342,6 @@ export function ItemEditor({
  // Photo count is read in several places (badge, caption, empty-state copy).
  const photoCount = ((result.photos as unknown[]) || []).length;
  const queuedCount = queuedPreviews?.length ?? 0;
-
- // Photo-strip status line (uploading / empty / counts).
  let photoStatus: string;
  if (photoUploading) {
  photoStatus = m.editor_uploading();
@@ -352,8 +353,72 @@ export function ItemEditor({
  photoStatus = `${base}${queuedSuffix}`;
  }
 
+ // Notes field. The "Recommended comments" trigger lives in the header
+ // ABOVE the textarea, never floated inside it — see NotesFieldHeader.
+ const notesBlock = (
+ <div>
+ <NotesFieldHeader
+  fieldId="notes-textarea"
+  charCount={((result.notes as string) || "").length}
+  canInsertCanned={taEntries.length > 0}
+  suggestionsOpen={taOpen}
+  onOpenSuggestions={() => { setTaQuery(""); setTaOpen(true); notesRef.current?.focus(); }}
+  notesValue={(result.notes as string) || ""}
+  onNotesChange={onNotes}
+  notesRef={notesRef}
+ />
+ <div className="relative">
+ <textarea
+  id="notes-textarea"
+  ref={notesRef}
+  value={(result.notes as string) || ""}
+  onChange={(e) => {
+   onNotes(e.target.value);
+   const frag = fragmentBeforeCaret(e.target.value, e.target.selectionStart ?? 0);
+   setTaQuery(frag);
+   setTaOpen(frag.trim().length >= 2);
+  }}
+  onBlur={(e) => { onNotesBlur(e.target.value); setTaOpen(false); }}
+  onKeyDown={(e) => {
+   if (taOpen && ta.matches.length > 0) {
+    if (e.key === "ArrowDown") { e.preventDefault(); ta.move(1); return; }
+    if (e.key === "ArrowUp") { e.preventDefault(); ta.move(-1); return; }
+    if (e.key === "Enter" || e.key === "Tab") {
+     const pick = ta.current(); if (pick) { e.preventDefault(); insertPick(pick.comment); return; }
+    }
+    if (e.key === "Escape") { e.preventDefault(); setTaOpen(false); return; }
+   }
+   if (
+    e.key === '/' &&
+    !e.nativeEvent.isComposing &&
+    shouldTriggerSlash(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)
+   ) {
+    e.preventDefault();
+    onOpenSnippets?.();
+   }
+  }}
+  placeholder={m.editor_item_notes_placeholder()}
+  className="w-full h-28 px-3 py-2 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
+ />
+ <CommentTypeahead
+  entries={taEntries}
+  matches={ta.matches}
+  query={taQuery}
+  open={taOpen}
+  selectedIndex={ta.selectedIndex}
+  onHoverIndex={ta.setSelectedIndex}
+  onPick={insertPick}
+  onClose={() => setTaOpen(false)}
+ />
+ </div>
+ {/* AI "Improve wording" panel unmounted at the operator's request; AiAssistPanel stays
+     intact and specced, so restoring the mount here is the whole job. */}
+ {tagChipRow}
+ </div>
+ );
+
  return (
- <div className="max-w-2xl space-y-6">
+ <div className="max-w-2xl space-y-6 max-md:flex max-md:flex-col max-md:space-y-0 max-md:gap-4">
  <ItemHeading sectionTitle={sectionTitle} label={item.label} description={item.description} />
 
  {/* #119 — carried items only. Gated here, not inside: see hasCarriedBaseline. */}
@@ -379,27 +444,25 @@ export function ItemEditor({
  </div>
  )}
 
- {/* Rating buttons (C-14a). Below `md`, pinned above MobileDrillShell's nav
- (field eval P1 — top-third forced a regrip); `mb-0` cancels a `space-y-6` margin that still applies once `fixed`. */}
+ {/* Rating buttons (C-14a). Below `md`, pinned above MobileDrillShell's nav (field eval P1); `mb-0` cancels space-y-6 once `fixed`. */}
  {item.type === "rich" && (
  <div className="flex items-start gap-3 max-md:fixed max-md:inset-x-0 max-md:bottom-18 max-md:z-30 max-md:h-14 max-md:items-center max-md:gap-2 max-md:bg-ih-bg-card max-md:border-t max-md:border-ih-border max-md:px-3 max-md:pr-20 max-md:mb-0">
  <div className="flex-1 min-w-0">
   <RatingButtonRow levels={levels} activeLevel={activeLevel} onRating={onRating} />
  </div>
- {/* Beside the radiogroup, never inside it — the rating says what was DONE
-     with the item, this says whether anything is WRONG with it, and both
-     can be true at once. See FindingsIndicator. */}
+ {/* Beside the radiogroup, never inside it: rating = what was DONE, this = whether anything is WRONG. See FindingsIndicator. */}
  <FindingsIndicator
    active={hasIncludedFindings(tabs, result)}
    onActivate={() => {
     // Findings imply inspection — see ratingForFindingsActivation.
     const next = ratingForFindingsActivation(activeLevel, levels);
     if (next) onRating(next);
-    setActiveTab("defects");
+    setActiveTab("defects"); setNotesTab(false);
    }}
   />
  </div>
  )}
+ <LocationNeededBar count={hasTabs ? missingLocationCount(tabs, result, defectStates, !!requiredDefectFields?.location, missingFields) : 0} />
  {/* The reason for a Not Inspected answer, under the answer that demands it —
      not behind a tab, which on a phone is where reasons go to die. Stays put
      once recorded, so a later rating change cannot strand one. */}
@@ -452,8 +515,8 @@ export function ItemEditor({
  </div>
  )}
 
- {/* Photo strip with count badge */}
- <div>
+ {/* Photo strip with count badge; first on the phone, straight under the app bar (canvas S05). */}
+ <div className="max-md:order-first">
  <div className="flex items-center justify-between mb-1">
  <label className="text-[14px] font-bold uppercase tracking-wide text-ih-fg-3">
  {m.editor_item_photos_label()}
@@ -467,9 +530,7 @@ export function ItemEditor({
  </span>
  )}
  </div>
- {/* Task 8 — visible thumbnail strip (edited derivative as the face) +
- cover ring + add tile + tap-to-viewer + long-press reorder; Task 9 adds
- Drive-style multi-select bulk detach. Replaces the old bare Add button. */}
+ {/* Task 8/9 — thumbnails (edited derivative as face), cover ring, add tile, tap-to-viewer, long-press reorder, bulk detach. */}
  <ItemPhotoStrip
  inspectionId={inspectionId ?? ""}
  itemId={item.id}
@@ -513,9 +574,10 @@ export function ItemEditor({
  {/* Canned comments tabs */}
  {hasTabs && (
  <CannedCommentTabs
- visibleTabs={visibleTabs}
+ visibleTabs={isPhone ? phoneTabs(visibleTabs) : visibleTabs}
  activeTab={activeTab}
- onChangeTab={setActiveTab}
+ onChangeTab={(id) => { setNotesTab(false); setActiveTab(id); }}
+ extraTab={isPhone ? { id: "notes", label: m.editor_item_tab_notes(), active: notesTab, onSelect: () => setNotesTab(true), panel: notesBlock } : undefined}
  rawTabEntries={rawTabEntries}
  currentTabEntries={currentTabEntries}
  includedSet={includedSet}
@@ -576,70 +638,7 @@ export function ItemEditor({
  />
  )}
 
- {/* Notes field. The "Recommended comments" trigger lives in the header
-     ABOVE the textarea, never floated inside it — see NotesFieldHeader. */}
- <div>
- <NotesFieldHeader
-  fieldId="notes-textarea"
-  charCount={((result.notes as string) || "").length}
-  canInsertCanned={taEntries.length > 0}
-  suggestionsOpen={taOpen}
-  onOpenSuggestions={() => { setTaQuery(""); setTaOpen(true); notesRef.current?.focus(); }}
-  notesValue={(result.notes as string) || ""}
-  onNotesChange={onNotes}
-  notesRef={notesRef}
- />
- <div className="relative">
- <textarea
-  id="notes-textarea"
-  ref={notesRef}
-  value={(result.notes as string) || ""}
-  onChange={(e) => {
-   onNotes(e.target.value);
-   const frag = fragmentBeforeCaret(e.target.value, e.target.selectionStart ?? 0);
-   setTaQuery(frag);
-   setTaOpen(frag.trim().length >= 2);
-  }}
-  onBlur={(e) => { onNotesBlur(e.target.value); setTaOpen(false); }}
-  onKeyDown={(e) => {
-   if (taOpen && ta.matches.length > 0) {
-    if (e.key === "ArrowDown") { e.preventDefault(); ta.move(1); return; }
-    if (e.key === "ArrowUp") { e.preventDefault(); ta.move(-1); return; }
-    if (e.key === "Enter" || e.key === "Tab") {
-     const pick = ta.current(); if (pick) { e.preventDefault(); insertPick(pick.comment); return; }
-    }
-    if (e.key === "Escape") { e.preventDefault(); setTaOpen(false); return; }
-   }
-   if (
-    e.key === '/' &&
-    !e.nativeEvent.isComposing &&
-    shouldTriggerSlash(e.currentTarget.value, e.currentTarget.selectionStart ?? 0)
-   ) {
-    e.preventDefault();
-    onOpenSnippets?.();
-   }
-  }}
-  placeholder={m.editor_item_notes_placeholder()}
-  className="w-full h-28 px-3 py-2 rounded-lg border border-ih-border bg-ih-bg-card text-[16px] resize-none focus:shadow-ih-focus focus:border-ih-primary outline-none"
- />
- <CommentTypeahead
-  entries={taEntries}
-  matches={ta.matches}
-  query={taQuery}
-  open={taOpen}
-  selectedIndex={ta.selectedIndex}
-  onHoverIndex={ta.setSelectedIndex}
-  onPick={insertPick}
-  onClose={() => setTaOpen(false)}
- />
- </div>
- {/* The AI "Improve wording" panel was REMOVED from the notes field at the
-     operator's request — model-assisted prose is not wanted in this
-     deployment's report flow. `AiAssistPanel` and its review-evidence
-     invariants are left intact and still specced; only the mount is gone,
-     so restoring it here is the whole job if that decision changes. */}
- {tagChipRow}
- </div>
+ {(!isPhone || !hasTabs) && notesBlock}
  </div>
  );
 }

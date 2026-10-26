@@ -166,7 +166,13 @@ export function DefectFieldsRow({
                 rather than tenant-configured. */}
             <div className="col-span-12">
                 <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">
-                    {m.editor_defect_location_label()} {locationRequired && <span className="text-ih-bad-fg">*</span>}
+                    {m.editor_defect_location_label()} {locationRequired && <span className={`text-ih-bad-fg${value.location ? '' : ' max-md:hidden'}`}>*</span>}
+                    {/* Phone (canvas X3): the asterisk becomes a pill while the field is empty. */}
+                    {locationRequired && !value.location && (
+                        <span className="md:hidden ml-2 inline-flex h-6.5 items-center rounded-full border border-ih-watch/50 bg-ih-watch-bg px-2 text-[14px] normal-case tracking-normal text-ih-watch-fg">
+                            {m.editor_defect_location_needed()}
+                        </span>
+                    )}
                 </label>
                 <div className="flex gap-1.5 flex-wrap mb-1.5">
                     {STANDARD_LOCATION_IDS.map((id) => {

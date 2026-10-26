@@ -15,6 +15,7 @@ import {
 } from "../../lib/defect-fields";
 import type { CustomDefect, CustomDefectCategory } from "../../lib/custom-defects";
 import type { DefectTrade } from "../../lib/defect-fields";
+import type { ExtraTab } from "./PhoneItemParts";
 import { m } from "~/paraglide/messages";
 
 /* ------------------------------------------------------------------ */
@@ -126,6 +127,8 @@ export interface CannedCommentTabsProps {
   attachedRepairItems?: AttachedRepairItem[];
   onAttachRepairItem?: (snap: AttachedRepairItem) => void;
   onDetachRepairItem?: (recommendationId: string) => void;
+  /** Phone only (see PhoneItemParts): a tab after the canned ones whose panel replaces the list. */
+  extraTab?: ExtraTab;
 }
 
 export function CannedCommentTabs({
@@ -177,22 +180,18 @@ export function CannedCommentTabs({
   onSubmitCustomDefect,
   attachedRepairItems,
   onAttachRepairItem,
-  onDetachRepairItem,
+  onDetachRepairItem, extraTab,
 }: CannedCommentTabsProps) {
   // Which row's inline text-edit textarea is open — one at a time, tab-agnostic.
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
   return (
     <div>
-      {/* Tab strip (shared Design System component) */}
       <div className="mb-3">
-        <TabStrip
-          tabs={visibleTabs}
-          activeId={activeTab}
-          onChange={(id) => onChangeTab(id as CannedTabId)}
-        />
+        <TabStrip tabs={extraTab ? [...visibleTabs, extraTab] : visibleTabs} activeId={extraTab?.active ? extraTab.id : activeTab}
+          onChange={(id) => (id === extraTab?.id ? extraTab.onSelect() : onChangeTab(id as CannedTabId))} />
       </div>
-
+      {extraTab?.active ? extraTab.panel : (<>
       {/* B-20 — searchable defect library */}
       {activeTab === "defects" && rawTabEntries.length > 0 && (
         <input
@@ -457,6 +456,7 @@ export function CannedCommentTabs({
           />
         )}
       </div>
+      </>)}
     </div>
   );
 }
