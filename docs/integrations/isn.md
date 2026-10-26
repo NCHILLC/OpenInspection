@@ -61,8 +61,9 @@ coordinates or address). It is read-only: change these in ISN. Empty fields are
 not shown. Staff only (`GET /api/inspections/{id}/isn`); the access code never
 reaches the inspection row or the public report. Not shown yet: ISN's
 id-valued fields (escrow officer, insurance agent, refer reason, cost center,
-order type), order notes, attachments, and an "Open in ISN" link (the ISN order
-page's URL is not known).
+order type), order notes and attachments. **Open in ISN** links to the order's
+page in ISN (`/<company key>/order/view?pq=`, where `pq` is base64 of the
+zlib-compressed, PHP-serialized order number); it shows once the ISN keys are set.
 
 On the inspections list, **From ISN** (in the filter strip, shown once any
 inspection came from ISN) lists those inspections. A row whose order has a
