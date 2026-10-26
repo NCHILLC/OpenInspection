@@ -264,6 +264,18 @@ describe("PropertyInfoForm select commit", () => {
       county: null,
     });
   });
+
+  it("phone: a select is a radiogroup; picking commits it, tapping it again clears it", () => {
+    const onCommit = vi.fn();
+    const phone = renderPF(<PropertyInfoForm inspection={{ propertyType: "residential", foundationType: "slab" }} phone onCommit={onCommit} />);
+    expect(phone.container.querySelector("select")).toBeNull();
+    const slab = phone.getAllByRole("radio").find((b) => b.textContent === "slab")!;
+    expect(slab.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(slab);
+    expect((onCommit.mock.calls.at(-1)![0] as Record<string, unknown>).foundationType).toBeNull();
+    fireEvent.click(phone.getAllByRole("radio").find((b) => b.textContent === "crawlspace")!);
+    expect((onCommit.mock.calls.at(-1)![0] as Record<string, unknown>).foundationType).toBe("crawlspace");
+  });
 });
 
 // #200 — "Fetch property details" autofill button. Relays the address to the

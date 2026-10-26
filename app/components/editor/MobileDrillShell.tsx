@@ -16,6 +16,8 @@ export type MobileDrawerId = "preview" | "theme" | "actions" | "search";
 
 export interface MobileDrillShellProps {
     level: EditorNavLevel;
+    /** Inspection details is open: a screen above the URL's level (see the route's `activeView`). */
+    detailsOpen?: boolean;
     /** Drives the app bar's sync readout (queued-photo count for this job). */
     inspectionId: string;
     /** Live server connection, so the readout cannot say "Synced" while cut off. */
@@ -71,6 +73,7 @@ export interface MobileDrillShellProps {
  */
 export function MobileDrillShell({
     level,
+    detailsOpen,
     inspectionId,
     connection,
     inspectionTitle,
@@ -89,8 +92,9 @@ export function MobileDrillShell({
 }: MobileDrillShellProps) {
     // The bar always names the CURRENT screen, with the level above it as the
     // eyebrow — so "back" is legible before it is pressed.
-    const { eyebrow, title, backLabel } =
-        level === "item"
+    const { eyebrow, title, backLabel } = detailsOpen
+        ? { eyebrow: inspectionTitle, title: m.editor_shared_inspection_details(), backLabel: m.editor_details_back() }
+        : level === "item"
             ? { eyebrow: sectionTitle, title: itemLabel, backLabel: m.editor_mobile_back_to_items() }
             : level === "items"
                 ? { eyebrow: inspectionTitle, title: sectionTitle, backLabel: m.editor_mobile_back_to_sections() }

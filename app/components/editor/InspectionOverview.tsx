@@ -33,6 +33,7 @@ import { PropertyTypeControl } from "~/components/editor/PropertyTypeControl";
  */
 interface InspectionOverviewProps {
     inspection: ComponentProps<typeof PropertyInfoForm>["inspection"];
+    phone?: boolean;
     templateFields: ComponentProps<typeof PropertyInfoForm>["templateFields"];
     onSaveField: ComponentProps<typeof PropertyInfoForm>["onSave"];
     onCommitFacts: ComponentProps<typeof PropertyInfoForm>["onCommit"];
@@ -48,6 +49,7 @@ interface InspectionOverviewProps {
 
 export function InspectionOverview({
     inspection,
+    phone,
     templateFields,
     onSaveField,
     onCommitFacts,
@@ -68,6 +70,7 @@ export function InspectionOverview({
         <>
             <PropertyInfoForm
                 inspection={inspection}
+                phone={phone}
                 templateFields={templateFields}
                 onSave={onSaveField}
                 onCommit={onCommitFacts}

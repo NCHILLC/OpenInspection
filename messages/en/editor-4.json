@@ -201,5 +201,17 @@
   "editor_defectsearch_severity": "Severity",
   "editor_defectsearch_save_hint": "Shows up in defect search next time",
   "editor_defectsearch_back": "Back to results",
-  "editor_defectsearch_add_to_item": "Add to item"
+  "editor_defectsearch_add_to_item": "Add to item",
+  "editor_details_people": "People",
+  "editor_details_access": "Access",
+  "editor_details_call": "Call {name}",
+  "editor_details_text": "Text {name}",
+  "editor_details_no_people": "No client or agent on this inspection yet.",
+  "editor_details_access_code": "Access code",
+  "editor_details_show_code": "Show code",
+  "editor_details_vacant": "Vacant",
+  "editor_details_occupied": "Occupied",
+  "editor_details_utilities_on": "Utilities on",
+  "editor_details_utilities_off": "Utilities off",
+  "editor_details_back": "Back to the inspection"
 }

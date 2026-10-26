@@ -201,5 +201,17 @@
   "editor_defectsearch_severity": "Gravedad",
   "editor_defectsearch_save_hint": "Aparece en la búsqueda de defectos la próxima vez",
   "editor_defectsearch_back": "Volver a los resultados",
-  "editor_defectsearch_add_to_item": "Agregar al elemento"
+  "editor_defectsearch_add_to_item": "Agregar al elemento",
+  "editor_details_people": "Personas",
+  "editor_details_access": "Acceso",
+  "editor_details_call": "Llamar a {name}",
+  "editor_details_text": "Enviar mensaje a {name}",
+  "editor_details_no_people": "Esta inspección aún no tiene cliente ni agente.",
+  "editor_details_access_code": "Código de acceso",
+  "editor_details_show_code": "Mostrar código",
+  "editor_details_vacant": "Desocupada",
+  "editor_details_occupied": "Ocupada",
+  "editor_details_utilities_on": "Servicios conectados",
+  "editor_details_utilities_off": "Servicios desconectados",
+  "editor_details_back": "Volver a la inspección"
 }
