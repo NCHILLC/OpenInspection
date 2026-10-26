@@ -61,7 +61,7 @@ export function nextItemTarget(
 interface UnratedSection {
     id: string;
     title?: string;
-    items?: Array<{ id: string }>;
+    items?: Array<{ id: string; label?: string; name?: string }>;
 }
 
 /**
@@ -77,9 +77,12 @@ export function nextUnratedSection(
     sections: UnratedSection[],
     isRated: (sectionId: string, itemId: string) => boolean,
     fromSectionId: string | null,
-): { sectionId: string; label?: string } | null {
+): { sectionId: string; label?: string; itemLabel?: string } | null {
     const at = fromSectionId ? sections.findIndex((s) => s.id === fromSectionId) : -1;
     const order = at < 0 ? sections : [...sections.slice(at + 1), ...sections.slice(0, at)];
-    const hit = order.find((s) => (s.items ?? []).some((i) => !isRated(s.id, i.id)));
-    return hit ? { sectionId: hit.id, label: hit.title } : null;
+    for (const s of order) {
+        const item = (s.items ?? []).find((i) => !isRated(s.id, i.id));
+        if (item) return { sectionId: s.id, label: s.title, itemLabel: item.label || item.name };
+    }
+    return null;
 }

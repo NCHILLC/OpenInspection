@@ -27,6 +27,7 @@ import { bindResultMap } from "~/lib/collab/results-binding";
 import { VersionHistoryPanel } from "~/components/collab/VersionHistoryPanel";
 import type { ResultsProjection } from "../../server/lib/collab/results-doc.types";
 import { SectionRail } from "~/components/editor-shared/SectionRail";
+import { InspectionProgressCard } from "~/components/editor/InspectionProgressCard";
 import { EditorHeader } from "~/components/editor/EditorHeader";
 import { FullscreenToggle } from "~/components/editor/FullscreenToggle";
 import { ItemList } from "~/components/editor-shared/ItemList";
@@ -1854,7 +1855,11 @@ export default function InspectionEditPage() {
      is on, so testing the level first would keep showing that screen and the
      overview would be unreachable from a phone. The empty-template CTA still
      wins over both: an inspection with no sections has no details to show. */}
- {emptyTemplateEl ?? (state.activeView === "property" ? propertyOverviewEl : urlNav.level === "item" ? itemEditorEl : urlNav.level === "items" ? itemListEl : sectionRailEl)}
+ {emptyTemplateEl ?? (state.activeView === "property" ? propertyOverviewEl : urlNav.level === "item" ? itemEditorEl : urlNav.level === "items" ? itemListEl : <>
+  <InspectionProgressCard rated={state.progress.rated} total={state.progress.total} photos={inspectionPhotoCount}
+   findings={state.sections.reduce((n, sec) => n + state.sectionDefectCount(sec.id), 0)}
+   upNext={urlNav.nextItemLabel ? `${urlNav.nextLabel} › ${urlNav.nextItemLabel}` : urlNav.nextLabel} />
+  {sectionRailEl}</>)}
  </MobileDrillShell>
  );
  }

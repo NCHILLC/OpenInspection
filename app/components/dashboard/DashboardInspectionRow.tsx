@@ -42,6 +42,23 @@ export function DashboardInspectionRow({
   const cancelled = insp.status === INSPECTION_STATUS.CANCELLED;
   const showReportLink =
     reportView && tenantSlug && isReportPublished(insp.reportStatus);
+  const address = insp.address || insp.propertyAddress || m.dashboard_row_no_address();
+  const when = insp.date ? formatInspectionDateTime(insp.date, undefined, timeZone, { locale, ...shape }) : null;
+  const findings = insp.defectStats ? insp.defectStats.safety + insp.defectStats.recommendation + insp.defectStats.maintenance : 0;
+  // Shared by both layouts below: a warning only, it gates nothing.
+  const isnPills = insp.isn && (
+    <>
+      {(insp.isn.unmatchedServices.length > 0 || insp.isn.unmatchedInspectors > 0) && (
+        <span title={insp.isn.unmatchedServices.join(", ")}>
+          <Pill tone="warning">
+            {m.dashboard_row_isn_unmatched({ services: insp.isn.unmatchedServices.length, inspectors: insp.isn.unmatchedInspectors })}
+          </Pill>
+        </span>
+      )}
+      {/* S3 conflict: cancelled in ISN, kept in OI because the report has writing. */}
+      {insp.isn.canceledInIsn && !cancelled && <Pill tone="defect">{m.dashboard_row_isn_cancelled_kept()}</Pill>}
+    </>
+  );
   return (
     <div className="flex items-center gap-2 px-4 py-3 hover:bg-ih-bg-muted transition-colors group">
       <input
@@ -50,20 +67,37 @@ export function DashboardInspectionRow({
         onChange={() => toggleSelect(insp.id)}
         className="accent-ih-primary shrink-0"
       />
-      {/* Stacked below sm. The status pill, defect chips and price sit in a
-          `shrink-0` group, so on a phone they took the width they needed and
-          left the address and client/date column with what remained — which was
-          a few characters, wrapping "9:00 AM EDT" over four lines. Side by side
-          is a desktop-width layout; it has to become two rows before it runs
-          out of room. */}
-      <Link
-        to={`/inspections/${insp.id}`}
-        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-0 flex-1 min-w-0"
-      >
+      <Link to={`/inspections/${insp.id}`} className="flex-1 min-w-0">
+        {/* Below sm, a card (canvas S01): when and its status, then where in
+            large type, then what is wrong. The side-by-side row below is a
+            desktop-width layout: on a phone its `shrink-0` pill group left the
+            address a few characters and wrapped "9:00 AM EDT" over four lines. */}
+        <div className="sm:hidden flex flex-col gap-2 py-1">
+          <span className="flex items-center gap-2">
+            {when && <span className="text-[15px] font-bold text-ih-fg-2 tabular-nums whitespace-nowrap">{when}</span>}
+            <Pill tone={statusTone(insp.status)}>{insp.status.replace(/_/g, " ")}</Pill>
+            <span className="flex-1" />
+            <Icon name="chevR" size={22} className="text-ih-fg-4" />
+          </span>
+          <span className="font-ih-display text-[22px] font-bold leading-tight text-ih-fg-1">{address}</span>
+          <span className="text-[15px] text-ih-fg-3">{[insp.clientName || m.dashboard_row_no_client(), insp.agentName].filter(Boolean).join(" · ")}</span>
+          {(findings > 0 || isnPills) && (
+            <span className="flex flex-wrap items-center gap-2">
+              {findings > 0 && (
+                <span className="flex items-center gap-1.5 text-[15px] text-ih-bad-fg">
+                  <span className="w-2 h-2 rounded-full bg-ih-bad" aria-hidden="true" />
+                  {m.editor_shared_section_findings({ count: findings, s: findings === 1 ? "" : "s" })}
+                </span>
+              )}
+              {isnPills}
+            </span>
+          )}
+        </div>
+        <div className="hidden sm:flex sm:items-center sm:justify-between">
         <div className="min-w-0">
           {isColumnVisible("propertyAddress") && (
             <p className="text-[13px] font-medium text-ih-fg-1 truncate">
-              {insp.address || insp.propertyAddress || m.dashboard_row_no_address()}
+              {address}
             </p>
           )}
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -74,7 +108,7 @@ export function DashboardInspectionRow({
             )}
             {isColumnVisible("date") && insp.date && (
               <span className="text-[11px] text-ih-fg-3">
-                &middot; {formatInspectionDateTime(insp.date, undefined, timeZone, { locale, ...shape })}
+                &middot; {when}
               </span>
             )}
             {isColumnVisible("agent") && insp.agentName && (
@@ -117,27 +151,18 @@ export function DashboardInspectionRow({
               because the cache tier reads 0 on real data: "$0" looks the same
               whichever unit you think it is in, and fixing the source is what
               turned it into "$45000". */}
-          {/* ISN ready check: a warning only, it gates nothing. */}
-          {insp.isn && (insp.isn.unmatchedServices.length > 0 || insp.isn.unmatchedInspectors > 0) && (
-            <span title={insp.isn.unmatchedServices.join(", ")}>
-              <Pill tone="warning">
-                {m.dashboard_row_isn_unmatched({ services: insp.isn.unmatchedServices.length, inspectors: insp.isn.unmatchedInspectors })}
-              </Pill>
-            </span>
-          )}
-          {/* S3 conflict: cancelled in ISN, kept in OI because the report has writing. */}
-          {insp.isn?.canceledInIsn && !cancelled && (
-            <Pill tone="defect">{m.dashboard_row_isn_cancelled_kept()}</Pill>
-          )}
+          {isnPills}
           {isColumnVisible("price") && insp.price != null && (
             <span className="text-[11px] font-medium text-ih-fg-3">
               {formatDollars(insp.price, { locale, currency })}
             </span>
           )}
         </div>
+        </div>
       </Link>
       {/* Hover actions: open editor + status transition (visible on hover) */}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 flex items-center gap-1.5">
+      {/* Hidden below sm: touch has no hover, so these sat invisible but tappable. */}
+      <div className="max-sm:hidden opacity-0 group-hover:opacity-100 transition-opacity shrink-0 flex items-center gap-1.5">
         <Link
           to={`/inspections/${insp.id}/edit`}
           aria-label={m.dashboard_row_open_editor()}

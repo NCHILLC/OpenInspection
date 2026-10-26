@@ -169,17 +169,34 @@ describe("DashboardInspectionRow — ISN ready check", () => {
   }
 
   it("warns with the counts and names the services on hover", async () => {
-    const { findByText } = renderIsn({ unmatchedServices: ["FlexFund", "Radon"], unmatchedInspectors: 1 });
-    const chip = await findByText("Not matched from ISN: services 2, inspectors 1");
-    expect(chip.closest("[title]")?.getAttribute("title")).toBe("FlexFund, Radon");
+    // Once per layout: the phone card and the desktop row are both in the DOM,
+    // and CSS shows one of them.
+    const { findAllByText } = renderIsn({ unmatchedServices: ["FlexFund", "Radon"], unmatchedInspectors: 1 });
+    const chips = await findAllByText("Not matched from ISN: services 2, inspectors 1");
+    expect(chips).toHaveLength(2);
+    for (const chip of chips) expect(chip.closest("[title]")?.getAttribute("title")).toBe("FlexFund, Radon");
   });
 
   it("says nothing when everything matched, or the inspection is not from ISN", async () => {
     for (const isn of [{ unmatchedServices: [], unmatchedInspectors: 0 }, null]) {
-      const { findByText, queryByText, unmount } = renderIsn(isn);
-      expect(await findByText("742 Evergreen Terrace")).toBeTruthy();
+      const { findAllByText, queryByText, unmount } = renderIsn(isn);
+      expect(await findAllByText("742 Evergreen Terrace")).toHaveLength(2);
       expect(queryByText(/Not matched from ISN/)).toBeNull();
       unmount();
     }
+  });
+});
+
+describe("DashboardInspectionRow — phone card", () => {
+  it("sums the defect stats into one findings count", async () => {
+    const Stub = createRoutesStub([{ path: "/", Component: () => (
+      <DashboardInspectionRow
+        insp={{ ...INSPECTION, defectStats: { safety: 1, recommendation: 1, maintenance: 1 } } as Inspection}
+        tenantSlug={null} selectedIds={new Set<string>()} isColumnVisible={() => true}
+        toggleSelect={() => {}} transitionStatus={() => {}} timeZone="UTC"
+      />
+    ) }]);
+    const { findByText } = render(<Stub initialEntries={["/"]} />);
+    expect(await findByText("3 findings")).toBeTruthy();
   });
 });

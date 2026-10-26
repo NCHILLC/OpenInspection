@@ -32,6 +32,8 @@ export interface EditorUrlNav {
     goNext: (() => void) | null;
     /** Name of the item or section `goNext` walks to; undefined where there is none. */
     nextLabel: string | undefined;
+    /** On a list screen, the first unrated item in that checklist ("Roof › Chimney" on the progress card). */
+    nextItemLabel: string | undefined;
     /** Up one level — pops real history where there is any to pop. */
     goUp: () => void;
 }
@@ -217,5 +219,5 @@ export function useEditorUrlNav({
         void navigate("/inspections");
     }, [currentSectionId, navigate, searchParams, setSearchParams, paramsForState]);
 
-    return { level, goToSection, goToItem, goToItemIn, goNext, nextLabel: nextSection?.label ?? next?.label, goUp };
+    return { level, goToSection, goToItem, goToItemIn, goNext, nextLabel: nextSection?.label ?? next?.label, nextItemLabel: nextSection?.itemLabel, goUp };
 }

@@ -62,12 +62,12 @@ describe("nextUnratedSection", () => {
     const S = [
         { id: "s1", title: "Roof", items: [{ id: "a" }] },
         { id: "s2", title: "Empty", items: [] },
-        { id: "s3", title: "Exterior", items: [{ id: "b" }, { id: "c" }] },
+        { id: "s3", title: "Exterior", items: [{ id: "b", label: "Siding" }, { id: "c" }] },
     ];
     const rated = (ids: string[]) => (_s: string, i: string) => ids.includes(i);
 
     it("opens the first section with an unrated item from the inspection", () => {
-        expect(nextUnratedSection(S, rated(["a"]), null)).toEqual({ sectionId: "s3", label: "Exterior" });
+        expect(nextUnratedSection(S, rated(["a"]), null)).toEqual({ sectionId: "s3", label: "Exterior", itemLabel: "Siding" });
     });
 
     it("leaves the current checklist even when it still has unrated items", () => {

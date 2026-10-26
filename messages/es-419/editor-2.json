@@ -273,5 +273,6 @@
   "editor_sync_held_toast_action": "Sincronizar ahora",
   "editor_ni_reason_title": "¿Por qué no se inspeccionó {label}?",
   "editor_ni_reason_needed": "No inspeccionado necesita un motivo",
-  "editor_ni_reason_add": "Agregar motivo"
+  "editor_ni_reason_add": "Agregar motivo",
+  "editor_mobile_photos": "{count} foto{s}"
 }
