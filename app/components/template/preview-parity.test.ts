@@ -50,6 +50,8 @@ describe("preview parity — the author sees the inspector's component", () => {
         );
         const inspector = renderToStaticMarkup(
             createElement(ItemEditor, {
+                // What the inspector's phone opens an item on.
+                initialTab: "defects",
                 item: ITEM,
                 sectionTitle: "Roof",
                 result: {},

@@ -133,4 +133,10 @@ describe("ItemEditor — the findings indicator is beside the rating, not in it"
         fireEvent.click(indicator(container)!);
         expect(within(container).getByText(/Lifted shingle/)).toBeTruthy();
     });
+
+    // The phone opens every item straight on Defects; desktop keeps the default above.
+    it("opens on Defects when the caller asks for it", () => {
+        const { container } = render(<ItemEditor {...base} item={richItem} result={{}} initialTab="defects" />);
+        expect(within(container).getByText(/Lifted shingle/)).toBeTruthy();
+    });
 });

@@ -1213,18 +1213,12 @@ export default function InspectionEditPage() {
 
  const itemEditorEl = state.activeItemId ? (
  <ItemEditor
+ initialTab={isMobile ? "defects" : undefined}
  item={state.activeItem || undefined}
  sectionTitle={state.currentSection?.title}
  /* #61 — the artifact an AI content-review row cites. */
  resultId={loaderData.resultId}
- result={
- state.activeItemId
- ? findings.getResult(
- state.activeItemId,
- state.currentSection?.id,
- )
- : {}
- }
+ result={findings.getResult(state.activeItemId, state.currentSection?.id)}
  ratingLevels={state.ratingLevels}
  onRating={handleRating}
  onAddPhoto={openPickerForItem}
