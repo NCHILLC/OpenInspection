@@ -76,6 +76,11 @@ describe('orderFacts', () => {
         expect(foundationFromIsn('')).toBeNull();
     });
 
+    it('treats an order deleted in ISN as cancelled (ISN leaves canceled at no)', () => {
+        expect(orderFacts({ ...ORDER, deleteddatetime: '2026-10-08 07:58:20', show: 'no' }).canceled).toBe(true);
+        expect(orderFacts({ ...ORDER, deleteddatetime: '' }).canceled).toBe(false);
+    });
+
     it('reads numbers ISN sends as strings, with or without thousands separators', () => {
         expect(orderFacts({ ...ORDER, latitude: '35.29', longitude: '-81.15', squarefeet: '2,400' }))
             .toMatchObject({ sqft: 2400, address: { addressLat: 35.29, addressLng: -81.15 } });
