@@ -194,6 +194,7 @@
   "misc_version_diff_removed": "Quitado",
   "dashboard_row_no_address": "Sin dirección",
   "dashboard_row_isn_unmatched": "Sin coincidencia desde ISN: servicios {services}, inspectores {inspectors}",
+  "dashboard_row_isn_cancelled_kept": "Cancelada en ISN, conservada: el informe tiene contenido",
   "dashboard_row_no_client": "Sin cliente",
   "dashboard_row_open_editor": "Abrir editor",
   "dashboard_row_view_report": "Ver informe",

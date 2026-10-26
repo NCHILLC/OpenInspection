@@ -307,6 +307,7 @@ const InspectionListItemSchema = z.object({
     isn:           z.object({
         unmatchedServices:   z.array(z.string()).describe('ISN service names on the order that are not on this inspection (no OI service of that name).'),
         unmatchedInspectors: z.number().describe('How many ISN inspectors on the order have no OI user with the same email.'),
+        canceledInIsn:       z.boolean().describe('The order is cancelled in ISN. On an inspection that is not cancelled, OI kept it because the report has writing.'),
     }).nullable().describe('Set when this inspection came from an ISN order: its ready check. Null otherwise.'),
 }).passthrough().openapi('InspectionListItem');
 

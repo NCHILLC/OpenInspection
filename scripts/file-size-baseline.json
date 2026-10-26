@@ -1,5 +1,5 @@
 {
-  "app/routes/inspection-edit.tsx": 2308,
+  "app/routes/inspection-edit.tsx": 2311,
   "app/routes/inspector-portal.tsx": 1394,
   "scripts/verify-statutory-render.mjs": 1283,
   "server/durable-objects/inspection-doc.ts": 1051,
@@ -48,7 +48,7 @@
   "app/components/template/ItemCommentsPanel.tsx": 518,
   "server/services/inspection/shared.ts": 518,
   "scripts/check-price-capability.mjs": 514,
-  "app/routes/inspection-edit/action.server.ts": 511,
+  "app/routes/inspection-edit/action.server.ts": 515,
   "server/services/portal-access.service.ts": 500,
   "app/components/collab/VersionHistoryPanel.tsx": 497,
   "server/api/portal.ts": 488,

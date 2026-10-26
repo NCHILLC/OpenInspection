@@ -696,5 +696,11 @@
   "settings_isn_keys_hint": "En ISN: Settings → My Access Keys. Las claves tienen todos los permisos del usuario de ISN al que pertenecen.",
   "settings_isn_access_key_label": "Clave de acceso",
   "settings_isn_secret_key_label": "Clave de acceso secreta",
+  "settings_isn_pull_desc": "Las órdenes llegan solas desde ISN cuando la entrada de ISN está activa. Trae ahora las que falten, de cinco en cinco.",
+  "settings_isn_pull_button": "Traer órdenes de ISN ahora",
+  "settings_isn_pull_pulling": "Trayendo…",
+  "settings_isn_pull_done": "Se trajeron {count} órdenes. Todas las órdenes están al día.",
+  "settings_isn_pull_more": "Se trajeron {count} órdenes. Faltan más: presiona de nuevo.",
+  "settings_isn_pull_error": "No se pudieron traer las órdenes de ISN. La entrada de ISN necesita las claves de ISN y el secreto del webhook.",
   "settings_isn_save_error": "No se pudo guardar la configuración de ISN."
 }

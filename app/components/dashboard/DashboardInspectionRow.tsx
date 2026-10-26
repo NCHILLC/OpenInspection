@@ -125,6 +125,10 @@ export function DashboardInspectionRow({
               </Pill>
             </span>
           )}
+          {/* S3 conflict: cancelled in ISN, kept in OI because the report has writing. */}
+          {insp.isn?.canceledInIsn && !cancelled && (
+            <Pill tone="defect">{m.dashboard_row_isn_cancelled_kept()}</Pill>
+          )}
           {isColumnVisible("price") && insp.price != null && (
             <span className="text-[11px] font-medium text-ih-fg-3">
               {formatDollars(insp.price, { locale, currency })}

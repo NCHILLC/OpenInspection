@@ -80,3 +80,8 @@ export const AiConnectionTestResultSchema = z
         message: z.string().optional().describe('What to show. Never contains the provider response body.'),
     })
     .openapi('AiConnectionTestResult');
+
+/** "Pull ISN orders now": one reconcile batch, resumed from the previous batch's cursor. */
+export const IsnPullBodySchema = z.object({
+    cursor: z.string().max(200).nullable().optional().describe('`nextCursor` from the previous batch; omit to start from the first order.'),
+});

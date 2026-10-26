@@ -65,6 +65,7 @@ import { SaveTemplateModal } from "~/components/editor/SaveTemplateModal";
 import { useStructureEdit } from "~/hooks/useStructureEdit";
 import { UnsavedChangesBlocker } from "~/components/editor/UnsavedChangesBlocker";
 import { PublishModal, type PublishExtras } from "~/components/editor/PublishModal";
+import { useIsnSync } from "./inspection-edit/useIsnSync";
 import { SignModal } from "~/components/editor/SignModal";
 import { CommentLibraryDrawer } from "~/components/editor/CommentLibraryDrawer";
 import { SectionPickerModal } from "~/components/editor/SectionPickerModal";
@@ -140,8 +141,9 @@ export default function InspectionEditPage() {
  // #106 — publishing is the tier-1 surface: it mints a report version, signs
  // it and notifies the client, and a double click would do all three twice.
  const { fetcher: publishFetcher, submit: submitPublish, busy: publishBusy } =
-  useGuardedSubmit<{ ok: boolean; intent?: string; error?: string }>();
+  useGuardedSubmit<{ ok: boolean; intent?: string; error?: string; isnSync?: import("~/components/editor/PublishModal").IsnSync | null }>();
  const [publishError, setPublishError] = useState<string | null>(null);
+ const isn = useIsnSync(); // the receipt's ISN line
  // Order-lifecycle "Finish fieldwork" — its own fetcher so marking the on-site
  // work complete never contends with an in-flight autosave or publish.
  // #106 — finishing fieldwork closes the order axis and is what the client
@@ -900,6 +902,7 @@ export default function InspectionEditPage() {
  // Successful publish: clear any prior error, close the modal, and refresh
  // loader data so the editor reflects the now-published status.
  setPublishError(null);
+ isn.setIsnSync(data.isnSync ?? null);
  state.setShowPublishModal(false);
  revalidator.revalidate();
  } else {
@@ -1601,7 +1604,7 @@ export default function InspectionEditPage() {
  open={state.showPublishModal}
  progress={{ rated: state.progress.rated, total: state.progress.total, pct: state.progress.pct }}
  status={state.inspection.status as string}
- publishError={publishError} isSubmitting={publishBusy}
+ publishError={publishError} isSubmitting={publishBusy} {...isn.modalProps}
  isAmendment={loaderData.nextPublishIsAmendment}
  onClose={() => { setPublishError(null); state.setShowPublishModal(false); }}
  onPublish={(markComplete: boolean, extras: PublishExtras) => {

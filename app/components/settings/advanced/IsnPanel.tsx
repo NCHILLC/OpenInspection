@@ -1,4 +1,4 @@
-import { Form } from "react-router";
+import { Form, useFetcher } from "react-router";
 import { SecretField } from "~/components/SecretField";
 import { m } from "~/paraglide/messages";
 
@@ -13,6 +13,9 @@ interface IsnPanelProps {
 
 /** ISN (Inspection Support Network): the company's credentials. */
 export function IsnPanel({ secrets, fieldError, saving }: IsnPanelProps) {
+  // Its own fetcher: the result stays in this panel instead of the page's save flash.
+  const pull = useFetcher<{ success: boolean; error: string | null; pull?: { processed: number; nextCursor: string | null } }>();
+  const pulled = pull.state === "idle" ? pull.data : undefined;
   return (
     <section className="bg-ih-bg-card rounded-lg border border-ih-border p-6 space-y-5">
       <h3 className="text-[11px] font-bold text-ih-fg-2 uppercase tracking-[0.2em]">{m.settings_isn_heading()}</h3>
@@ -34,6 +37,24 @@ export function IsnPanel({ secrets, fieldError, saving }: IsnPanelProps) {
           </button>
         </div>
       </Form>
+      <pull.Form method="post" className="space-y-3 max-w-xl pt-4 border-t border-ih-border">
+        <input type="hidden" name="intent" value="pull-isn" />
+        <input type="hidden" name="cursor" value={pulled?.pull?.nextCursor ?? ""} />
+        <p className="text-[13px] text-ih-fg-3">{m.settings_isn_pull_desc()}</p>
+        <button type="submit" disabled={pull.state !== "idle"}
+          className="h-9 px-4 rounded-md border border-ih-border bg-ih-bg-card text-ih-fg-1 font-bold text-[13px] hover:bg-ih-bg-muted active:scale-[.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+          {pull.state !== "idle" ? m.settings_isn_pull_pulling() : m.settings_isn_pull_button()}
+        </button>
+        {pulled && (
+          <p role="status" className={`text-[13px] ${pulled.success ? "text-ih-fg-2" : "text-ih-bad-fg"}`}>
+            {pulled.pull
+              ? pulled.pull.nextCursor
+                ? m.settings_isn_pull_more({ count: pulled.pull.processed })
+                : m.settings_isn_pull_done({ count: pulled.pull.processed })
+              : pulled.error}
+          </p>
+        )}
+      </pull.Form>
     </section>
   );
 }
