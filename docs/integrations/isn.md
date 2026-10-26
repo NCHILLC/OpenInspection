@@ -76,8 +76,8 @@ person's email is an OI user.
 
 To turn it on: create the webhook in ISN (Settings → Webhooks → Add Webhook,
 POST, tracked and signed, URL `https://<this app's host>/webhooks/isn`), copy
-the secret ISN shows once, set it as `ISN_WEBHOOK_SECRET` (a Worker secret, or
-stored with the other ISN keys), then use ISN's "Send test event". The bare path
+the secret (tick "Add signing secret"; Reveal/Copy on the webhook's page), set it as
+`ISN_WEBHOOK_SECRET` (a Worker secret, or stored with the other ISN keys), then use ISN's "Send test event". The bare path
 uses standalone's fixed tenant; SaaS has no per-tenant ISN webhook path.
 
 ## What you need
@@ -88,7 +88,7 @@ uses standalone's fixed tenant; SaaS has no per-tenant ISN webhook path.
 | `ISN_COMPANY_KEY` | ISN → Settings → My Access Keys |
 | `ISN_ACCESS_KEY` | Same page |
 | `ISN_SECRET_KEY` | Same page |
-| `ISN_WEBHOOK_SECRET` | ISN → Settings → Webhooks, shown once when the webhook is created. Only for the order webhook |
+| `ISN_WEBHOOK_SECRET` | ISN → Settings → Webhooks → the webhook's page (Reveal). ISN's UI makes one webhook per event type, each with its own secret: list them all, comma-separated. Only for the order webhooks |
 
 Set the first four in Settings → Advanced → ISN. All five are **tenant-owned**: the
 company's own value always beats a Worker env binding, because a platform key

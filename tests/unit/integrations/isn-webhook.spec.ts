@@ -47,6 +47,13 @@ describe('verifyIsnSignature', () => {
         const hexDecoded = createHmac('sha256', Buffer.from(SECRET, 'hex')).update(`${t}.${body}`).digest('hex');
         expect(await verifyIsnSignature(SECRET, `t=${t},v1=${hexDecoded}`, body)).toBe(false);
     });
+    it('accepts any one of several secrets (one per ISN webhook), and none of the wrong ones', async () => {
+        const other = 'c'.repeat(64);
+        expect(await verifyIsnSignature(`${other}, ${SECRET}`, sign(body), body)).toBe(true);
+        expect(await verifyIsnSignature(`${SECRET}
+${other}`, sign(body, undefined, other), body)).toBe(true);
+        expect(await verifyIsnSignature(`${other},${'d'.repeat(64)}`, sign(body), body)).toBe(false);
+    });
 });
 
 describe('POST /webhooks/isn', () => {
