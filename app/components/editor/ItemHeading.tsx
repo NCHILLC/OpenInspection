@@ -37,10 +37,10 @@ export interface ItemHeadingProps {
 export function ItemHeading({ sectionTitle, label, description }: ItemHeadingProps) {
     return (
         <div>
-            <div className="text-[14px] text-ih-primary-text font-bold uppercase tracking-wide">
+            <div className="text-[14px] text-ih-primary-text font-bold uppercase tracking-wide max-md:sr-only">
                 {sectionTitle}
             </div>
-            <ItemHeader label={label} size="lg" className="mt-1 text-ih-fg-1" as="h2" />
+            <ItemHeader label={label} size="lg" className="mt-1 text-ih-fg-1 max-md:sr-only" as="h2" />
             {description && (
                 <p
                     data-testid="item-description-hint"
