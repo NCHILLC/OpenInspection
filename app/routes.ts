@@ -128,6 +128,7 @@ export default [
   // C3 — the agent bell's writes (its reads ride the agent-layout loader).
   route("resources/staff-notices", "routes/resources/staff-notices.tsx"),
   route("resources/inspection-communication", "routes/resources/inspection-communication.tsx"),
+  route("resources/isn-card", "routes/resources/isn-card.tsx"),
   // #67 — the cancellation quote (loader) and the cancel itself (action). Both
   // API endpoints shipped with the fee ladder and had no caller anywhere in
   // app/; this is the only front door to them.

@@ -52,6 +52,18 @@ order facts:
   with a template sets the inspection's template. Others are logged. Services
   are set at creation only.
 
+On the inspection page, and in the editor's settings sheet, the **From ISN**
+card shows what the stored order says that OI keeps nowhere else: ISN's order
+number, access code, occupied, utilities on, cross streets, paid and agreement
+signed in ISN, report number, policy holder and number, "Cancelled in ISN", and
+a Directions link (ISN's `mapurl` when it is https, else a maps search on the
+coordinates or address). It is read-only: change these in ISN. Empty fields are
+not shown. Staff only (`GET /api/inspections/{id}/isn`); the access code never
+reaches the inspection row or the public report. Not shown yet: ISN's
+id-valued fields (escrow officer, insurance agent, refer reason, cost center,
+order type), order notes, attachments, and an "Open in ISN" link (the ISN order
+page's URL is not known).
+
 On the inspections list, **From ISN** (in the filter strip, shown once any
 inspection came from ISN) lists those inspections. A row whose order has a
 service missing from the inspection, or an inspector with no OI user, carries a

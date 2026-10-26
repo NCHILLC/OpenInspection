@@ -334,5 +334,21 @@
   "inspections_repair_log_items_one": "1 item",
   "inspections_repair_log_items_other": "{count} items",
   "inspections_repair_log_list_empty": "This list was started and nothing was added to it.",
-  "inspections_repair_log_ask_heading": "Asked for"
+  "inspections_repair_log_ask_heading": "Asked for",
+  "inspections_isn_card_title": "From ISN",
+  "inspections_isn_card_order": "ISN order",
+  "inspections_isn_card_access": "Access code",
+  "inspections_isn_card_occupied": "Occupied",
+  "inspections_isn_card_utilities": "Utilities on",
+  "inspections_isn_card_cross_streets": "Cross streets",
+  "inspections_isn_card_paid": "Paid in ISN",
+  "inspections_isn_card_signed": "Agreement signed in ISN",
+  "inspections_isn_card_report_number": "Report number",
+  "inspections_isn_card_policy_holder": "Policy holder",
+  "inspections_isn_card_policy_number": "Policy number",
+  "inspections_isn_card_canceled": "Cancelled in ISN",
+  "inspections_isn_card_directions": "Directions",
+  "inspections_isn_card_change_in_isn": "Change these in ISN.",
+  "inspections_isn_card_yes": "Yes",
+  "inspections_isn_card_no": "No"
 }

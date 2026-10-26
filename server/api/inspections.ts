@@ -48,6 +48,7 @@ import costItemRoutes from './inspections/cost-items';
 import complianceRoutes from './inspections/compliance';
 import peopleRoutes from './inspections/people';
 import communicationRoutes from './inspections/communication';
+import isnCardRoutes from './inspections/isn-card';
 import inspectionServiceRoutes from './inspections/services';
 import inspectionReportRoutes from './inspections/reports';
 import paySplitRoutes from './inspections/pay-splits';
@@ -77,6 +78,8 @@ export const inspectionsRoutes = createApiRouter()
     .route('/', sendSmsRoutes)
     // Communication design §2 — messages + platform notices, two arrays.
     .route('/', communicationRoutes)
+    // NCHI fork: GET /:id/isn, the ISN card (read-only ISN order facts).
+    .route('/', isnCardRoutes)
     .route('/', agreementsRoutes)
     .route('/', agreementSignRoutes)
     .route('/', hierarchyRoutes)
