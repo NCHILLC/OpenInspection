@@ -16,6 +16,10 @@ const num = (v: unknown): number | null => {
     const n = typeof v === 'number' ? v : Number(str(v) ?? NaN);
     return Number.isFinite(n) ? n : null;
 };
+const cents = (v: unknown): number | null => {
+    const n = num(typeof v === 'string' ? v.replace(/,/g, '') : v);
+    return n === null ? null : Math.round(n * 100);
+};
 
 /** OI's foundation vocabulary (see getPropertyFacts) from ISN's free-text `foundationtype`. */
 export function foundationFromIsn(v: unknown): 'basement' | 'slab' | 'crawlspace' | 'other' | null {
@@ -44,6 +48,9 @@ export interface IsnOrderFacts {
     /** ISN user ids, `inspector1` first (the lead). */
     inspectorIds: string[];
     serviceNames: string[];
+    /** What ISN bills for the order (`totalfee`), and the fees it is made of. */
+    totalCents: number | null;
+    fees: { name: string; cents: number }[];
     clientId: string | null;
     buyersAgentId: string | null;
     sellersAgentId: string | null;
@@ -72,6 +79,14 @@ export function orderFacts(o: Order): IsnOrderFacts {
         inspectorIds: Array.from({ length: 10 }, (_, i) => str(o[`inspector${i + 1}`])).filter((v): v is string => !!v),
         serviceNames: Array.isArray(o.services)
             ? o.services.map((s) => str((s as Order)?.name)).filter((v): v is string => !!v)
+            : [],
+        totalCents: cents(o.totalfee),
+        fees: Array.isArray(o.fees)
+            ? o.fees.flatMap((x) => {
+                const name = str((x as Order)?.name);
+                const c = cents((x as Order)?.amount);
+                return name && c ? [{ name, cents: c }] : [];
+            })
             : [],
         clientId: str(o.client),
         buyersAgentId: str(o.buyersagent),

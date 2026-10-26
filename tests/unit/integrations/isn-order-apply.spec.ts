@@ -128,6 +128,26 @@ describe('applyIsnOrder', () => {
         expect(inspectionRow(id)).toMatchObject({ paymentRequired: false, agreementRequired: false });
     });
 
+    it('prices the inspection from ISN: each fee on its service by first word, the rest of totalfee on the dearest line', async () => {
+        await db.insert(schema.services).values({ id: 'svc-flex', tenantId: TENANT, name: 'FlexFund', price: 0, active: false, sortOrder: 1, createdAt: new Date() } as never);
+        const fees = [{ name: 'Essential Residential Inspection ', amount: 605 }, { name: 'FlexFund Service', amount: '50.00' }, { name: 'Radon Testing (in air)', amount: 0 }];
+        await db.update(schema.isnOrders).set({ payload: { ...ORDER, fees, totalfee: '1,700.00' } });
+        const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: { ...ORDER, fees, totalfee: '1,700.00' } }))!;
+        const lines = () => Object.fromEntries(db.select().from(schema.inspectionServices)
+            .where(eq(schema.inspectionServices.inspectionId, id)).all().map((l) => [l.serviceId, l.priceOverride]));
+        expect(lines()).toEqual({ 'svc-ess': 165000, 'svc-flex': 5000 });
+        expect(inspectionRow(id)?.price).toBe(170000);
+        await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: id, payload: { ...ORDER, fees: [{ name: 'Essential Residential Inspection', amount: 480 }], totalfee: '480.00' } });
+        expect(lines()).toEqual({ 'svc-ess': 48000, 'svc-flex': 0 });
+    });
+
+    it('an order with no matched service still takes ISN\'s total as its price', async () => {
+        const condo = { ...ORDER, services: [], fees: [{ name: 'Condo/Townhome', amount: 349 }], totalfee: '349.00' };
+        await db.update(schema.isnOrders).set({ payload: condo });
+        const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: condo }))!;
+        expect(inspectionRow(id)?.price).toBe(34900);
+    });
+
     it('the list ready check names the service and counts the inspector that did not match', async () => {
         const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: ORDER }))!;
         const checks = await isnReadyChecks(db as never, TENANT);
