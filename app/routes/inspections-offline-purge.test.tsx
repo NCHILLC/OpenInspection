@@ -80,7 +80,8 @@ function renderDashboard(deleteOk: boolean) {
 }
 
 async function selectAndDelete(view: ReturnType<typeof renderDashboard>) {
-    await view.findByText("742 Evergreen Terrace");
+    // All, not one: the phone card and the desktop row both carry the address.
+    await view.findAllByText("742 Evergreen Terrace");
     const checkbox = view.container.querySelector<HTMLInputElement>('input[type="checkbox"]');
     if (!checkbox) throw new Error("no row selection checkbox");
     fireEvent.click(checkbox);

@@ -94,7 +94,8 @@ test.describe('Subsystem E — pre-flight, list workflow, exports, metrics, repo
         await page.goto('/inspections');
         // Wait for rows: the export returns early on an empty list, which would
         // hang on waitForEvent('download') rather than fail with a reason.
-        await expect(page.getByText('1 Empty St')).toBeVisible({ timeout: 15_000 });
+        // Visible only: each row also carries a phone card that CSS hides here.
+        await expect(page.getByText('1 Empty St').filter({ visible: true })).toBeVisible({ timeout: 15_000 });
 
         const downloadPromise = page.waitForEvent('download');
         await page.getByRole('button', { name: 'Export', exact: true }).first().click();

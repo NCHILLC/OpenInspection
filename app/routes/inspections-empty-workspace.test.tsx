@@ -94,11 +94,13 @@ describe("/inspections — a list too short to narrow is not shown a busy worksp
     });
 
     it("shows them all again once the list is long enough to be worth narrowing", async () => {
-        const { container, findByText } = renderDashboard({
+        const { container, findAllByText } = renderDashboard({
             ...EMPTY_BUCKETS,
             today: rows(LIST_CONTROLS_MIN_ROWS),
         });
-        await findByText("1 Evergreen Terrace");
+        // All, not one: each row renders a phone card and a desktop row, and CSS
+        // shows one of them.
+        await findAllByText("1 Evergreen Terrace");
         // The positive control. Without it the assertions above would also pass
         // for a page that had simply stopped rendering its controls.
         for (const label of LIST_CONTROLS) {
@@ -114,20 +116,20 @@ describe("/inspections — a list too short to narrow is not shown a busy worksp
      * direction cannot tell a working threshold from one that hides everything.
      */
     it("still hides them one row BELOW the threshold", async () => {
-        const { container, findByText } = renderDashboard({
+        const { container, findAllByText } = renderDashboard({
             ...EMPTY_BUCKETS,
             today: rows(LIST_CONTROLS_MIN_ROWS - 1),
         });
-        await findByText("1 Evergreen Terrace");
+        await findAllByText("1 Evergreen Terrace");
         for (const label of LIST_CONTROLS) {
             expect(container.textContent).not.toContain(label);
         }
     });
 
     it("hides them for the single-inspection workspace the finding was measured on", async () => {
-        const { container, findByText } = renderDashboard({ ...EMPTY_BUCKETS, today: [ONE] });
+        const { container, findAllByText } = renderDashboard({ ...EMPTY_BUCKETS, today: [ONE] });
         // The list itself is never hidden — only the controls that narrow it.
-        await findByText("742 Evergreen Terrace");
+        await findAllByText("742 Evergreen Terrace");
         for (const label of LIST_CONTROLS) {
             expect(container.textContent).not.toContain(label);
         }
@@ -137,12 +139,12 @@ describe("/inspections — a list too short to narrow is not shown a busy worksp
         // Reachable only because the gate is a threshold: filter a list of six,
         // delete two, and the controls holding the filter would otherwise go
         // away with the filter still on — a short list quietly missing rows.
-        const { container, findByText } = renderDashboard(
+        const { container, findAllByText } = renderDashboard(
             { ...EMPTY_BUCKETS, today: rows(LIST_CONTROLS_MIN_ROWS - 1) },
             {},
             "/inspections?workflow=active",
         );
-        await findByText("1 Evergreen Terrace");
+        await findAllByText("1 Evergreen Terrace");
         for (const label of LIST_CONTROLS) {
             expect(container.textContent).toContain(label);
         }
