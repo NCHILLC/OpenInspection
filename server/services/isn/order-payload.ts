@@ -58,7 +58,8 @@ export function orderFacts(o: Order): IsnOrderFacts {
     const datetime = str(o.datetime);
     return {
         date: datetime && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(datetime) ? datetime.replace(' ', 'T') : null,
-        canceled: str(o.canceled) === 'yes',
+        // A deleted order keeps canceled 'no' in ISN; only deleteddatetime (and show 'no') says it is gone.
+        canceled: str(o.canceled) === 'yes' || str(o.deleteddatetime) !== null,
         referenceNumber: o.oid !== undefined && o.oid !== null && o.oid !== '' ? String(o.oid) : null,
         propertyAddress: street ? [street, line2].filter(Boolean).join(', ') : null,
         address: {
