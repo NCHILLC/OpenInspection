@@ -14,6 +14,7 @@ import { RECOMMENDATION_CATEGORY_IDS } from '../../lib/recommendation-categories
 import { deleteRepairPriceKeys } from '../../lib/repair-price-keys';
 import { isDefectTrade, isDefectDeadline, isDefectTimeframe, DEFECT_TRADE_LABELS, DEFECT_DEADLINE_LABELS, DEFECT_TIMEFRAME_LABELS } from '../../types/defect-fields';
 import { listUnresolved } from '../../lib/mustache';
+import { readItemEntry } from '../../lib/read-item-defects';
 import type { InspectionSchema, InspectionListQuerySchema, CreateInspectionSchema } from '../../lib/validations/inspection.schema';
 import type { Severity } from '../../lib/validations/rating-system.schema';
 import type { DefectCommentState } from '../../types/inspection-item-state';
@@ -384,15 +385,12 @@ export function computePublishReadinessFromState(
         for (const item of section.items ?? []) {
             if (item.type !== 'rich') continue;
             const defectsTpl = item.tabs?.defects ?? [];
-            const entry = results[item.id] as { tabs?: { defects?: DefectCommentState[] }; attributes?: Record<string, unknown> } | undefined;
+            // Composite key first (`_default:section:item`, what the collab flush writes); a bare-id read found nothing.
+            const entry = readItemEntry(results as Parameters<typeof readItemEntry>[0], section.id, item.id) as { tabs?: { defects?: DefectCommentState[] }; attributes?: Record<string, unknown> } | undefined;
             const stateRows = entry?.tabs?.defects ?? [];
             const stateById = new Map(stateRows.map(d => [d.cannedId, d]));
             const itemAttrVars: Record<string, string | null> = {};
-            if (entry?.attributes) {
-                for (const [k, v] of Object.entries(entry.attributes)) {
-                    itemAttrVars[k] = stringifyAttributeValue(v);
-                }
-            }
+            for (const [k, v] of Object.entries(entry?.attributes ?? {})) itemAttrVars[k] = stringifyAttributeValue(v);
             for (const d of defectsTpl) {
                 const st = stateById.get(d.id);
                 const included = st ? !!st.included : !!d.default;
