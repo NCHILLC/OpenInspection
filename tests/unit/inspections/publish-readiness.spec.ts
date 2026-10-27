@@ -66,6 +66,14 @@ describe('computePublishReadinessFromState', () => {
         expect(r.blockingDefects[0].missing).toEqual(['location']);
     });
 
+    it('reads the composite `_default:section:item` key the collab flush writes', () => {
+        const results = {
+            '_default:sec1:item1': { tabs: { defects: [{ cannedId: 'rd1', included: true, trade: 'licensed-roofer' }] } },
+        };
+        const r = computePublishReadinessFromState(schema, results);
+        expect(r.blockingDefects.map(b => b.missing)).toEqual([['location']]);
+    });
+
     it('blocks when trade is missing', () => {
         const results = {
             item1: { tabs: { defects: [{
