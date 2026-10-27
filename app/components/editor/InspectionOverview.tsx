@@ -6,6 +6,7 @@ import { PcaNarrativePanel } from "~/components/inspection/PcaNarrativePanel";
 import { CompliancePanel } from "~/components/inspection-edit/CompliancePanel";
 import { CommercialReportControls, type ReportTier } from "~/components/editor/CommercialReportControls";
 import { PropertyTypeControl } from "~/components/editor/PropertyTypeControl";
+import { PhoneInspectionDetails } from "~/components/editor/PhoneInspectionDetails";
 
 /**
  * The "Inspection Details" overview — property facts, the statutory form
@@ -68,6 +69,7 @@ export function InspectionOverview({
     const reportTier = (bag.reportTier as ReportTier | null | undefined) ?? null;
     return (
         <>
+            {phone && <PhoneInspectionDetails inspectionId={String(bag.id)} />}
             <PropertyInfoForm
                 inspection={inspection}
                 phone={phone}
