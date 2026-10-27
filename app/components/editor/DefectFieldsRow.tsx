@@ -6,7 +6,7 @@ import { m } from '~/paraglide/messages';
 /** The chip's stored text. Resolved here, at the point of use, so a tapped
  *  location reads in the language the inspector would have typed — same
  *  reasoning as `LimitationsPanel`'s `reasonLabel`. */
-function locationLabel(id: StandardLocationId): string {
+export function locationLabel(id: StandardLocationId): string {
     switch (id) {
         case 'front': return m.editor_location_front();
         case 'rear': return m.editor_location_rear();

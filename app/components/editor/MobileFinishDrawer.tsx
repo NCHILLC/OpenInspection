@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { Button } from "@core/shared-ui";
 import { MobileBottomDrawer } from "~/components/MobileBottomDrawer";
+import { PhoneFinishScreen, type PhoneFinishScreenProps } from "./PhoneFinishScreen";
 import { m } from "~/paraglide/messages";
 
 export interface MobileFinishDrawerProps {
   open: boolean;
   onClose: () => void;
-  /** Runs the publish readiness pre-flight, then opens the publish modal. */
-  onPublish: () => void;
+  /** Publish opens the full finish screen (canvas S10) with these; the fieldwork pair is shared. */
+  finish: Omit<PhoneFinishScreenProps, "open" | "onClose" | "onFinishFieldwork" | "finishingFieldwork">;
   /** Opens the manual signature modal. */
   onSign: () => void;
   /** Opens the per-inspection report settings sheet. */
@@ -44,7 +46,7 @@ export interface MobileFinishDrawerProps {
 export function MobileFinishDrawer({
   open,
   onClose,
-  onPublish,
+  finish,
   onSign,
   onOpenSettings,
   onFinishFieldwork,
@@ -53,6 +55,7 @@ export function MobileFinishDrawer({
   onPreviewSummary,
   onOpenTheme,
 }: MobileFinishDrawerProps) {
+  const [finishOpen, setFinishOpen] = useState(false);
   const run = (fn: () => void) => {
     onClose();
     fn();
@@ -63,9 +66,13 @@ export function MobileFinishDrawer({
   // button, which reads as a list that failed to load. The fraction is sized to
   // the button count, so it moved with the summary row rather than clipping it.
   return (
+    <>
+    <PhoneFinishScreen {...finish} open={finishOpen} onClose={() => setFinishOpen(false)}
+      onOpen={(b) => { setFinishOpen(false); finish.onOpen(b); }}
+      onFinishFieldwork={onFinishFieldwork} finishingFieldwork={finishingFieldwork} />
     <MobileBottomDrawer open={open} onClose={onClose} title={m.editor_mobile_more()} heightFraction={0.5}>
       <div className="p-4 space-y-2">
-        <Button variant="primary" className="w-full" onClick={() => run(onPublish)}>
+        <Button variant="primary" className="w-full" onClick={() => run(() => setFinishOpen(true))}>
           {m.editor_header_publish()}
         </Button>
         <Button variant="secondary" className="w-full" onClick={() => run(onSign)}>
@@ -103,5 +110,6 @@ export function MobileFinishDrawer({
         </Button>
       </div>
     </MobileBottomDrawer>
+    </>
   );
 }
