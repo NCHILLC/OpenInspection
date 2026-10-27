@@ -129,6 +129,17 @@ export function hasIncludedFindings(tabs: ItemTabs, result: ResultLike): boolean
     return custom.some((d) => d.included !== false);
 }
 
+/**
+ * A finding on the ITEM, by either route: a defect rating, or an included
+ * defect under any rating. The one definition behind the section rail's count
+ * and the phone search rows, so the two cannot disagree about the same item.
+ */
+export function itemHasFinding(tabs: ItemTabs, result: ResultLike, levels: ReadonlyArray<{ id: string; isDefect?: boolean }>): boolean {
+    const rating = result.rating as string | null | undefined;
+    const level = rating ? levels.find((l) => l.id === rating) : undefined;
+    return !!level?.isDefect || rating === "Defect" || hasIncludedFindings(tabs, result);
+}
+
 /** A canned defect's own photos[] (tabs.defects[].photos) — the STATE row's
  *  photo attachments, for both the count chip and the thumbnail strip. */
 export function cannedDefectPhotos(
