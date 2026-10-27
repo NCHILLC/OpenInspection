@@ -28,7 +28,7 @@ import {
 } from "../editor-shared/item-tab-projections";
 import { FindingsIndicator } from "../editor-shared/FindingsIndicator";
 import { makeDefectPhotoChip } from "./DefectPhotoChip";
-import { LimitationsPanel } from "../editor-shared/LimitationsPanel";
+import { ItemReasonSheet } from "./ItemReasonSheet";
 import { requiresLimitation, createCustomLimitation, type CustomLimitation } from "../../lib/limitations";
 import { CANNED_TAB_IDS, cannedTabLabel } from "../editor-shared/canned-comment-types";
 import { ItemPhotoStrip, type StripPhoto } from "../media-studio/ItemPhotoStrip";
@@ -462,11 +462,9 @@ export function ItemEditor({
  </div>
  )}
  <LocationNeededBar count={hasTabs ? missingLocationCount(tabs, result, defectStates, !!requiredDefectFields?.location, missingFields) : 0} />
- {/* The reason for a Not Inspected answer, under the answer that demands it —
-     not behind a tab, which on a phone is where reasons go to die. Stays put
-     once recorded, so a later rating change cannot strand one. */}
- {item.type === "rich" && onAddCustomLimitation && (requiresLimitation(activeLevel) || customLimitations.length > 0) && (
-  <LimitationsPanel entries={customLimitations} required={requiresLimitation(activeLevel)}
+ {/* NI reason — phone uses sheet. */}
+ {item.type === "rich" && onAddCustomLimitation && (
+  <ItemReasonSheet entries={customLimitations} required={requiresLimitation(activeLevel)} label={item.label} phone={isPhone}
    onAdd={(title) => onAddCustomLimitation(createCustomLimitation(title))}
    onToggle={(id, included) => onToggleCustomLimitation?.(id, included)} />
  )}
