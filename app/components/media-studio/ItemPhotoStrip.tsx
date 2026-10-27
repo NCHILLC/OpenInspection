@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Sortable from "sortablejs";
 import { Button } from "@core/shared-ui";
+import { PendingPhotoDot, PendingPhotoLegend } from "./PendingPhotoDot";
 import { PhonePhotoReview } from "./PhonePhotoReview";
 import { resolvePhotoDisplayKey } from "./photo-display-key";
 import { useIsMobile } from "~/hooks/useBreakpoint";
@@ -351,6 +352,7 @@ export function ItemPhotoStrip({
                   draggable={false}
                 />
               )}
+              {isPending && <PendingPhotoDot />}
               {selecting && (
                 <span
                   data-testid={`check-${i}`}
@@ -378,6 +380,7 @@ export function ItemPhotoStrip({
           );
         })}
       </div>
+      {photos.some((p) => p.pendingId) && <PendingPhotoLegend />}
       {review && reviewAt !== null && photos.length > 0 && (
         <PhonePhotoReview {...{ photos, coverKey, photoUrl, moveTargets, onBulkMove, onOpen, videoPosterUrl, pendingPhotoUrl, itemLabel }}
           startIndex={reviewAt} onClose={() => setReviewAt(null)} onPhotoAction={onPhotoAction!} />

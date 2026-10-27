@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@core/shared-ui";
 import { pushToast } from "~/hooks/useToast";
+import { PendingPhotoDot, PendingPhotoLegend } from "./PendingPhotoDot";
 import { resolvePhotoDisplayKey } from "./photo-display-key";
 import type { ItemPhotoStripProps, StripPhoto } from "./ItemPhotoStrip";
 import { m } from "~/paraglide/messages";
@@ -79,10 +80,11 @@ export function PhonePhotoReview({ photos, coverKey, photoUrl, moveTargets, onBu
             const src = thumb(p, dk);
             return (
               <li key={dk || p.pendingId || `idx-${i}`}>
-                <button type="button" aria-pressed={sel === i} aria-label={isCover ? m.editor_review_photo_cover_aria({ n: i + 1 }) : m.editor_review_photo_aria({ n: i + 1 })}
+                <button type="button" aria-pressed={sel === i} aria-label={p.pendingId ? m.editor_review_photo_pending_aria({ n: i + 1 }) : isCover ? m.editor_review_photo_cover_aria({ n: i + 1 }) : m.editor_review_photo_aria({ n: i + 1 })}
                   onClick={() => setSel(sel === i ? null : i)} className="w-full">
                   <span className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg bg-ih-bg-muted ${sel === i ? "outline outline-[3px] outline-offset-2 outline-ih-primary" : ""}`}>
                     {src && <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" draggable={false} />}
+                    {p.pendingId && <PendingPhotoDot />}
                     {isCover && (
                       <span className="absolute left-1.5 top-1.5 flex h-6 items-center gap-1 rounded-xl bg-ih-primary px-2 text-[13px] font-extrabold text-ih-primary-fg">
                         <svg className="h-3.25 w-3.25" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z" /></svg>
@@ -96,6 +98,7 @@ export function PhonePhotoReview({ photos, coverKey, photoUrl, moveTargets, onBu
           })}
         </ul>
         <p className="mx-5 mt-1 text-[15px] text-ih-fg-3">{m.editor_review_note()}</p>
+        {photos.some((p) => p.pendingId) && <div className="mx-5"><PendingPhotoLegend /></div>}
       </main>
 
       <nav aria-label={m.editor_review_title({ count: photos.length })} className="fixed inset-x-0 bottom-0 h-21 flex items-center gap-2 px-3 bg-ih-bg-card border-t border-ih-border">
