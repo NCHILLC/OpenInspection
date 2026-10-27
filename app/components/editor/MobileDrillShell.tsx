@@ -99,7 +99,9 @@ export function MobileDrillShell({
             ? { eyebrow: sectionTitle, title: itemLabel, backLabel: m.editor_mobile_back_to_items() }
             : level === "items"
                 ? { eyebrow: inspectionTitle, title: sectionTitle, backLabel: m.editor_mobile_back_to_sections() }
-                : { eyebrow: m.editor_mobile_eyebrow_inspection(), title: inspectionTitle, backLabel: m.editor_mobile_back_to_inspections() };
+                : !detailsOpen && level === "sections"
+                    ? { eyebrow: "", title: "", backLabel: m.editor_mobile_back_to_inspections() }
+                    : { eyebrow: m.editor_mobile_eyebrow_inspection(), title: inspectionTitle, backLabel: m.editor_mobile_back_to_inspections() };
 
     return (
         // `data-level` is the one thing the drill-down specs assert on. Which

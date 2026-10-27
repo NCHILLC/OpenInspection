@@ -28,6 +28,7 @@ import { VersionHistoryPanel } from "~/components/collab/VersionHistoryPanel";
 import type { ResultsProjection } from "../../server/lib/collab/results-doc.types";
 import { SectionRail } from "~/components/editor-shared/SectionRail";
 import { InspectionProgressCard } from "~/components/editor/InspectionProgressCard";
+import { InspectionHero } from "~/components/editor/InspectionHero";
 import { EditorHeader } from "~/components/editor/EditorHeader";
 import { FullscreenToggle } from "~/components/editor/FullscreenToggle";
 import { ItemList } from "~/components/editor-shared/ItemList";
@@ -1206,7 +1207,7 @@ export default function InspectionEditPage() {
  onMoveItem={canEditStructure ? (itemId, dir) => structure.moveItem(state.currentSection?.id || "", itemId, dir) : undefined}
  onReorderItem={canEditStructure ? (fromId, toId) => reorderItemBySwap(state.currentSectionItems, fromId, toId, state.currentSection?.id || "", structure.moveItem) : undefined}
  onRenameItem={canEditStructure ? (itemId, label) => structure.renameItem(state.currentSection?.id || "", itemId, label) : undefined}
- groups={statutoryGroups}
+ groups={statutoryGroups} ratingLevels={state.ratingLevels}
  onAddGroupInstance={(groupId) => setAddingToGroup(groupId)}
  rowFooter={isMobile ? checklistRowRating(state.currentSection?.id || "", visibleItems, state.ratingLevels, findings) : undefined}
  />
@@ -1852,6 +1853,8 @@ export default function InspectionEditPage() {
      overview would be unreachable from a phone. The empty-template CTA still
      wins over both: an inspection with no sections has no details to show. */}
  {emptyTemplateEl ?? (state.activeView === "property" ? propertyOverviewEl : urlNav.level === "item" ? itemEditorEl : urlNav.level === "items" ? itemListEl : <>
+  <InspectionHero inspectionId={String(state.inspection.id)} address={(state.inspection.propertyAddress as string) || ""} date={String(state.inspection.date ?? "")}
+   city={state.inspection.addressCity as string | null | undefined} yearBuilt={state.inspection.yearBuilt as number | null | undefined} />
   <InspectionProgressCard rated={state.progress.rated} total={state.progress.total} photos={inspectionPhotoCount}
    findings={state.sections.reduce((n, sec) => n + state.sectionDefectCount(sec.id), 0)}
    upNext={urlNav.nextItemLabel ? `${urlNav.nextLabel} › ${urlNav.nextItemLabel}` : urlNav.nextLabel} />
