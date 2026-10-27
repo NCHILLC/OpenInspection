@@ -75,6 +75,7 @@ import { useIsMobile } from "~/hooks/useBreakpoint";
 import { MobileDrillShell, type MobileDrawerId } from "~/components/editor/MobileDrillShell";
 import { checklistRowRating } from "~/components/editor/ChecklistRowRating";
 import { MobileReportSearch } from "~/components/editor/MobileReportSearch";
+import { EmptyTemplate } from "~/components/editor/PhoneTemplateChooser";
 import { useEditorUrlNav } from "./inspection-edit/useEditorUrlNav";
 import { MobileFinishDrawer } from "~/components/editor/MobileFinishDrawer";
 import { InspectionOverview } from "~/components/editor/InspectionOverview";
@@ -1436,18 +1437,10 @@ export default function InspectionEditPage() {
 
  /* B-22: empty-template CTA — shown instead of normal editor body when the
   * inspection has no sections (template not applied yet). Opens the
-  * InspectionSettingsSheet where the user can pick a template. */
+  * InspectionSettingsSheet where the user can pick a template; on a phone it
+  * is the template chooser itself (canvas X4). */
  const emptyTemplateEl = state.sections.length === 0 ? (
- <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
-  <p className="text-[15px] font-semibold text-ih-fg-1">{m.editor_route_empty_template_title()}</p>
-  <p className="text-[13px] text-ih-fg-3 max-w-sm">{m.editor_route_empty_template_desc()}</p>
-  <Button
-  variant="primary"
-  onClick={() => state.setSettingsOpen(true)}
-  >
-  {m.editor_route_choose_template()}
-  </Button>
- </div>
+ <EmptyTemplate phone={isMobile} inspection={state.inspection} onChoose={() => state.setSettingsOpen(true)} />
  ) : null;
 
  /* The "Inspection Details" overview, mounted by BOTH shells below. The two
@@ -1824,7 +1817,7 @@ export default function InspectionEditPage() {
   {mediaOverlaysEl}
   <MobileBottomDrawer open={mobileDrawer === "search"} onClose={() => setMobileDrawer(null)} title={m.editor_mobile_search()}>
   <MobileReportSearch
-   sections={state.sections}
+   sections={state.sections} ratingLevels={state.ratingLevels} defectCategories={loaderData.defectCategories}
    getResult={(itemId, sectionId) => state.getResult(itemId, sectionId)}
    onJump={(sectionId, itemId) => { setMobileDrawer(null); urlNav.goToItemIn(sectionId, itemId); }}
   />

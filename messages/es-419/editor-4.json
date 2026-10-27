@@ -213,5 +213,20 @@
   "editor_details_occupied": "Ocupada",
   "editor_details_utilities_on": "Servicios conectados",
   "editor_details_utilities_off": "Servicios desconectados",
-  "editor_details_back": "Volver a la inspección"
+  "editor_details_back": "Volver a la inspección",
+  "editor_template_none_title": "Aún no hay lista de verificación",
+  "editor_template_none_desc": "Esta inspección llegó sin plantilla. Elija una para obtener las secciones y los elementos.",
+  "editor_template_ordered": "Solicitado: {type}",
+  "editor_template_sqft": "{count} pies cuadrados",
+  "editor_template_built": "Construida en {year}",
+  "editor_template_list_heading": "Plantillas",
+  "editor_template_matches": "Coincide con lo solicitado",
+  "editor_template_change_later": "Puede cambiar la plantilla más tarde desde el menú Más de la inspección.",
+  "editor_template_pick": "Elija una plantilla",
+  "editor_template_start": "Iniciar inspección",
+  "editor_search_tabs_aria": "Tipo de resultado",
+  "editor_search_up_next": "siguiente pendiente",
+  "editor_search_one_finding": "1 hallazgo",
+  "editor_search_empty": "Nada en este informe coincide con “{query}”.",
+  "editor_search_defect_group": "Defectos {severity}"
 }
