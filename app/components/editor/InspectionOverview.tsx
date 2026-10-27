@@ -6,6 +6,7 @@ import { PcaNarrativePanel } from "~/components/inspection/PcaNarrativePanel";
 import { CompliancePanel } from "~/components/inspection-edit/CompliancePanel";
 import { CommercialReportControls, type ReportTier } from "~/components/editor/CommercialReportControls";
 import { PropertyTypeControl } from "~/components/editor/PropertyTypeControl";
+import { PhoneInspectionDetails } from "~/components/editor/PhoneInspectionDetails";
 
 /**
  * The "Inspection Details" overview — property facts, the statutory form
@@ -33,6 +34,7 @@ import { PropertyTypeControl } from "~/components/editor/PropertyTypeControl";
  */
 interface InspectionOverviewProps {
     inspection: ComponentProps<typeof PropertyInfoForm>["inspection"];
+    phone?: boolean;
     templateFields: ComponentProps<typeof PropertyInfoForm>["templateFields"];
     onSaveField: ComponentProps<typeof PropertyInfoForm>["onSave"];
     onCommitFacts: ComponentProps<typeof PropertyInfoForm>["onCommit"];
@@ -48,6 +50,7 @@ interface InspectionOverviewProps {
 
 export function InspectionOverview({
     inspection,
+    phone,
     templateFields,
     onSaveField,
     onCommitFacts,
@@ -66,8 +69,10 @@ export function InspectionOverview({
     const reportTier = (bag.reportTier as ReportTier | null | undefined) ?? null;
     return (
         <>
+            {phone && <PhoneInspectionDetails inspectionId={String(bag.id)} />}
             <PropertyInfoForm
                 inspection={inspection}
+                phone={phone}
                 templateFields={templateFields}
                 onSave={onSaveField}
                 onCommit={onCommitFacts}

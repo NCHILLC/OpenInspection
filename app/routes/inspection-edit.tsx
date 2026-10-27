@@ -1459,7 +1459,7 @@ export default function InspectionEditPage() {
   * same fix. */
  const propertyOverviewEl = (
   <InspectionOverview
-   inspection={state.inspection}
+   inspection={state.inspection} phone={isMobile}
    templateFields={activePropertyPreset}
    onSaveField={(fieldId, value) => {
     state.setInspection((prev) => ({ ...prev, [fieldId]: value }));
@@ -1802,7 +1802,7 @@ export default function InspectionEditPage() {
  if (isMobile) {
  return (
  <MobileDrillShell
- level={urlNav.level}
+ level={urlNav.level} detailsOpen={state.activeView === "property"}
  inspectionId={String(state.inspection.id)} connection={presence.status}
  inspectionTitle={(state.inspection.propertyAddress as string) || m.editor_mobile_eyebrow_inspection()}
  sectionTitle={state.currentSection?.title ?? ""}
@@ -1816,7 +1816,7 @@ export default function InspectionEditPage() {
  onMore={() => setMobileDrawer("actions")}
  onOpenSearch={() => setMobileDrawer("search")}
  onOpenPreview={() => setMobileDrawer("preview")}
- onNext={urlNav.goNext} nextLabel={urlNav.nextLabel}
+ onNext={urlNav.goNext && (() => { state.setActiveView("items"); urlNav.goNext?.(); })} nextLabel={urlNav.nextLabel}
  percentComplete={state.progress.pct}
  onCapture={() => { clearPhotoTarget(); state.setCameraItemId(state.activeItemId); state.setCameraOpen(true); }}
  overlays={<>

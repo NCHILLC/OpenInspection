@@ -6,8 +6,8 @@
   ],
   "globalMiddlewareUse": 12,
   "fanOutTotals": {
-    "files": 137,
-    "dollarMethods": 545,
+    "files": 138,
+    "dollarMethods": 546,
     "apiWorker": 9
   },
   "fanOut": {
@@ -356,6 +356,10 @@
       "apiWorker": 0
     },
     "app/routes/resources/inspection-media.tsx": {
+      "dollarMethods": 1,
+      "apiWorker": 0
+    },
+    "app/routes/resources/inspection-people.tsx": {
       "dollarMethods": 1,
       "apiWorker": 0
     },

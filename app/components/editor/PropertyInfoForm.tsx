@@ -48,6 +48,10 @@ interface PropertyInfoFormProps {
   inspection: Record<string, unknown>;
   templateFields?: MetadataField[];
   propertyAddress?: string;
+  // The phone's Inspection details screen (canvas S03): three fields to a row,
+  // 48px controls, and select fields as a radiogroup a thumb can hit. The
+  // address is already in the app bar there, so the form drops its own.
+  phone?: boolean;
   // Optimistic, per-keystroke update for the parent's local state. Stores the
   // RAW value typed (a string for text/number/date, a boolean for checkboxes),
   // so the controlled input keeps exactly what the inspector typed — including a
@@ -63,7 +67,7 @@ interface PropertyInfoFormProps {
   onCommit?: (facts: Record<string, unknown>) => void;
 }
 
-export function PropertyInfoForm({ inspection, templateFields, propertyAddress, onSave, onCommit }: PropertyInfoFormProps) {
+export function PropertyInfoForm({ inspection, templateFields, propertyAddress, phone, onSave, onCommit }: PropertyInfoFormProps) {
   const defaultFields = inspection.propertyType === "commercial" ? commercialFields() : residentialFields();
   const metaFields = templateFields?.length ? templateFields : defaultFields;
 
@@ -192,7 +196,7 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
   }
 
   return (
-    <div className="px-6 py-6 max-w-5xl" data-testid="property-info-form">
+    <div className={phone ? "" : "px-6 py-6 max-w-5xl"} data-testid="property-info-form">
       <header className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-ih-fg-3">
@@ -205,7 +209,7 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
           )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-2xl font-bold tracking-tight text-ih-fg-1">
+          <h2 className={phone ? "sr-only" : "text-2xl font-bold tracking-tight text-ih-fg-1"}>
             {(propertyAddress || inspection.propertyAddress as string) || m.editor_property_fallback()}
           </h2>
           <button
@@ -223,9 +227,12 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
       {groups.map((g) => (
         <fieldset key={g} className="mb-6">
           <legend className="text-[14px] font-bold uppercase tracking-[0.15em] text-ih-fg-3 mb-2">{g}</legend>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {fieldsByGroup(g).map((f) => (
-              <label key={f.id} className="block">
+          <div className={phone ? "grid grid-cols-3 gap-2.5" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"}>
+            {fieldsByGroup(g).map((f) => {
+              // A <label> would forward a tap on its text to the first radio.
+              const Wrap = phone && f.type === "select" ? "div" : "label";
+              return (
+              <Wrap key={f.id} className={Wrap === "div" ? "block col-span-3" : "block"}>
                 <span className="flex items-center gap-1 text-[13px] font-bold uppercase tracking-[0.18em] text-ih-fg-3">
                   <span>{f.label}</span>
                   {Boolean(inspection[`_prefilled_${f.id}`]) && (
@@ -239,10 +246,30 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
                     onChange={(e) => onSave?.(f.id, e.target.value)}
                     onBlur={(e) => commitAll(f, e.target.value)}
                     placeholder={f.unit ?? "—"}
-                    className="ih-input mt-1 w-full"
+                    className={`ih-input mt-1 w-full${phone ? " h-12 text-[17px]" : ""}`}
                   />
                 )}
-                {f.type === "select" && (
+                {f.type === "select" && phone && (
+                  <div role="radiogroup" aria-label={f.label} className="mt-1 grid grid-cols-4 gap-1.5">
+                    {(f.options ?? []).map((opt) => {
+                      const on = inspection[f.id] === opt;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          // Tapping the chosen one clears it, as the select's "—" does.
+                          onClick={() => { const v = on ? "" : opt; onSave?.(f.id, v); commitAll(f, v); }}
+                          className={`h-12 rounded-md border text-[15px] capitalize ${on ? "border-ih-primary bg-ih-primary-tint text-ih-primary-text font-bold" : "border-ih-border-strong text-ih-fg-2 font-semibold"}`}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {f.type === "select" && !phone && (
                   <select
                     value={(inspection[f.id] as string) ?? ""}
                     onChange={(e) => { onSave?.(f.id, e.target.value); commitAll(f, e.target.value); }}
@@ -264,8 +291,9 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
                     />
                   </div>
                 )}
-              </label>
-            ))}
+              </Wrap>
+              );
+            })}
           </div>
         </fieldset>
       ))}
