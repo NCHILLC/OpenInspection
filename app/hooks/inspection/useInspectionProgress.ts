@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import type { InspectionContext } from "./helpers";
 import { isItemComplete } from "~/lib/item-completeness";
-import { hasFlaggedComment, hasIncludedFindings, type ItemTabs } from "~/components/editor-shared/item-tab-projections";
+import { hasFlaggedComment, itemHasFinding, type ItemTabs } from "~/components/editor-shared/item-tab-projections";
 
 /**
  * Progress slice: overall + per-section completion, defect counts, and live
@@ -74,11 +74,9 @@ export function useInspectionProgress(ctx: InspectionContext) {
       let count = 0;
       for (const item of sec.items || []) {
         const r = getResult(item.id, sectionId);
-        const rating = r?.rating as string | null;
-        const level = rating ? ratingLevels.find((l) => l.id === rating) : undefined;
         // A finding is what lights the item's F: a defect rating, or an included
         // defect under any rating (IN/NI/NP systems have no defect level at all).
-        if (level?.isDefect || rating === "Defect" || hasIncludedFindings(((item as { tabs?: ItemTabs }).tabs ?? {}), r)) count++;
+        if (itemHasFinding(((item as { tabs?: ItemTabs }).tabs ?? {}), r, ratingLevels)) count++;
       }
       return count;
     },
