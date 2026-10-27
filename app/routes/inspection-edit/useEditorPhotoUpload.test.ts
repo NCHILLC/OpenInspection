@@ -427,6 +427,7 @@ describe("useEditorPhotoUpload — the camera's Item / Defect toggle", () => {
         act(() => result.current.handleAnnotateShot({ defect: false, fromEnd: 1 }));
         expect(openPhotoStudio).toHaveBeenCalledWith(expect.objectContaining({ key: "k1", index: 1, total: 3 }));
         act(() => result.current.handleAnnotateShot({ defect: true, fromEnd: 0 }));
-        expect(defectPhotoOps.setStudio).toHaveBeenCalledWith(expect.objectContaining({ photoIndex: 0, url: expect.stringContaining("d-k0") }));
+        // The armed defect's title rides along so the markup header can name it (canvas S08).
+        expect(defectPhotoOps.setStudio).toHaveBeenCalledWith(expect.objectContaining({ photoIndex: 0, url: expect.stringContaining("d-k0"), name: "Cracked flashing" }));
     });
 });

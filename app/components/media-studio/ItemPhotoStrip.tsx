@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import Sortable from "sortablejs";
 import { Button } from "@core/shared-ui";
+import { PhonePhotoReview } from "./PhonePhotoReview";
 import { resolvePhotoDisplayKey } from "./photo-display-key";
+import { useIsMobile } from "~/hooks/useBreakpoint";
 import { m } from "~/paraglide/messages";
 
 export interface StripPhoto {
@@ -77,6 +79,9 @@ export interface ItemPhotoStripProps {
    * placeholder instead of a broken image.
    */
   pendingPhotoUrl?: (pendingId: string) => string | undefined;
+  /** Phone: with this set, tapping a thumbnail opens the S09 photo review instead of the viewer. */
+  onPhotoAction?: (index: number, action: "cover" | "delete") => void;
+  itemLabel?: string;
 }
 
 /** The visible thumbnail = the edited derivative when present, else the original.
@@ -98,7 +103,12 @@ export function ItemPhotoStrip({
   onBulkMove,
   videoPosterUrl,
   pendingPhotoUrl,
+  onPhotoAction,
+  itemLabel,
 }: ItemPhotoStripProps) {
+  const isPhone = useIsMobile();
+  const review = !!onPhotoAction && isPhone;
+  const [reviewAt, setReviewAt] = useState<number | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   // Task 9 — Drive-style multi-select. `selecting` flips the strip into select
   // mode (tap toggles instead of opening); `sel` holds the chosen indices.
@@ -271,7 +281,7 @@ export function ItemPhotoStrip({
               key={dk || p.pendingId || `idx-${i}`}
               type="button"
               data-testid={`thumb-${i}`}
-              onClick={() => (selecting ? toggle(i) : onOpen(i))}
+              onClick={() => (selecting ? toggle(i) : review ? setReviewAt(i) : onOpen(i))}
               onPointerDown={() => startLongPress(i)}
               onPointerUp={cancelLongPress}
               onPointerLeave={cancelLongPress}
@@ -368,6 +378,10 @@ export function ItemPhotoStrip({
           );
         })}
       </div>
+      {review && reviewAt !== null && photos.length > 0 && (
+        <PhonePhotoReview {...{ photos, coverKey, photoUrl, moveTargets, onBulkMove, onOpen, videoPosterUrl, pendingPhotoUrl, itemLabel }}
+          startIndex={reviewAt} onClose={() => setReviewAt(null)} onPhotoAction={onPhotoAction!} />
+      )}
     </div>
   );
 }

@@ -50,7 +50,7 @@ export function useDefectPhotoOps(ctx: {
     itemId: string; target: DefectPhotoTarget; photoIndex: number; sourceUrl: string; sectionId?: string; hasAnnotation: boolean;
   } | null>(null);
   const [studio, setStudio] = useState<{
-    itemId: string; target: DefectPhotoTarget; photoIndex: number; url: string; sectionId?: string;
+    itemId: string; target: DefectPhotoTarget; photoIndex: number; url: string; sectionId?: string; name?: string;
   } | null>(null);
 
   const getDefectPhotos = useCallback(

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Icon } from "@core/shared-ui";
-import { Stage, Layer, Image as KonvaImage, Circle, Arrow, Line, Label, Tag, Text } from "react-konva";
+import { Stage, Layer, Image as KonvaImage, Circle, Rect, Arrow, Line, Label, Tag, Text } from "react-konva";
 import type Konva from "konva";
 import {
   ANNOTATION_COLOR,
@@ -10,6 +10,7 @@ import {
   type Point,
 } from "./annotations";
 import { AnnotationToolbar, type ToolId } from "./AnnotationToolbar";
+import { AnnotatorTopBar } from "./AnnotatorTopBar";
 import { AnnotatorPlaceholder } from "./AnnotatorPlaceholder";
 import { usePhotoSource } from "./usePhotoSource";
 import { m } from "~/paraglide/messages";
@@ -25,6 +26,9 @@ interface PhotoAnnotatorProps {
   isCover?: boolean;
   /** set the open photo as the report cover (omit to hide the control). */
   onSetCover?: () => void;
+  /** Canvas S08 header (phone): which kind of photo this is, and the name of the item or defect it belongs to. */
+  target?: "item" | "defect";
+  subject?: string;
   onSave: (data: { blob: Blob; nodesJson: string; caption: string }) => void;
   onClose: () => void;
 }
@@ -42,6 +46,8 @@ export function PhotoAnnotator({
   initialAnnotationsJson,
   isCover,
   onSetCover,
+  target,
+  subject,
   onSave,
   onClose,
 }: PhotoAnnotatorProps) {
@@ -53,6 +59,7 @@ export function PhotoAnnotator({
   const [zoom, setZoom] = useState(1);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [caption, setCaption] = useState(sectionName || "");
+  const [color, setColor] = useState<string>(ANNOTATION_COLOR);
 
   // The source photo at natural resolution + the fit scale (natural -> display),
   // and — N6 — whether the request for it came back a failure.
@@ -101,6 +108,7 @@ export function PhotoAnnotator({
     setCaption(sectionName || "");
     setZoom(1);
     setTool("circle");
+    setColor(ANNOTATION_COLOR);
     setArrowStart(null);
     setDragPos(null);
     setStampText(null);
@@ -159,18 +167,21 @@ export function PhotoAnnotator({
     if (!pos) return;
 
     if (tool === "circle") {
-      setAnnotations((prev) => [...prev, { kind: "circle", x: pos.x, y: pos.y, r: mark * 4 }]);
+      setAnnotations((prev) => [...prev, { kind: "circle", x: pos.x, y: pos.y, r: mark * 4, color }]);
+    } else if (tool === "box") {
+      const w = mark * 10, h = mark * 7;
+      setAnnotations((prev) => [...prev, { kind: "rect", x: pos.x - w / 2, y: pos.y - h / 2, w, h, color }]);
     } else if (tool === "text") {
       // A stamp commits straight to an annotation — that IS the one-tap
       // (field eval P2); typing still opens the inline input as before.
       if (stampText) {
-        setAnnotations((prev) => [...prev, { kind: "label", x: pos.x, y: pos.y, text: stampText }]);
+        setAnnotations((prev) => [...prev, { kind: "label", x: pos.x, y: pos.y, text: stampText, color }]);
       } else {
         setLabelInput(pos);
         setLabelText("");
       }
     }
-  }, [tool, mark, naturalPointer, labelInput, stampText]);
+  }, [tool, mark, naturalPointer, labelInput, stampText, color]);
 
   /* -------------------------------------------------------------- */
   /* Press / drag / release (freehand + arrow) — mouse AND touch.    */
@@ -202,7 +213,7 @@ export function PhotoAnnotator({
       if (freehandPoints.length > 1) {
         setAnnotations((prev) => [
           ...prev,
-          { kind: "freehand", x: freehandPoints[0].x, y: freehandPoints[0].y, points: freehandPoints },
+          { kind: "freehand", x: freehandPoints[0].x, y: freehandPoints[0].y, points: freehandPoints, color },
         ]);
       }
       setFreehandPoints([]);
@@ -212,13 +223,13 @@ export function PhotoAnnotator({
       if (Math.hypot(dragPos.x - arrowStart.x, dragPos.y - arrowStart.y) > mark) {
         setAnnotations((prev) => [
           ...prev,
-          { kind: "arrow", x: arrowStart.x, y: arrowStart.y, x2: dragPos.x, y2: dragPos.y },
+          { kind: "arrow", x: arrowStart.x, y: arrowStart.y, x2: dragPos.x, y2: dragPos.y, color },
         ]);
       }
       setArrowStart(null);
       setDragPos(null);
     }
-  }, [isDrawingFreehand, freehandPoints, arrowStart, dragPos, mark]);
+  }, [isDrawingFreehand, freehandPoints, arrowStart, dragPos, mark, color]);
 
   /* -------------------------------------------------------------- */
   /* Label commit                                                    */
@@ -232,11 +243,11 @@ export function PhotoAnnotator({
     if (labelInput && labelText.trim()) {
       setAnnotations((prev) => [
         ...prev,
-        { kind: "label", x: labelInput.x, y: labelInput.y, text: labelText.trim() },
+        { kind: "label", x: labelInput.x, y: labelInput.y, text: labelText.trim(), color },
       ]);
     }
     cancelLabel();
-  }, [labelInput, labelText, cancelLabel]);
+  }, [labelInput, labelText, cancelLabel, color]);
 
   /* -------------------------------------------------------------- */
   /* Undo / zoom                                                     */
@@ -276,94 +287,30 @@ export function PhotoAnnotator({
   const stageW = natural.w * scale;
   const stageH = natural.h * scale;
   const dragging = tool === "free" || tool === "arrow";
+  // Canvas S08: "Photo 2 · Defect" (photoIndex is 0-based); other callers keep the plain title.
+  const eyebrow = target && photoIndex != null
+    ? (target === "defect" ? m.editor_markup_photo_defect : m.editor_markup_photo_item)({ n: photoIndex + 1 })
+    : m.media_annotate_title();
 
   return (
     /* ds-allow: fixed-dark photo-studio chrome (white/* neutrals + amber-400 hints stay dark in both themes) */
     <div className="fixed inset-0 z-[100] flex flex-col" style={{ background: "rgba(0,0,0,0.92)" }}>
-      {/* -------------------------------------------------------- */}
-      {/* Top bar                                                   */}
-      {/* -------------------------------------------------------- */}
-      <div
-        className="flex items-center gap-3 px-4 h-14 flex-shrink-0"
-        style={{ background: "rgba(15,23,42,0.8)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-      >
-        {/* w-11 h-11 is the 44px touch floor (field eval P1). */}
-        <button
-          onClick={onClose}
-          className="w-11 h-11 rounded-md flex items-center justify-center text-white/70 hover:bg-white/10 transition-colors"
-          aria-label={m.media_annotate_close_aria()}
-        >
-          <Icon name="x" className="w-5 h-5" />
-        </button>
-
-        <div className="flex-1 min-w-0 text-center">
-          <span className="block truncate text-[14px] font-bold text-white/90">
-            {photoIndex != null && totalPhotos != null && totalPhotos > 0
-              ? m.media_annotate_photo_of({ index: photoIndex, total: totalPhotos })
-              : m.media_annotate_title()}
-          </span>
-          {tool === "arrow" && !arrowStart && (
-            <span className="block text-[11px] text-white/50">{m.media_annotate_arrow_hint()}</span>
-          )}
-          {tool === "free" && !isDrawingFreehand && (
-            <span className="block text-[11px] text-white/50">{m.media_annotate_draw_hint()}</span>
-          )}
-          {tool === "text" && stampText && (
-            <span className="block text-[11px] text-amber-400 font-medium">
-              {m.media_annotate_stamp_hint({ label: stampText })}
-            </span>
-          )}
-        </div>
-
-        {/* set the open photo as the report cover.
-            Text collapses to icon-only below `sm`: close+cover+undo+save's
-            labelled widths cannot fit one 375px row even with a zero-width
-            title (field eval P2). Mobile-first, matching AnnotationToolbar's
-            own `hidden sm:inline` right below; aria-label keeps the
-            accessible name once the visible text is display:none. */}
-        {onSetCover && photoUrl && (
-          <button
-            type="button"
-            onClick={onSetCover}
-            aria-label={isCover ? m.media_annotate_cover_current() : m.media_annotate_cover_set_title()}
-            className={`h-11 w-11 sm:w-auto px-0 sm:px-3 justify-center rounded-md text-[12px] font-bold border transition-colors flex items-center gap-1.5 ${
-              isCover
-                ? "text-amber-300 bg-amber-400/15 border-amber-400/40"
-                : "text-white/60 bg-white/5 border-white/10 hover:bg-white/10"
-            }`}
-            title={isCover ? m.media_annotate_cover_current() : m.media_annotate_cover_set_title()}
-          >
-            <svg className="w-3.5 h-3.5 shrink-0" fill={isCover ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.48 3.5a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-            </svg>
-            <span className="hidden sm:inline">{isCover ? m.media_annotate_cover_badge() : m.media_annotate_cover_set()}</span>
-          </button>
-        )}
-
-        <button
-          onClick={undoLast}
-          disabled={annotations.length === 0}
-          aria-label={m.media_annotate_undo_title()}
-          className="h-11 w-11 sm:w-auto px-0 sm:px-3 justify-center rounded-md text-[12px] font-bold text-white/60 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
-          title={m.media_annotate_undo_title()}
-        >
-          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-          </svg>
-          <span className="hidden sm:inline">{m.common_undo()}</span>
-        </button>
-
-        <button
-          onClick={handleSave}
-          aria-label={m.common_save()}
-          className="h-11 w-11 sm:w-auto px-0 sm:px-4 justify-center rounded-md bg-ih-primary text-ih-fg-inverse text-[12px] font-bold hover:bg-ih-primary-600 transition-colors flex items-center gap-1.5"
-        >
-          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          <span className="hidden sm:inline">{m.common_save()}</span>
-        </button>
-      </div>
+      <AnnotatorTopBar
+        onClose={onClose}
+        title={
+          photoIndex != null && totalPhotos != null && totalPhotos > 0
+            ? m.media_annotate_photo_of({ index: photoIndex, total: totalPhotos })
+            : m.media_annotate_title()
+        }
+        hint={(tool === "arrow" && !arrowStart && m.media_annotate_arrow_hint()) || (tool === "free" && !isDrawingFreehand && m.media_annotate_draw_hint()) || null}
+        stampLabel={tool === "text" ? stampText : null}
+        phoneEyebrow={eyebrow}
+        phoneSubject={subject}
+        cover={onSetCover && photoUrl ? { isCover: !!isCover, onSet: onSetCover } : undefined}
+        canUndo={annotations.length > 0}
+        onUndo={undoLast}
+        onSave={handleSave}
+      />
 
       {/* -------------------------------------------------------- */}
       {/* Canvas area                                                */}
@@ -396,6 +343,7 @@ export function PhotoAnnotator({
                 {/* Annotation layer (drawn in natural px, scaled by the stage's group) */}
                 <Layer scaleX={scale} scaleY={scale} listening={false}>
                   {annotations.map((ann, i) => {
+                    const c = ann.color ?? ANNOTATION_COLOR;
                     if (ann.kind === "circle") {
                       return (
                         <Circle
@@ -403,18 +351,21 @@ export function PhotoAnnotator({
                           x={ann.x}
                           y={ann.y}
                           radius={ann.r}
-                          stroke={ANNOTATION_COLOR}
+                          stroke={c}
                           strokeWidth={sw}
                         />
                       );
+                    }
+                    if (ann.kind === "rect") {
+                      return <Rect key={i} x={ann.x} y={ann.y} width={ann.w} height={ann.h} stroke={c} strokeWidth={sw} cornerRadius={mark * 0.3} />;
                     }
                     if (ann.kind === "arrow") {
                       return (
                         <Arrow
                           key={i}
                           points={[ann.x, ann.y, ann.x2, ann.y2]}
-                          stroke={ANNOTATION_COLOR}
-                          fill={ANNOTATION_COLOR}
+                          stroke={c}
+                          fill={c}
                           strokeWidth={sw}
                           pointerLength={mark * 1.2}
                           pointerWidth={mark * 1.2}
@@ -426,7 +377,7 @@ export function PhotoAnnotator({
                         <Line
                           key={i}
                           points={ann.points.flatMap((p) => [p.x, p.y])}
-                          stroke={ANNOTATION_COLOR}
+                          stroke={c}
                           strokeWidth={sw}
                           lineCap="round"
                           lineJoin="round"
@@ -440,7 +391,7 @@ export function PhotoAnnotator({
                           <Tag fill="#000000" opacity={0.85} cornerRadius={mark * 0.3} />
                           <Text
                             text={ann.text}
-                            fill={ANNOTATION_COLOR}
+                            fill={c}
                             fontStyle="bold"
                             fontSize={mark * 1.6}
                             padding={mark * 0.4}
@@ -455,8 +406,8 @@ export function PhotoAnnotator({
                   {arrowStart && dragPos && (
                     <Arrow
                       points={[arrowStart.x, arrowStart.y, dragPos.x, dragPos.y]}
-                      stroke={ANNOTATION_COLOR}
-                      fill={ANNOTATION_COLOR}
+                      stroke={color}
+                      fill={color}
                       strokeWidth={sw}
                       pointerLength={mark * 1.2}
                       pointerWidth={mark * 1.2}
@@ -468,7 +419,7 @@ export function PhotoAnnotator({
                   {isDrawingFreehand && freehandPoints.length > 1 && (
                     <Line
                       points={freehandPoints.flatMap((p) => [p.x, p.y])}
-                      stroke={ANNOTATION_COLOR}
+                      stroke={color}
                       strokeWidth={sw}
                       lineCap="round"
                       lineJoin="round"
@@ -589,6 +540,10 @@ export function PhotoAnnotator({
           setDragPos(null);
           setStampText(text);
         }}
+        color={color}
+        onSelectColor={setColor}
+        canUndo={annotations.length > 0}
+        onUndo={undoLast}
       />
     </div>
   );
