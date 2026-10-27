@@ -65,3 +65,24 @@ describe("PhoneFinishScreen", () => {
         expect(screen.getByText("Fieldwork finished")).toBeTruthy();
     });
 });
+
+describe("PhoneFinishScreen missing facts", () => {
+    it("names the missing temperature and weather, blocks publish, and opens the details form", async () => {
+        const onOpenDetails = vi.fn();
+        const { props } = setup(
+            { ready: false, blockingDefects: [], warningDefects: [], missingFacts: ["temperature", "weather"] },
+            { onOpenDetails },
+        );
+        expect(await screen.findByText("Record the temperature and weather")).toBeTruthy();
+        fireEvent.click(screen.getByRole("button", { name: "Record details to publish" }));
+        expect(props.onPublish).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole("button", { name: "Open details" }));
+        expect(onOpenDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it("names only the fact that is missing", async () => {
+        setup({ ready: false, blockingDefects: [], warningDefects: [], missingFacts: ["weather"] });
+        expect(await screen.findByText("Record the weather")).toBeTruthy();
+    });
+});

@@ -69,6 +69,7 @@ export function MobileFinishDrawer({
     <>
     <PhoneFinishScreen {...finish} open={finishOpen} onClose={() => setFinishOpen(false)}
       onOpen={(b) => { setFinishOpen(false); finish.onOpen(b); }}
+      onOpenDetails={finish.onOpenDetails ? () => { setFinishOpen(false); finish.onOpenDetails?.(); } : undefined}
       onFinishFieldwork={onFinishFieldwork} finishingFieldwork={finishingFieldwork} />
     <MobileBottomDrawer open={open} onClose={onClose} title={m.editor_mobile_more()} heightFraction={0.5}>
       <div className="p-4 space-y-2">

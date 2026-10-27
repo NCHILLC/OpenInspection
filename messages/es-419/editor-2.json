@@ -285,5 +285,9 @@
   "editor_item_tab_notes": "Notas",
   "editor_defect_location_needed": "Necesario para publicar",
   "editor_item_location_needed_one": "Un defecto necesita una ubicación para publicarse",
-  "editor_item_location_needed_other": "{count} defectos necesitan una ubicación para publicarse"
+  "editor_item_location_needed_other": "{count} defectos necesitan una ubicación para publicarse",
+  "editor_gate_facts_both": "Registra la temperatura y el clima",
+  "editor_gate_facts_temperature": "Registra la temperatura",
+  "editor_gate_facts_weather": "Registra el clima",
+  "editor_gate_facts_open": "Abrir detalles"
 }

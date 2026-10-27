@@ -35,6 +35,8 @@ export interface PhoneFinishScreenProps {
     onFill: (b: PublishBlockingDefect, patch: GapFill) => void;
     /** Opens the item holding the defect. */
     onOpen: (b: PublishBlockingDefect) => void;
+    /** Opens the inspection details form, where the missing temperature and weather are recorded. */
+    onOpenDetails?: () => void;
     isnSync?: IsnSync | null;
     onIsnRetry?: () => void;
     isnRetrying?: boolean;
@@ -70,8 +72,8 @@ export function PhoneFinishScreen(p: PhoneFinishScreenProps) {
         // Same BFF route the desktop pre-flight reads. A failed check does not block, as there.
         fetch(`/resources/publish-readiness?id=${encodeURIComponent(p.inspectionId)}`, { credentials: "include" })
             .then((r) => (r.ok ? r.json() as Promise<{ readiness: PublishReadiness | null }> : null))
-            .then((body) => setReadiness(body?.readiness ?? { ready: true, blockingDefects: [], warningDefects: [] }))
-            .catch(() => setReadiness({ ready: true, blockingDefects: [], warningDefects: [] }));
+            .then((body) => setReadiness(body?.readiness ?? { ready: true, blockingDefects: [], warningDefects: [], missingFacts: [] }))
+            .catch(() => setReadiness({ ready: true, blockingDefects: [], warningDefects: [], missingFacts: [] }));
     }, [p.open, p.inspectionId]);
 
     // Done = a publish from here settled with ok, or the status became completed after "later".
@@ -92,8 +94,9 @@ export function PhoneFinishScreen(p: PhoneFinishScreenProps) {
     const needs = (b: PublishBlockingDefect) => [...new Set([...(b.missing.includes("location") ? ["location"] : []), ...b.unresolvedTokens])];
     const open = (readiness?.blockingDefects ?? []).filter((b) => needs(b).some((n) => !(fills[key(b)] ?? {})[n as keyof GapFill]));
     const warnings = readiness?.warningDefects?.length ?? 0;
+    const facts = readiness?.missingFacts ?? [];
     const laterMode = mode === "later" && !!p.onFinishFieldwork;
-    const blocked = !laterMode && (readiness === null || open.length > 0);
+    const blocked = !laterMode && (readiness === null || open.length > 0 || facts.length > 0);
     const fill = (b: PublishBlockingDefect, patch: GapFill) => {
         setFills((f) => ({ ...f, [key(b)]: { ...f[key(b)], ...patch } }));
         p.onFill(b, patch);
@@ -143,6 +146,14 @@ export function PhoneFinishScreen(p: PhoneFinishScreenProps) {
                             </div>
                         </section>
 
+                        {readiness !== null && facts.length > 0 && (
+                            <section aria-label={m.editor_gate_facts_open()} data-testid="finish-missing-facts" className={`${card} bg-ih-bad-bg border-ih-bad/30 flex items-center gap-2`}>
+                                <span className="flex-1 min-w-0 flex items-center gap-2 text-ih-bad-fg text-[17px] font-bold">{warnIcon}{facts.length === 2 ? m.editor_gate_facts_both() : facts[0] === "temperature" ? m.editor_gate_facts_temperature() : m.editor_gate_facts_weather()}</span>
+                                {p.onOpenDetails && (
+                                    <button type="button" onClick={p.onOpenDetails} className="h-12 px-2.5 text-[15px] font-bold text-ih-primary-text">{m.editor_gate_facts_open()}</button>
+                                )}
+                            </section>
+                        )}
                         {readiness === null ? (
                             <p className="text-[16px] text-ih-fg-3">{m.report_publish_checking()}</p>
                         ) : open.length > 0 ? (
@@ -231,6 +242,7 @@ export function PhoneFinishScreen(p: PhoneFinishScreenProps) {
                             {busy ? (p.isSubmitting ? m.editor_publish_publishing() : m.editor_finish_fieldwork_pending())
                                 : laterMode ? m.editor_finish_fieldwork()
                                 : readiness && open.length > 0 ? m.editor_finish_fill_to_publish({ count: open.length })
+                                : readiness && facts.length > 0 ? m.editor_finish_details_to_publish()
                                 : m.editor_finish_publish()}
                         </button>
                     </nav>
