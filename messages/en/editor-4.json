@@ -234,5 +234,16 @@
   "editor_finish_publish": "Publish report",
   "editor_finish_fill_to_publish": "Fill {count} to publish",
   "editor_finish_done_later_title": "Fieldwork finished",
-  "editor_finish_done_later_body": "The report is still a draft. Publish it from this phone or the desk when you are ready."
+  "editor_finish_done_later_body": "The report is still a draft. Publish it from this phone or the desk when you are ready.",
+  "editor_camera_target_aria": "Photos go to",
+  "editor_camera_target_item": "Item",
+  "editor_camera_target_item_name": "Whole item",
+  "editor_camera_target_defect": "Defect",
+  "editor_camera_flash_aria": "Flash",
+  "editor_camera_markup": "Mark up",
+  "editor_camera_hint": "Each tap of the shutter saves one photo.",
+  "editor_camera_session_one": "1 photo this session",
+  "editor_camera_session_other": "{count} photos this session",
+  "editor_camera_shot_item_aria": "Photo {n}, item. Mark up",
+  "editor_camera_shot_defect_aria": "Photo {n}, defect. Mark up"
 }

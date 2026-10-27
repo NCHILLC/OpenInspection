@@ -336,7 +336,7 @@ describe("useEditorPhotoUpload — every item photo rides the queue", () => {
 });
 
 /**
- * Field eval P1 — shoot-to-annotate. `handleAnnotateNewest` opens the
+ * Field eval P1 — shoot-to-annotate. `handleAnnotateShot` opens the
  * annotator on exactly the last photo of whichever array the session shoots
  * into — the item's, or the defect's when the camera was opened from a chip —
  * and refuses only a shot that has nothing on the server yet.
@@ -348,7 +348,7 @@ describe("useEditorPhotoUpload — shoot-to-annotate", () => {
             { key: "k1", photoIndex: 1, pending: false, croppedKey: "k1-crop" },
         ]);
         const { result } = setup();
-        act(() => result.current.handleAnnotateNewest());
+        act(() => result.current.handleAnnotateShot());
         expect(openPhotoStudio).toHaveBeenCalledWith(
             expect.objectContaining({ key: "k1-crop", index: 1, total: 2 }),
         );
@@ -357,7 +357,7 @@ describe("useEditorPhotoUpload — shoot-to-annotate", () => {
     it("toasts instead of opening while the newest photo is still uploading", async () => {
         itemGalleryPhotos.mockReturnValue([{ key: "", photoIndex: 0, pending: true }]);
         const { result } = setup();
-        act(() => result.current.handleAnnotateNewest());
+        act(() => result.current.handleAnnotateShot());
         expect(openPhotoStudio).not.toHaveBeenCalled();
         expect(pushToast).toHaveBeenCalledTimes(1);
     });
@@ -372,7 +372,7 @@ describe("useEditorPhotoUpload — shoot-to-annotate", () => {
         ]);
         const { result } = setup();
         act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));
-        act(() => result.current.handleAnnotateNewest());
+        act(() => result.current.handleAnnotateShot());
         expect(defectPhotoOps.galleryPhotos).toHaveBeenCalledWith("item-1", { kind: "canned", id: "d1" });
         expect(defectPhotoOps.setStudio).toHaveBeenCalledWith(
             expect.objectContaining({ target: { kind: "canned", id: "d1" }, photoIndex: 1, url: expect.stringContaining("d-k1") }),
@@ -382,7 +382,51 @@ describe("useEditorPhotoUpload — shoot-to-annotate", () => {
 
     it("no-ops when the item has no photos yet", async () => {
         const { result } = setup();
-        act(() => result.current.handleAnnotateNewest());
+        act(() => result.current.handleAnnotateShot());
         expect(openPhotoStudio).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * The camera's Item / Defect toggle and its per-shot markup. The toggle only
+ * re-aims the pending target; the defect stays armed so the inspector can flip
+ * back, and a shot is found by counting from the end of ITS OWN array.
+ */
+describe("useEditorPhotoUpload — the camera's Item / Defect toggle", () => {
+    it("names the armed defect, aims at the item on request, and back at the defect", async () => {
+        const { result, settle } = setup();
+        act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }, "Cracked flashing"));
+        expect(result.current.armedDefectName).toBe("Cracked flashing");
+        act(() => result.current.setCameraTarget("item"));
+        await shootAFrame(result.current.handleCameraFrame);
+        expect(lastTarget().targetType).toBeNull();
+        await settle();
+        act(() => result.current.setCameraTarget("defect"));
+        await shootAFrame(result.current.handleCameraFrame);
+        expect(lastTarget()).toEqual({ targetType: "defect", customId: "d1" });
+    });
+
+    it("forgets the defect and its name when the target is cleared", () => {
+        const { result } = setup();
+        act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }, "Cracked flashing"));
+        act(() => result.current.clearPhotoTarget());
+        expect(result.current.armedDefectName).toBeNull();
+        act(() => result.current.setCameraTarget("defect"));
+        expect(lastTarget().targetType).toBeNull();
+    });
+
+    it("marks up an older shot, counted from the end of the array its kind shoots into", () => {
+        itemGalleryPhotos.mockReturnValue([
+            { key: "k0", photoIndex: 0, pending: false },
+            { key: "k1", photoIndex: 1, pending: false },
+            { key: "k2", photoIndex: 2, pending: false },
+        ]);
+        defectPhotoOps.galleryPhotos.mockReturnValue([{ key: "d-k0", photoIndex: 0, pending: false }]);
+        const { result } = setup();
+        act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }, "Cracked flashing"));
+        act(() => result.current.handleAnnotateShot({ defect: false, fromEnd: 1 }));
+        expect(openPhotoStudio).toHaveBeenCalledWith(expect.objectContaining({ key: "k1", index: 1, total: 3 }));
+        act(() => result.current.handleAnnotateShot({ defect: true, fromEnd: 0 }));
+        expect(defectPhotoOps.setStudio).toHaveBeenCalledWith(expect.objectContaining({ photoIndex: 0, url: expect.stringContaining("d-k0") }));
     });
 });
