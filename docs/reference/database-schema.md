@@ -10,10 +10,10 @@ from the Drizzle definitions in `server/lib/db/schema/` — the two that
 | | |
 |---|---|
 | Tables | 110 |
-| Columns | 1270 |
+| Columns | 1272 |
 | Indexes (excluding primary keys) | 184 |
 | Database foreign keys (all legacy, frozen) | 51 |
-| Columns carrying a source comment | 612 (48%) |
+| Columns carrying a source comment | 614 (48%) |
 
 **Tables without `tenant_id`.** Every table holding tenant data must carry it —
 `npm run lint:tenant-scope` is the gate. These are the tables that are not *about*
@@ -1286,7 +1286,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `inspections`
 
-<sub>server/lib/db/schema/inspection/core.ts · 76 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/inspection/core.ts · 78 columns · primary key `id`</sub>
 
 | Column | Type | Flags | Default | Values | Description |
 |---|---|---|---|---|---|
@@ -1366,6 +1366,8 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `reports_generated_at` | integer |  |  |  | When the sold service lines were turned into `reports` rows. Generation runs ONCE, at the point the work is scheduled to begin, and this column is what makes that true. **[more]** |
 | `deposit_required_cents` | integer |  |  |  | What this ORDER was asked for up front, frozen at booking. A SNAPSHOT, not a policy reference. **[more]** |
 | `is_deposit_overridden` | integer | NN | `false` |  | Tier 3 — a human set the number above, so nothing may recompute it. Without this flag one column has to mean two things, and a later re-resolve silently overwrites the figure an operator agreed with a client over the phone. |
+| `temperature_f` | integer |  |  |  | Whole degrees F on site; NULL = not recorded. Required to publish a NEW report, but that rule lives in computePublishReadinessFromState, not here, so reports published before the column existed stay valid. |
+| `weather` | text |  |  | `clear, cloudy, rain, snow` | On-site conditions (clear\|cloudy\|rain\|snow); NULL = not recorded. Same publish rule as temperatureF. |
 
 **Indexes**
 
