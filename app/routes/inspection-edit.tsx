@@ -1206,7 +1206,7 @@ export default function InspectionEditPage() {
  onMoveItem={canEditStructure ? (itemId, dir) => structure.moveItem(state.currentSection?.id || "", itemId, dir) : undefined}
  onReorderItem={canEditStructure ? (fromId, toId) => reorderItemBySwap(state.currentSectionItems, fromId, toId, state.currentSection?.id || "", structure.moveItem) : undefined}
  onRenameItem={canEditStructure ? (itemId, label) => structure.renameItem(state.currentSection?.id || "", itemId, label) : undefined}
- groups={statutoryGroups}
+ groups={statutoryGroups} ratingLevels={state.ratingLevels}
  onAddGroupInstance={(groupId) => setAddingToGroup(groupId)}
  rowFooter={isMobile ? checklistRowRating(state.currentSection?.id || "", visibleItems, state.ratingLevels, findings) : undefined}
  />
@@ -1558,6 +1558,32 @@ export default function InspectionEditPage() {
  /* Render */
  /* ---------------------------------------------------------------- */
 
+ const publishNow = (markComplete: boolean, extras: PublishExtras) => {
+ // Keep the modal open: the publish-result effect closes it on success
+ // and shows the real server reason inline on failure. `markComplete`
+ // also closes the order axis first (advisory — never blocks publish);
+ // patch status locally so the badge reflects it without a reload.
+ setPublishError(null);
+ if (markComplete) {
+ state.setInspection((prev) => ({ ...prev, status: INSPECTION_STATUS.COMPLETED }));
+ }
+ // The auto-sign choice rides ALONG WITH the publish, never beside it.
+ // It used to be a separate fetcher fired by the checkbox, racing this
+ // request: the publish handler re-reads the inspection row to decide
+ // whether to sign, and if the toggle had not landed yet it read the OLD
+ // value and published UNSIGNED. The flag still persisted, so the next
+ // publish signed — the worst shape for a bug like this, because the
+ // reader concludes they mis-clicked rather than that a report went out
+ // unsigned.
+ submitPublish(
+ {
+ intent: "publish",
+ autoSignOnPublish: String(autoSign), ...extras,
+ ...(markComplete ? { markComplete: "true" } : {}),
+ },
+ { method: "post" },
+ );
+ };
  /**
   * The dialogs that END a job — report settings, sign, the publish
   * readiness gate, publish — plus the unsaved-changes blocker.
@@ -1595,32 +1621,7 @@ export default function InspectionEditPage() {
  publishError={publishError} isSubmitting={publishBusy} {...isn.modalProps}
  isAmendment={loaderData.nextPublishIsAmendment}
  onClose={() => { setPublishError(null); state.setShowPublishModal(false); }}
- onPublish={(markComplete: boolean, extras: PublishExtras) => {
- // Keep the modal open: the publish-result effect closes it on success
- // and shows the real server reason inline on failure. `markComplete`
- // also closes the order axis first (advisory — never blocks publish);
- // patch status locally so the badge reflects it without a reload.
- setPublishError(null);
- if (markComplete) {
- state.setInspection((prev) => ({ ...prev, status: INSPECTION_STATUS.COMPLETED }));
- }
- // The auto-sign choice rides ALONG WITH the publish, never beside it.
- // It used to be a separate fetcher fired by the checkbox, racing this
- // request: the publish handler re-reads the inspection row to decide
- // whether to sign, and if the toggle had not landed yet it read the OLD
- // value and published UNSIGNED. The flag still persisted, so the next
- // publish signed — the worst shape for a bug like this, because the
- // reader concludes they mis-clicked rather than that a report went out
- // unsigned.
- submitPublish(
- {
- intent: "publish",
- autoSignOnPublish: String(autoSign), ...extras,
- ...(markComplete ? { markComplete: "true" } : {}),
- },
- { method: "post" },
- );
- }}
+ onPublish={publishNow}
  autoSign={autoSign}
  onAutoSignToggle={handleAutoSignToggle}
  />
@@ -1832,7 +1833,7 @@ export default function InspectionEditPage() {
   <MobileFinishDrawer
   open={mobileDrawer === "actions"}
   onClose={() => setMobileDrawer(null)}
-  onPublish={() => void handlePublishClick()}
+  finish={{ inspectionId: String(state.inspection.id), address: (state.inspection.propertyAddress as string) || m.editor_mobile_eyebrow_inspection(), rated: state.progress.rated, total: state.progress.total, findings: state.sections.reduce((n, sec) => n + state.sectionDefectCount(sec.id), 0), status: state.inspection.status as string, isAmendment: loaderData.nextPublishIsAmendment, autoSign, onAutoSignToggle: handleAutoSignToggle, publishError, isSubmitting: publishBusy, publishOk: !!publishFetcher.data?.ok, onPublish: publishNow, ...isn.modalProps, onFill: (b, patch) => findings.setDefectFields(b.sectionId, b.itemId, b.cannedId, patch), onOpen: (b) => urlNav.goToItemIn(b.sectionId, b.itemId) }}
   onSign={() => setSignModalOpen(true)}
   onOpenSettings={() => state.setSettingsOpen(true)}
   onFinishFieldwork={(state.inspection.status as string) !== "completed" ? handleFinishFieldwork : null}

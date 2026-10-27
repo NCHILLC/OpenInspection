@@ -219,12 +219,13 @@ still shipped for back-compat — don't use them on new pages.
 
 Hints, descriptions and other 11px small print use **`text-ih-fg-3`**.
 `ih-fg-4` is a *decoration* tier — chevrons, dividers, offline dots,
-placeholders — not a text tier: at 11px it measures 2.56:1 on a light card and
-3.07:1 on a dark one, against WCAG AA's 4.5:1 for normal-size text. `ih-fg-3`
-clears it in all three themes (4.76:1 light, 5.71:1 dark, 12.02:1 field).
+placeholders — not a text tier: at 11px it measures 3.07:1 on a dark card
+(4.76:1 on a light one), against WCAG AA's 4.5:1 for normal-size text. `ih-fg-3`
+clears it in all three themes (5.94:1 light, 5.71:1 dark, 12.02:1 field).
 
-On `bg-ih-bg-muted` even `ih-fg-3` falls short (4.34:1 in light), so a chip or
-pill that paints its own muted background takes **`text-ih-fg-2`**.
+On `bg-ih-bg-muted`, `ih-fg-3` measures 5.43:1 in light (it was 4.34:1 before
+the light value moved to #566579), so a chip on a muted ground no longer needs
+to step up to `text-ih-fg-2`.
 
 `lint:ds` cannot see this — it validates token *names*, and `ih-fg-4` is a
 legitimate name. `npm run lint:contrast` (`scripts/check-contrast.mjs`) does the
