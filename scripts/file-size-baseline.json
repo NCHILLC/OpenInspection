@@ -27,7 +27,7 @@
   "server/api/public-report.ts": 628,
   "server/api/auth.ts": 614,
   "app/hooks/useInspection.ts": 600,
-  "app/components/media-studio/PhotoAnnotator.tsx": 596,
+  "app/components/media-studio/PhotoAnnotator.tsx": 551,
   "server/services/concierge.service.ts": 596,
   "server/api/inspections/publish.ts": 591,
   "server/api/inspections/core.ts": 587,

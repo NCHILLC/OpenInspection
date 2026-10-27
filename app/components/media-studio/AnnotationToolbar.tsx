@@ -1,3 +1,4 @@
+import { ANNOTATION_COLORS } from "./annotations";
 import { m } from "~/paraglide/messages";
 
 /* ------------------------------------------------------------------ */
@@ -10,6 +11,7 @@ import { m } from "~/paraglide/messages";
 const TOOLS = [
   { id: "circle", icon: "M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
   { id: "arrow", icon: "M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" },
+  { id: "box", icon: "M4 6h16v12H4z" },
   { id: "free", icon: "M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" },
   { id: "text", icon: "M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" },
 ] as const;
@@ -22,6 +24,7 @@ function toolLabel(id: ToolId): string {
   switch (id) {
     case "circle": return m.media_annotate_tool_circle();
     case "arrow": return m.media_annotate_tool_arrow();
+    case "box": return m.editor_markup_tool_box();
     case "free": return m.media_annotate_tool_free();
     case "text": return m.media_annotate_tool_text();
   }
@@ -50,13 +53,28 @@ interface AnnotationToolbarProps {
   /** The stamp text armed for the next tap, when one was picked over typing. */
   activeStamp: string | null;
   onSelectStamp: (text: string) => void;
+  /** Phone-only controls (canvas S08): the mark colour and an Undo beside it. */
+  color: string;
+  onSelectColor: (color: string) => void;
+  canUndo: boolean;
+  onUndo: () => void;
+}
+
+function colorLabel(hex: string): string {
+  return hex === ANNOTATION_COLORS[1] ? m.editor_markup_color_yellow() : hex === ANNOTATION_COLORS[2] ? m.editor_markup_color_white() : m.editor_markup_color_red();
 }
 
 /* ------------------------------------------------------------------ */
 /* Bottom tool palette                                                 */
 /* ------------------------------------------------------------------ */
 
-export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange, activeStamp, onSelectStamp }: AnnotationToolbarProps) {
+export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange, activeStamp, onSelectStamp, color, onSelectColor, canUndo, onUndo }: AnnotationToolbarProps) {
+  // Arrow and Draw are drags, so only the other tools get the canvas's "Tap the photo" hint.
+  const hint =
+    tool === "arrow" ? m.media_annotate_arrow_hint()
+    : tool === "free" ? m.media_annotate_draw_hint()
+    : tool === "text" && activeStamp ? m.media_annotate_stamp_hint({ label: activeStamp })
+    : m.editor_markup_hint_tap({ tool: toolLabel(tool).toLowerCase() });
   return (
     /* ds-allow: fixed-dark photo-studio chrome (white/* neutrals stay dark in both themes) */
     // Wraps to two rows below sm, and is not height-locked: six tools plus a
@@ -64,10 +82,10 @@ export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange
     // the labels collapsed and left six 36px icon squares — under the touch
     // floor, on the surface used with a glove.
     <div
-      className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-4 py-2 min-h-14 flex-shrink-0"
+      className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-4 py-2 min-h-14 flex-shrink-0 max-md:flex-col max-md:items-stretch max-md:px-3 max-md:py-3"
       style={{ background: "rgba(15,23,42,0.85)", borderTop: "1px solid rgba(255,255,255,0.08)" }}
     >
-      <div className="flex items-center gap-1 flex-wrap">
+      <div className="flex items-center gap-1 flex-wrap max-md:grid max-md:grid-cols-5 max-md:gap-1.5">
         {/* ds-allow: fixed-dark photo-studio chrome — raw white/* on the inline
             rgba(15,23,42,0.85) toolbar, matching the sibling controls in
             PhotoAnnotator. The inactive state read `text-ih-fg-inverse/60`, and
@@ -83,15 +101,15 @@ export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange
             type="button"
             data-testid={`tool-${t.id}`}
             onClick={() => onSelectTool(t.id)}
-            className={`h-11 min-w-11 px-3 rounded-md text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors ${
-              tool === t.id ? "bg-ih-primary text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
+            className={`h-11 min-w-11 px-3 rounded-md text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors max-md:h-16 max-md:flex-col max-md:gap-0.5 max-md:px-0 ${
+              tool === t.id ? "bg-ih-primary text-white max-md:text-ih-primary-fg" : "text-white/70 hover:bg-white/10 hover:text-white max-md:border max-md:border-white/25"
             }`}
             title={toolLabel(t.id)}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 max-md:w-5.5 max-md:h-5.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={t.icon} />
             </svg>
-            <span className="hidden sm:inline">{toolLabel(t.id)}</span>
+            <span className="hidden sm:inline max-md:inline max-md:text-[13px]">{toolLabel(t.id)}</span>
           </button>
         ))}
       </div>
@@ -125,9 +143,41 @@ export function AnnotationToolbar({ tool, caption, onSelectTool, onCaptionChange
         </div>
       )}
 
+      {/* Canvas S08, phone only: colour, Undo and the hint sit under the tools; the caption field stays on larger screens (no caller saves it). */}
+      <div className="md:hidden flex items-center gap-2">
+        <div role="radiogroup" aria-label={m.editor_markup_colors_label()} className="flex gap-2">
+          {ANNOTATION_COLORS.map((hex) => (
+            <button
+              key={hex}
+              type="button"
+              role="radio"
+              aria-checked={color === hex}
+              aria-label={colorLabel(hex)}
+              onClick={() => onSelectColor(hex)}
+              className={`w-13 h-13 rounded-full flex items-center justify-center ${color === hex ? "border-[3px] border-ih-primary" : "border border-white/30"}`}
+            >
+              <span aria-hidden="true" className="w-8 h-8 rounded-full" style={{ background: hex }} />
+            </button>
+          ))}
+        </div>
+        <span className="flex-1" />
+        <button
+          type="button"
+          onClick={onUndo}
+          disabled={!canUndo}
+          className="h-13 px-4 flex items-center gap-2 rounded-md border border-white/30 text-[16px] font-bold text-white/85 disabled:opacity-40"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 14L4 9l5-5M4 9h11a5 5 0 010 10h-3" />
+          </svg>
+          {m.common_undo()}
+        </button>
+      </div>
+      <p aria-live="polite" className="md:hidden m-0 text-[15px] text-white/70">{hint}</p>
+
       <div className="hidden sm:block w-px h-6 bg-white/10" />
 
-      <div className="flex-1 min-w-0 basis-full sm:basis-auto">
+      <div className="flex-1 min-w-0 basis-full sm:basis-auto max-md:hidden">
         <input
           type="text"
           value={caption}

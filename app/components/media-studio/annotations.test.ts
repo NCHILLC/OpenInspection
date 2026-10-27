@@ -6,6 +6,7 @@ describe('annotations serialization', () => {
     { kind: 'arrow', x: 10, y: 10, x2: 90, y2: 90 },
     { kind: 'label', x: 50, y: 50, text: 'Crack' },
     { kind: 'freehand', x: 0, y: 0, points: [{ x: 0, y: 0 }, { x: 5, y: 6 }] },
+    { kind: 'rect', x: 4, y: 5, w: 100, h: 70, color: '#fcd34d' },
   ];
   it('round-trips through JSON', () => {
     expect(deserializeAnnotations(serializeAnnotations(anns))).toEqual(anns);

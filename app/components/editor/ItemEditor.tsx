@@ -135,6 +135,8 @@ interface ItemEditorProps {
  moveTargets?: Array<{ itemId: string; label: string; sectionId?: string }>;
  /** Task 9b — bulk-move the given photoIndex set (high→low) to a target item. */
  onBulkMovePhotos?: (itemId: string, indices: number[], to: { itemId: string; sectionId?: string }) => void;
+ /** Phone (S09 photo review): set the cover / delete (with undo) for one of this item photos. */
+ onPhotoAction?: (itemId: string, index: number, action: "cover" | "delete") => void;
  /** Plan 7 — resolve a Stream poster URL for a video strip thumbnail (fail-closed → null). */
  videoPosterUrl?: (streamUid: string, posterPct?: number) => string | null;
  /** #181 PR-G — resolve the local blob URL for a pending (offline) photo entry. */
@@ -195,11 +197,8 @@ export function ItemEditor({
  onDetachRepairItem,
  inspectionId,
  coverKey,
- onOpenPhoto,
- onReorderPhotos,
- onBulkDetachPhotos,
- moveTargets,
- onBulkMovePhotos,
+ onOpenPhoto, onReorderPhotos,
+ onBulkDetachPhotos, moveTargets, onBulkMovePhotos, onPhotoAction,
  videoPosterUrl,
  pendingPhotoUrl,
  initialTab = "information",
@@ -544,6 +543,7 @@ export function ItemEditor({
  onBulkDetach={onBulkDetachPhotos ? (indices) => onBulkDetachPhotos(item.id, indices) : undefined}
  moveTargets={moveTargets ? moveTargets.filter((mt) => mt.itemId !== item.id) : undefined}
  onBulkMove={onBulkMovePhotos ? (indices, to) => onBulkMovePhotos(item.id, indices, to) : undefined}
+ onPhotoAction={onPhotoAction ? (i, a) => onPhotoAction(item.id, i, a) : undefined} itemLabel={item.label}
  videoPosterUrl={videoPosterUrl}
  pendingPhotoUrl={pendingPhotoUrl}
  />

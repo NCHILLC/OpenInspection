@@ -224,5 +224,22 @@
   "editor_camera_session_one": "1 photo this session",
   "editor_camera_session_other": "{count} photos this session",
   "editor_camera_shot_item_aria": "Photo {n}, item. Mark up",
-  "editor_camera_shot_defect_aria": "Photo {n}, defect. Mark up"
+  "editor_camera_shot_defect_aria": "Photo {n}, defect. Mark up",
+  "editor_markup_photo_item": "Photo {n} · Item",
+  "editor_markup_photo_defect": "Photo {n} · Defect",
+  "editor_markup_tool_box": "Box",
+  "editor_markup_colors_label": "Color",
+  "editor_markup_color_red": "Red",
+  "editor_markup_color_yellow": "Yellow",
+  "editor_markup_color_white": "White",
+  "editor_markup_hint_tap": "Tap the photo to add a {tool}",
+  "editor_review_title": "Photos · {count}",
+  "editor_review_back": "Back to the item",
+  "editor_review_note": "The cover photo shows first under this item in the report. Defect photos print with their defect.",
+  "editor_review_tap_hint": "Tap a photo to change it.",
+  "editor_review_photo_aria": "Photo {n}",
+  "editor_review_photo_cover_aria": "Photo {n}, cover",
+  "editor_review_move": "Move",
+  "editor_review_move_title": "Move photo to",
+  "editor_review_moved": "Moved to {target}"
 }

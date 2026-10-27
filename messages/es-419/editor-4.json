@@ -224,5 +224,22 @@
   "editor_camera_session_one": "1 foto en esta sesión",
   "editor_camera_session_other": "{count} fotos en esta sesión",
   "editor_camera_shot_item_aria": "Foto {n}, elemento. Marcar",
-  "editor_camera_shot_defect_aria": "Foto {n}, defecto. Marcar"
+  "editor_camera_shot_defect_aria": "Foto {n}, defecto. Marcar",
+  "editor_markup_photo_item": "Foto {n} · Elemento",
+  "editor_markup_photo_defect": "Foto {n} · Defecto",
+  "editor_markup_tool_box": "Cuadro",
+  "editor_markup_colors_label": "Color",
+  "editor_markup_color_red": "Rojo",
+  "editor_markup_color_yellow": "Amarillo",
+  "editor_markup_color_white": "Blanco",
+  "editor_markup_hint_tap": "Toca la foto para colocar: {tool}",
+  "editor_review_title": "Fotos · {count}",
+  "editor_review_back": "Volver al elemento",
+  "editor_review_note": "La foto de portada se muestra primero bajo este elemento en el informe. Las fotos de defecto se imprimen con su defecto.",
+  "editor_review_tap_hint": "Toca una foto para cambiarla.",
+  "editor_review_photo_aria": "Foto {n}",
+  "editor_review_photo_cover_aria": "Foto {n}, portada",
+  "editor_review_move": "Mover",
+  "editor_review_move_title": "Mover foto a",
+  "editor_review_moved": "Movida a {target}"
 }
