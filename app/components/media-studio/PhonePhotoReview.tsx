@@ -46,12 +46,14 @@ export function PhonePhotoReview({ photos, coverKey, photoUrl, moveTargets, onBu
   const cover = () => { onClose(); onPhotoAction(sel!, "cover"); };
   const edit = () => { onClose(); onOpen(sel!); };
   const remove = () => { onPhotoAction(sel!, "delete"); setSel(null); };
-  // ponytail: no undo on a move. Undo would be a move back, and the strip's move
-  // handler addresses the photo by its index in the SOURCE item's array, which a
-  // move back would have to guess in the target's. Add when the doc can move by key.
   const move = (to: { itemId: string; sectionId?: string; label: string }) => {
-    onBulkMove?.([sel!], { itemId: to.itemId, sectionId: to.sectionId });
-    pushToast({ message: m.editor_review_moved({ target: to.label }), variant: "neutral", durationMs: 5000 });
+    const undo = onBulkMove?.([sel!], { itemId: to.itemId, sectionId: to.sectionId });
+    pushToast({
+      message: m.editor_review_moved({ target: to.label }),
+      variant: "neutral",
+      durationMs: typeof undo === "function" ? 6000 : 5000,
+      ...(typeof undo === "function" ? { actionLabel: m.common_undo(), onAction: undo } : {}),
+    });
     setSel(null);
     setMoving(false);
   };

@@ -65,7 +65,7 @@ export interface ItemPhotoStripProps {
    * Indices are emitted DESC (high→low), mirroring {@link onBulkDetach}, so the
    * caller can POST them one per round trip without invalidating earlier indices.
    */
-  onBulkMove?: (indices: number[], to: { itemId: string; sectionId?: string }) => void;
+  onBulkMove?: (indices: number[], to: { itemId: string; sectionId?: string }) => void | (() => void);
   /**
    * Plan 7 — resolve a Stream poster thumbnail URL for a video entry. Returns
    * null when the Stream customer subdomain is unavailable (fail closed) — the

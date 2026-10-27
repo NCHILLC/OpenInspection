@@ -134,7 +134,7 @@ interface ItemEditorProps {
  /** Task 9b — the OTHER items this item's photos can be moved to. */
  moveTargets?: Array<{ itemId: string; label: string; sectionId?: string }>;
  /** Task 9b — bulk-move the given photoIndex set (high→low) to a target item. */
- onBulkMovePhotos?: (itemId: string, indices: number[], to: { itemId: string; sectionId?: string }) => void;
+ onBulkMovePhotos?: (itemId: string, indices: number[], to: { itemId: string; sectionId?: string }) => void | (() => void);
  /** Phone (S09 photo review): set the cover / delete (with undo) for one of this item photos. */
  onPhotoAction?: (itemId: string, index: number, action: "cover" | "delete") => void;
  /** Plan 7 — resolve a Stream poster URL for a video strip thumbnail (fail-closed → null). */
