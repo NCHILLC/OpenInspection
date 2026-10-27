@@ -100,9 +100,9 @@ describe('contrast maths', () => {
     it('reproduces the measured hint numbers from the real tokens', () => {
         // These are the values that make the defect real. If a token block is
         // edited, this test says so rather than silently re-baselining.
-        expect(gate.contrastRatio('#94a3b8', '#ffffff')).toBeCloseTo(2.56, 2); // fg-4 light
+        expect(gate.contrastRatio('#64748b', '#ffffff')).toBeCloseTo(4.76, 2); // fg-4 light
         expect(gate.contrastRatio('#64748b', '#1e293b')).toBeCloseTo(3.07, 2); // fg-4 dark
-        expect(gate.contrastRatio('#64748b', '#ffffff')).toBeCloseTo(4.76, 2); // fg-3 light
+        expect(gate.contrastRatio('#566579', '#ffffff')).toBeCloseTo(5.94, 2); // fg-3 light
         expect(gate.contrastRatio('#94a3b8', '#1e293b')).toBeCloseTo(5.71, 2); // fg-3 dark
     });
 
@@ -123,7 +123,7 @@ describe('stylesheet reading', () => {
     it('follows the cascade: field inherits fg-2 overrides, dark inherits :root fg-5', () => {
         expect(gate.resolveVar(CSS, 2, '--ih-fg-3')).toBe('#cbd5e1'); // field override
         expect(gate.resolveVar(CSS, 1, '--ih-fg-3')).toBe('#94a3b8'); // dark override
-        expect(gate.resolveVar(CSS, 0, '--ih-fg-3')).toBe('#64748b'); // light base
+        expect(gate.resolveVar(CSS, 0, '--ih-fg-3')).toBe('#566579'); // light base
     });
 
     it('maps utility suffixes to custom properties via the @theme block', () => {
@@ -158,8 +158,10 @@ describe('the gate itself', () => {
         expect(violations).toHaveLength(1);
         expect(violations[0].token).toBe('fg-4');
         const themes = violations[0].failures.map((f) => f.theme);
-        expect(themes).toContain('light');
+        // Light fg-4 was raised to #64748b (4.76:1 on the card) for the
+        // 3:1 decoration floor, so dark (3.07:1) is the theme that still fails.
         expect(themes).toContain('dark');
+        expect(themes).not.toContain('light');
         // Field mode raises fg-4 to #94a3b8 on a near-black card (~6.96:1), so
         // it genuinely passes there. Asserting that keeps the gate honest about
         // which themes are actually broken.
@@ -275,23 +277,31 @@ describe('surface inference: the element paints its own background', () => {
         expect(bare.violations[0].failures[0].ratio).toBeCloseTo(2.15, 2);
     });
 
-    it('ACCUSES too: fg-3 clears AA on a card and fails on bg-ih-bg-muted', () => {
+    it('ACCUSES too: a colour that clears AA on a card can fail on bg-ih-bg-muted', () => {
         // Surface inference is not only an excuse mechanism. Light `--ih-fg-3`
-        // on `--ih-bg-muted` (#f1f5f9) is 4.34:1, so "move small text to fg-3"
-        // is not universally sufficient and the gate has to say so.
-        expect(scan([fixture('text-[11px] text-ih-fg-3')]).violations).toEqual([]);
+        // is now 5.43:1 on `--ih-bg-muted` (#f1f5f9), so it clears there too.
+        expect(scan([fixture('text-[11px] text-ih-fg-3 bg-ih-bg-muted')]).violations).toEqual([]);
 
-        const { violations } = scan([fixture('text-[11px] text-ih-fg-3 bg-ih-bg-muted')]);
+        // Light `--ih-fg-4` (#64748b) is 4.76:1 on the card but 4.34:1 on muted;
+        // on the card only dark fails, on muted light fails as well.
+        const onCard = scan([fixture('text-[11px] text-ih-fg-4')]).violations;
+        expect(onCard).toHaveLength(1);
+        expect(onCard[0].failures.map((f) => f.theme)).toEqual(['dark']);
+
+        const { violations } = scan([fixture('text-[11px] text-ih-fg-4 bg-ih-bg-muted')]);
         expect(violations).toHaveLength(1);
         expect(violations[0].surface).toBe('--ih-bg-muted');
-        expect(violations[0].failures.map((f) => f.theme)).toEqual(['light']);
-        expect(violations[0].failures[0].ratio).toBeCloseTo(4.34, 2);
+        const light = violations[0].failures.find((f) => f.theme === 'light');
+        expect(light?.ratio).toBeCloseTo(4.34, 2);
     });
 
     it('reads only UNPREFIXED backgrounds — a hover tint is not the resting surface', () => {
         expect(gate.backgroundTokens('bg-ih-bg-card hover:bg-ih-bg-muted')).toEqual(['bg-card']);
-        // Same fg-3, but the muted surface only exists under the pointer.
-        expect(scan([fixture('text-[11px] text-ih-fg-3 hover:bg-ih-bg-muted')]).violations).toEqual([]);
+        // Same fg-4, but the muted surface only exists under the pointer, so
+        // light (which only fails ON muted) is not reported.
+        const hover = scan([fixture('text-[11px] text-ih-fg-4 hover:bg-ih-bg-muted')]).violations;
+        expect(hover).toHaveLength(1);
+        expect(hover[0].failures.map((f) => f.theme)).toEqual(['dark']);
     });
 });
 

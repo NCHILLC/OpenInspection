@@ -127,8 +127,14 @@
 
   --ih-fg-1: #0f172a;
   --ih-fg-2: #475569;
-  --ih-fg-3: #64748b;
-  --ih-fg-4: #94a3b8;
+  /* --ih-fg-3 was #64748b: 4.34:1 on --ih-bg-muted (#f1f5f9), under the 4.5:1
+     text threshold. #566579 is 5.43:1 there and 5.94:1 on the white card, and
+     stays visibly lighter than --ih-fg-2. --ih-fg-4 is the decoration tier
+     (chevrons, drag handles, icons, placeholders): #94a3b8 was 2.56:1 on white,
+     #64748b is 4.76:1, clearing the 3:1 non-text threshold. Dark, field and sun
+     already pass. */
+  --ih-fg-3: #566579;
+  --ih-fg-4: #64748b;
   --ih-fg-5: #cbd5e1;
   --ih-fg-inverse: #fff;
 
