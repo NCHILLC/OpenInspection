@@ -644,7 +644,7 @@ apply at all.
 
 - `auth_agent_invite_prop3_title`, `media_cropper_free` — English "Free" is price in one place and shape in the other. On the agent-portal invite it is the cost of the account (*Gratis*); in the photo cropper it is the unconstrained aspect ratio beside Portrait and Landscape (*Libre*). *Gratis* on a crop button says the crop costs nothing, which is not a thing anyone was wondering.
 
-- `schedule_heatmap_open`, `imports_open` — English "Open" is an adjective in one place and a verb in the other. On the schedule heatmap it describes a slot with nothing booked in it (*Disponible*); in the imports table it is the action that opens one import run (*Abrir*). *Abrir* on the heatmap turns a description of availability into a command, and *Disponible* in a table's action column stops being a link at all.
+- `schedule_heatmap_open`, `imports_open`, `editor_finish_open` — English "Open" is an adjective in one place and a verb in the others. On the schedule heatmap it describes a slot with nothing booked in it (*Disponible*); in the imports table and on the phone finish screen it is the action that opens one import run or one defect (*Abrir*). *Abrir* on the heatmap turns a description of availability into a command, and *Disponible* in a table's action column stops being a link at all.
 
 - `common_clear`, `inspections_hub_details_referred_by_clear`, `editor_property_weather_clear` — English "Clear" is an action in two places and a sky condition in the third. On the buttons it empties a field (*Borrar*); as an inspection's weather it is the clear-sky option beside Cloudy, Rain and Snow (*Despejado*). *Borrar* as a weather option reads as an instruction to erase, and *Despejado* on a button says nothing about emptying the field.
 
