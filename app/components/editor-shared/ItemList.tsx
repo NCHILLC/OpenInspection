@@ -12,6 +12,8 @@ import { itemDepths, outlineNumbers, subtreeOf, MAX_ITEM_DEPTH } from "../../../
 import { useItemRowMenu } from "~/hooks/useItemRowMenu";
 import { ItemRowIndent } from "./ItemRowIndent";
 import { ItemSubtreeDeleteModal, type PendingSubtreeDelete } from "./ItemSubtreeDeleteModal";
+import type { EditorRatingLevel } from "~/lib/rating-levels";
+import { ratingDotClass } from "./ratingDot";
 
 // Handle + ⋯ occupy reserved flex slots so they never cover the item number,
 // label, or rating dot. Desktop reveals on hover; touch always shows them.
@@ -78,6 +80,8 @@ interface SharedItemListProps {
   onAddGroupInstance?: (groupId: string) => void;
   /** A strip under each row: the phone checklist's inline rating. Hidden while batch-selecting. */
   rowFooter?: (itemId: string) => ReactNode;
+  /** Template rating levels used to resolve dot color from severity. */
+  ratingLevels?: EditorRatingLevel[];
 }
 
 /**
@@ -116,14 +120,6 @@ function slotHeadings(
   return { heading, closes };
 }
 
-/** Map rating to dot color for the item list */
-function ratingDotClass(rating: string): string {
-  if (rating === "Satisfactory" || rating === "SAT") return "bg-ih-ok";
-  if (rating === "Monitor" || rating === "MON") return "bg-ih-watch";
-  if (rating === "Defect" || rating === "DEF") return "bg-ih-bad";
-  return "bg-ih-border-strong";
-}
-
 export function ItemList({
   mode,
   items,
@@ -147,6 +143,7 @@ export function ItemList({
   groups,
   onAddGroupInstance,
   rowFooter,
+  ratingLevels,
 }: SharedItemListProps) {
   const { heading: slotHeading, closes: groupClosedBy } = slotHeadings(groups, items);
   const grouped = Boolean(groups?.length);
@@ -316,7 +313,7 @@ export function ItemList({
                       length in glare. Desktop keeps the denser 8px. */}
                   {mode === "fill" && Boolean(result.rating) && (
                     <span
-                      className={`w-3 h-3 md:w-2 md:h-2 rounded-full flex-shrink-0 ${ratingDotClass(result.rating as string)}`}
+                      className={`w-3 h-3 md:w-2 md:h-2 rounded-full flex-shrink-0 ${ratingDotClass(result.rating as string, ratingLevels)}`}
                     />
                   )}
                   {mode === "author" && (
