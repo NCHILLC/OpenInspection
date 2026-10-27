@@ -1206,7 +1206,7 @@ export default function InspectionEditPage() {
  onMoveItem={canEditStructure ? (itemId, dir) => structure.moveItem(state.currentSection?.id || "", itemId, dir) : undefined}
  onReorderItem={canEditStructure ? (fromId, toId) => reorderItemBySwap(state.currentSectionItems, fromId, toId, state.currentSection?.id || "", structure.moveItem) : undefined}
  onRenameItem={canEditStructure ? (itemId, label) => structure.renameItem(state.currentSection?.id || "", itemId, label) : undefined}
- groups={statutoryGroups}
+ groups={statutoryGroups} ratingLevels={state.ratingLevels}
  onAddGroupInstance={(groupId) => setAddingToGroup(groupId)}
  rowFooter={isMobile ? checklistRowRating(state.currentSection?.id || "", visibleItems, state.ratingLevels, findings) : undefined}
  />

@@ -2,6 +2,8 @@
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ItemList } from '~/components/editor-shared/ItemList';
+import { ratingDotClass } from '~/components/editor-shared/ratingDot';
+import type { EditorRatingLevel } from '~/lib/rating-levels';
 
 const items = [
   { id: 'i1', label: 'Roof Covering', type: 'rich' },
@@ -64,4 +66,66 @@ test('author mode shows item type badge and a drag handle, no filter chips', () 
   expect(screen.queryByText('Unrated')).toBeNull();
   expect(screen.getByText('number')).toBeTruthy(); // type badge
   expect(screen.getByLabelText('Drag Roof Covering')).toBeTruthy();
+});
+
+describe('ratingDotClass', () => {
+  const levels: EditorRatingLevel[] = [
+    { id: 'Inspected', label: 'Inspected', abbreviation: 'IN', severity: 'good' },
+    { id: 'Not Inspected', label: 'Not Inspected', abbreviation: 'NI', severity: 'minor' },
+    { id: 'Not Present', label: 'Not Present', abbreviation: 'NP', severity: 'minor' },
+    { id: 'DEF', label: 'Defect', abbreviation: 'DEF', severity: 'significant', isDefect: true },
+    { id: 'MON', label: 'Monitor', abbreviation: 'MON', severity: 'marginal' },
+  ];
+
+  test('resolves by id/abbreviation/label from levels', () => {
+    expect(ratingDotClass('IN', levels)).toBe('bg-ih-ok');
+    expect(ratingDotClass('Inspected', levels)).toBe('bg-ih-ok');
+  });
+
+  test('ni and np are minor -> grey', () => {
+    expect(ratingDotClass('NI', levels)).toBe('bg-ih-border-strong');
+    expect(ratingDotClass('Not Inspected', levels)).toBe('bg-ih-border-strong');
+    expect(ratingDotClass('NP', levels)).toBe('bg-ih-border-strong');
+    expect(ratingDotClass('Not Present', levels)).toBe('bg-ih-border-strong');
+  });
+
+  test('defect is significant/isDefect -> bad', () => {
+    expect(ratingDotClass('DEF', levels)).toBe('bg-ih-bad');
+    expect(ratingDotClass('Defect', levels)).toBe('bg-ih-bad');
+  });
+
+  test('marginal -> watch', () => {
+    expect(ratingDotClass('MON', levels)).toBe('bg-ih-watch');
+    expect(ratingDotClass('Monitor', levels)).toBe('bg-ih-watch');
+  });
+
+  test('non-standard label uses severity not label list', () => {
+    const custom: EditorRatingLevel[] = [
+      { id: 'X1', label: 'Fine', abbreviation: 'F', severity: 'good' },
+    ];
+    expect(ratingDotClass('X1', custom)).toBe('bg-ih-ok');
+    expect(ratingDotClass('Fine', custom)).toBe('bg-ih-ok');
+    expect(ratingDotClass('F', custom)).toBe('bg-ih-ok');
+  });
+});
+
+test('ItemList renders green dot for IN rating in fill mode', () => {
+  const { container } = render(
+    <ItemList
+      mode="fill"
+      items={[{ id: 'i1', label: 'Roof Covering', type: 'rich' }]}
+      sectionId="s1"
+      activeItemId="i1"
+      onSelect={vi.fn()}
+      results={{ '_default:s1:i1': { rating: 'IN' } }}
+      ratingLevels={[
+        { id: 'Inspected', label: 'Inspected', abbreviation: 'IN', severity: 'good' },
+        { id: 'Not Inspected', label: 'Not Inspected', abbreviation: 'NI', severity: 'minor' },
+        { id: 'Not Present', label: 'Not Present', abbreviation: 'NP', severity: 'minor' },
+      ]}
+    />
+  );
+  const dot = container.querySelector('span.rounded-full');
+  expect(dot).toBeTruthy();
+  expect(dot?.className).toContain('bg-ih-ok');
 });
