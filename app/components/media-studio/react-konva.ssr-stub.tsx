@@ -31,6 +31,7 @@ export const Stage = Inert;
 export const Layer = Inert;
 export const Image = Inert;
 export const Circle = Inert;
+export const Rect = Inert;
 export const Arrow = Inert;
 export const Line = Inert;
 export const Label = Inert;

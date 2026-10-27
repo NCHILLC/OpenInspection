@@ -38,6 +38,9 @@ export function DefectPhotoOverlays({
         open={!!studio}
         photoUrl={studio?.url ?? null}
         sectionName={sectionName}
+        photoIndex={studio?.photoIndex}
+        target="defect"
+        subject={studio?.name}
         initialAnnotationsJson={null}
         onSave={saveAnnotation}
         onClose={() => setStudio(null)}

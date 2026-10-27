@@ -413,9 +413,9 @@ export function useEditorPhotoUpload({
         const key = photo.croppedKey || photo.originalKey || photo.key;
         const url = `/api/inspections/${state.inspection.id}/photo?key=${encodeURIComponent(key)}`;
         const index = photo.photoIndex ?? gallery.length - 1 - (shot?.fromEnd ?? 0);
-        if (target) defectPhotoOps.setStudio({ itemId, target, photoIndex: index, url, sectionId: state.currentSection?.id });
+        if (target) defectPhotoOps.setStudio({ itemId, target, photoIndex: index, url, sectionId: state.currentSection?.id, name: armedDefectName ?? undefined });
         else openPhotoStudio({ url, key, index, total: gallery.length });
-    }, [state.cameraItemId, state.inspection.id, state.currentSection, itemGalleryPhotos, openPhotoStudio, defectPhotoOps]);
+    }, [state.cameraItemId, state.inspection.id, state.currentSection, itemGalleryPhotos, openPhotoStudio, defectPhotoOps, armedDefectName]);
 
     return {
         handlePhotoUpload,

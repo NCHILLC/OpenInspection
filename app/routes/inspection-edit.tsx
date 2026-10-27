@@ -773,8 +773,7 @@ export default function InspectionEditPage() {
   onOpenPhoto,
   onReorderPhotos,
   onBulkDetachPhotos,
-  moveTargets,
-  onBulkMovePhotos,
+  moveTargets, onBulkMovePhotos,
   onViewerAction,
   performPhotoCropSave,
   performPhotoAnnotationSave,
@@ -1395,6 +1394,7 @@ export default function InspectionEditPage() {
  onBulkDetachPhotos={onBulkDetachPhotos}
  moveTargets={moveTargets}
  onBulkMovePhotos={onBulkMovePhotos}
+ onPhotoAction={(id, i, a) => { const p = itemGalleryPhotos(id)[i]; if (p) onViewerAction(a, p); }}
  videoPosterUrl={videoPosterUrl}
  pendingPhotoUrl={pendingPhotoUrl}
  />
@@ -1688,6 +1688,7 @@ export default function InspectionEditPage() {
  totalPhotos={photoStudioTotal}
  sectionName={state.currentSection?.title || state.currentSection?.name || ""}
  initialAnnotationsJson={null}
+ target="item" subject={(state.activeItem?.label || state.activeItem?.name) as string | undefined}
  isCover={!!photoStudioKey && (state.inspection.coverPhotoId as string | null) === photoStudioKey}
  onSetCover={photoStudioKey ? () => {
   const isCover = (state.inspection.coverPhotoId as string | null) === photoStudioKey;

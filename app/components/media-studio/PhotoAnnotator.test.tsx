@@ -157,3 +157,29 @@ describe("PhotoAnnotator image load", () => {
     expect(images).toHaveLength(0);
   });
 });
+
+// Canvas S08: on the phone the header reads "Photo 2 · Defect" over the name of
+// the defect (or item) being marked up. photoIndex is 0-based.
+describe("PhotoAnnotator header (S08)", () => {
+  it("names the photo number, its kind and the defect", () => {
+    render(<PhotoAnnotator open photoUrl="/p/a.jpg" photoIndex={1} target="defect" subject="Discharge at foundation" onSave={NOOP} onClose={NOOP} />);
+    expect(screen.getByText("Photo 2 · Defect")).toBeTruthy();
+    expect(screen.getByText("Discharge at foundation")).toBeTruthy();
+  });
+
+  it("says Item for an item photo", () => {
+    render(<PhotoAnnotator open photoUrl="/p/a.jpg" photoIndex={0} target="item" subject="Downspouts" onSave={NOOP} onClose={NOOP} />);
+    expect(screen.getByText("Photo 1 · Item")).toBeTruthy();
+  });
+
+  it("falls back to the studio title when the caller names no target", () => {
+    render(<PhotoAnnotator open photoUrl="/p/a.jpg" onSave={NOOP} onClose={NOOP} />);
+    expect(screen.getAllByText("Photo Studio").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/ · (Item|Defect)/)).toBeNull();
+  });
+
+  it("keeps Save in the header", () => {
+    render(<PhotoAnnotator open photoUrl="/p/a.jpg" target="item" photoIndex={0} onSave={NOOP} onClose={NOOP} />);
+    expect(screen.getByRole("button", { name: "Save" }).textContent).toBe("Save");
+  });
+});

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { m } from "~/paraglide/messages";
 import { MobileAppBar } from "./MobileAppBar";
+import { MobileOfflineBanner } from "./MobileOfflineBanner";
 import { MobileSyncPill } from "./MobileSyncPill";
 import { SectionDonut } from "./SectionDonut";
 import { Icon } from "@core/shared-ui";
@@ -114,6 +115,7 @@ export function MobileDrillShell({
                 onSearch={onOpenSearch}
                 backLabel={backLabel}
             />
+            <MobileOfflineBanner inspectionId={inspectionId} connection={connection} />
             {/* Item screens reserve extra clearance: a rich item pins its
                 rating strip (ItemEditor) in the same fixed band as the
                 camera FAB below, both above the bottom nav. */}
