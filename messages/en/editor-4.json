@@ -241,5 +241,14 @@
   "editor_review_photo_cover_aria": "Photo {n}, cover",
   "editor_review_move": "Move",
   "editor_review_move_title": "Move photo to",
-  "editor_review_moved": "Moved to {target}"
+  "editor_review_moved": "Moved to {target}",
+  "editor_offline_title": "No connection",
+  "editor_offline_sub": "Ratings and {count} photo{s} are saved on this phone. They upload when you reconnect.",
+  "editor_offline_sub_ratings": "Ratings are saved on this phone. They upload when you reconnect.",
+  "editor_offline_keep_working": "Keep working. Nothing is lost.",
+  "editor_offline_retry": "Retry",
+  "editor_offline_synced_title": "All synced",
+  "editor_offline_synced_sub": "Every rating and photo is on the server.",
+  "editor_photo_pending_dot_legend": "A yellow dot means the photo is saved on this phone and has not uploaded yet.",
+  "editor_review_photo_pending_aria": "Photo {n}, not uploaded"
 }
