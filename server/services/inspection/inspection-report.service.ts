@@ -15,7 +15,7 @@ import { mapRepairItems } from '../../lib/report-repair-items';
 import { selectReportMedia, type ReportMediaContext } from '../../lib/report-video';
 import { readItemEntry } from '../../lib/read-item-defects';
 import { isReportPublished } from '../../lib/status/report-status';
-import { resolveBuildingProfile } from '../../lib/building-profile';
+import { resolveBuildingProfile, resolveConditionRows } from '../../lib/building-profile';
 import type { buildSystemsSummary } from '../../lib/pca-systems-summary';
 import { buildPcaReportBlock } from '../../lib/pca-report-block';
 import { gatedSectionRegistry } from '../../lib/pca-section-registry';
@@ -565,9 +565,9 @@ export class InspectionReportService extends InspectionSubService {
         );
 
         // Round-2 backlog G1 (Spectora §E.2) — Property Facts banner rendered
-        // at the top of the published report. Surface the six dedicated
-        // columns; the report layer decides whether to render the strip
-        // when at least one field is populated.
+        // at the top of the published report. Surface the dedicated columns
+        // (including the on-site conditions); the report layer decides whether
+        // to render the strip when at least one field is populated.
         const propertyFacts = {
             yearBuilt:      (inspection as { yearBuilt?: number | null }).yearBuilt           ?? null,
             sqft:           (inspection as { sqft?: number | null }).sqft                     ?? null,
@@ -575,6 +575,8 @@ export class InspectionReportService extends InspectionSubService {
             lotSize:        (inspection as { lotSize?: string | null }).lotSize               ?? null,
             bedrooms:       (inspection as { bedrooms?: number | null }).bedrooms             ?? null,
             bathrooms:      (inspection as { bathrooms?: number | null }).bathrooms           ?? null,
+            temperatureF:   (inspection as { temperatureF?: number | null }).temperatureF     ?? null,
+            weather:        (inspection as { weather?: string | null }).weather               ?? null,
         };
 
         // Commercial PCA Phase T — resolve the report tier from the stored
@@ -624,9 +626,10 @@ export class InspectionReportService extends InspectionSubService {
         // Commercial PCA Phase F — server-resolved Building Profile rows (presets
         // stay server-only). Renders only when propertyType is set + a field is
         // populated; the report layer decides visibility.
-        const buildingProfile = resolveBuildingProfile(
-            inspection as Parameters<typeof resolveBuildingProfile>[0],
-        );
+        const buildingProfile = [
+            ...resolveBuildingProfile(inspection as Parameters<typeof resolveBuildingProfile>[0]),
+            ...resolveConditionRows(inspection as Parameters<typeof resolveConditionRows>[0]),
+        ];
 
         // Commercial PCA Phase S — the report skeleton block, GATED to commercial
         // reports so residential home inspections never render the ASTM PCA front

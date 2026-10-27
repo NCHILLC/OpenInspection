@@ -19,6 +19,7 @@ import type { InspectionSchema, InspectionListQuerySchema, CreateInspectionSchem
 import type { Severity } from '../../lib/validations/rating-system.schema';
 import type { DefectCommentState } from '../../types/inspection-item-state';
 import type { CannedDefect, TemplateSchemaV2 } from '../../types/template-schema';
+import type { InspectionWeather } from '../../lib/inspection-weather';
 
 /**
  * An inspection's own frozen structure — the ONE way to read it.
@@ -356,6 +357,8 @@ export interface PublishReadiness {
     /** Track H (IA-7) — incomplete-but-not-required defects: surfaced as a
      *  yellow warning on the publish gate, never a block. */
     warningDefects: PublishBlockingDefect[];
+    // inspection-level facts the report cannot be published without; always present, empty when the rule does not apply.
+    missingFacts: Array<'temperature' | 'weather'>;
 }
 
 /**
@@ -371,11 +374,13 @@ export interface PublishReadiness {
  *     report — that's broken content, not a policy choice.
  * The parameter defaults to 'both' (the legacy behavior) so existing pure
  * callers are unaffected; the SERVICE resolves the tenant/inspection config.
+ * Also gates inspection-level facts (temperature/weather) when facts are provided.
  */
 export function computePublishReadinessFromState(
     schema: TemplateSchemaV2,
     results: Record<string, unknown>,
     requirement: RequireDefectFields = 'both',
+    facts?: { temperatureF: number | null; weather: string | null } | null,
 ): PublishReadiness {
     const requireLocation = requirement === 'location' || requirement === 'both';
     const requireTrade = requirement === 'trade' || requirement === 'both';
@@ -425,7 +430,16 @@ export function computePublishReadinessFromState(
             }
         }
     }
-    return { ready: blocking.length === 0, blockingDefects: blocking, warningDefects: warnings };
+    const missingFacts: Array<'temperature' | 'weather'> = [];
+    if (facts) {
+        if (facts.temperatureF === null || facts.temperatureF === undefined) {
+            missingFacts.push('temperature');
+        }
+        if (facts.weather === null || facts.weather === undefined || facts.weather === '') {
+            missingFacts.push('weather');
+        }
+    }
+    return { ready: blocking.length === 0 && missingFacts.length === 0, blockingDefects: blocking, warningDefects: warnings, missingFacts };
 }
 
 export type Inspection = z.infer<typeof InspectionSchema>;
@@ -438,6 +452,8 @@ export type PropertyFactFoundation = 'basement' | 'slab' | 'crawlspace' | 'other
 export interface PropertyFacts {
     yearBuilt:      number | null;
     sqft:           number | null;
+    temperatureF:   number | null;
+    weather:        InspectionWeather | null;
     foundationType: PropertyFactFoundation | null;
     lotSize:        string | null;
     bedrooms:       number | null;

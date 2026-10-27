@@ -1,9 +1,10 @@
 import { z } from '@hono/zod-openapi';
 import { createApiResponseSchema } from '../shared.schema';
+import { INSPECTION_WEATHER } from '../../inspection-weather';
 
 /**
  * Round-2 backlog G1 (Spectora §E.2) — Property Facts strip payload.
- * Six structured fields. All optional so inspectors can fill them in over
+ * Seven structured fields. All optional so inspectors can fill them in over
  * time. `null` clears a field; omitted = leave existing value untouched.
  *
  * `yearBuilt`, `sqft`, `bedrooms`, `bathrooms` and `foundationType` map to
@@ -13,6 +14,8 @@ import { createApiResponseSchema } from '../shared.schema';
 export const PropertyFactsSchema = z.object({
     yearBuilt:      z.number().int().min(1800).max(2100).nullable().optional().openapi({ example: 1990 }).describe('TODO describe yearBuilt field for the OpenInspection MCP integration'),
     sqft:           z.number().int().min(0).max(1_000_000).nullable().optional().openapi({ example: 1800 }).describe('TODO describe sqft field for the OpenInspection MCP integration'),
+    temperatureF:   z.number().int().min(-60).max(150).nullable().optional().openapi({ example: 64 }).describe('Air temperature on site in whole degrees Fahrenheit (inspections.temperature_f). Null = not recorded.'),
+    weather:        z.enum(INSPECTION_WEATHER).nullable().optional().openapi({ example: 'clear' }).describe('Weather on site during the inspection: clear, cloudy, rain or snow (inspections.weather). Null = not recorded.'),
     foundationType: z.enum(['basement', 'slab', 'crawlspace', 'other']).nullable().optional().openapi({ example: 'basement' }).describe('TODO describe foundationType field for the OpenInspection MCP integration'),
     lotSize:        z.string().max(50).nullable().optional().openapi({ example: '0.25 acres' }).describe('TODO describe lotSize field for the OpenInspection MCP integration'),
     bedrooms:       z.number().int().min(0).max(50).nullable().optional().openapi({ example: 3 }).describe('TODO describe bedrooms field for the OpenInspection MCP integration'),

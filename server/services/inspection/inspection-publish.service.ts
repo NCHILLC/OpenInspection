@@ -597,7 +597,7 @@ export class InspectionPublishService extends InspectionSubService {
                 : null,
             publishReadiness: {
                 ready:         readiness.ready,
-                blockingCount: readiness.blockingDefects.length,
+                blockingCount: readiness.blockingDefects.length + readiness.missingFacts.length,
             },
             communication,
             reports: reportList,
@@ -740,6 +740,9 @@ export class InspectionPublishService extends InspectionSubService {
         const override = (inspection as unknown as { requireDefectFieldsOverride?: RequireDefectFields | null }).requireDefectFieldsOverride;
         const requirement = resolveRequireDefectFields(override, cfgRow?.requireDefectFields);
 
-        return computePublishReadinessFromState(schemaData, resultData, requirement);
+        // only a NEW publish is gated, so an inspection published (or amended) before these fields existed never becomes unpublishable retroactively.
+        const isNewPublish = inspection.reportStatus !== REPORT_STATUS.PUBLISHED && (await resolvePublishTrigger(this.db, tenantId, inspectionId)) === 'report.published';
+
+        return computePublishReadinessFromState(schemaData, resultData, requirement, isNewPublish ? { temperatureF: inspection.temperatureF ?? null, weather: inspection.weather ?? null } : null);
     }
 }

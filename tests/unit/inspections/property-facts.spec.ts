@@ -62,6 +62,8 @@ describe('InspectionService.updatePropertyFacts (G1)', () => {
             lotSize:        '0.25 acres',
             bedrooms:       3,
             bathrooms:      2.5,
+            temperatureF:   null,
+            weather:        null,
         });
     });
 
@@ -148,6 +150,8 @@ describe('InspectionService.updatePropertyFacts (G1)', () => {
             lotSize:        null,
             bedrooms:       null,
             bathrooms:      null,
+            temperatureF:   null,
+            weather:        null,
         });
     });
 
@@ -191,6 +195,30 @@ describe('InspectionService.updatePropertyFacts (G1)', () => {
         await svc.updatePropertyFacts('insp-A', TENANT_A, { metadata: { nra: 999 } });
         await svc.updatePropertyFacts('insp-A', TENANT_A, { yearBuilt: 1970 });
         expect(await readEnvelope('insp-A')).toMatchObject({ nra: 999 });
+    });
+
+    it('round trip: updatePropertyFacts with {temperatureF: 64, weather: \'clear\'} then getPropertyFacts returns them', async () => {
+        await svc.updatePropertyFacts('insp-A', TENANT_A, { temperatureF: 64, weather: 'clear' });
+        const facts = await svc.getPropertyFacts('insp-A', TENANT_A);
+        expect(facts.temperatureF).toBe(64);
+        expect(facts.weather).toBe('clear');
+    });
+
+    it('patching only sqft leaves them untouched', async () => {
+        await svc.updatePropertyFacts('insp-A', TENANT_A, { temperatureF: 64, weather: 'clear' });
+        await svc.updatePropertyFacts('insp-A', TENANT_A, { sqft: 2000 });
+        const facts = await svc.getPropertyFacts('insp-A', TENANT_A);
+        expect(facts.temperatureF).toBe(64);
+        expect(facts.weather).toBe('clear');
+        expect(facts.sqft).toBe(2000);
+    });
+
+    it('passing null clears them', async () => {
+        await svc.updatePropertyFacts('insp-A', TENANT_A, { temperatureF: 64, weather: 'clear' });
+        await svc.updatePropertyFacts('insp-A', TENANT_A, { temperatureF: null, weather: null });
+        const facts = await svc.getPropertyFacts('insp-A', TENANT_A);
+        expect(facts.temperatureF).toBeNull();
+        expect(facts.weather).toBeNull();
     });
 });
 

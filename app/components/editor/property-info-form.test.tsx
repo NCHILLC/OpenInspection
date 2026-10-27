@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { useState } from "react";
-import { render, fireEvent, screen, waitFor } from "@testing-library/react";
+import { render, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { PropertyInfoForm } from "~/components/editor/PropertyInfoForm";
 
@@ -29,11 +29,12 @@ function labelInput(container: HTMLElement, labelText: string): HTMLInputElement
 // mirrors the production wiring in inspection-edit.tsx: onSave → optimistic
 // setInspection (stores the RAW value); onCommit → the durable save (spied on
 // here), receiving the full facts object.
-function Harness({ initial, onCommit }: { initial: Record<string, unknown>; onCommit: (facts: Record<string, unknown>) => void }) {
+function Harness({ initial, onCommit, phone }: { initial: Record<string, unknown>; onCommit: (facts: Record<string, unknown>) => void; phone?: boolean }) {
   const [inspection, setInspection] = useState(initial);
   return (
     <PropertyInfoForm
       inspection={inspection}
+      phone={phone}
       onSave={(id, v) => setInspection((prev) => ({ ...prev, [id]: v }))}
       onCommit={onCommit}
     />
@@ -119,6 +120,8 @@ describe("PropertyInfoForm full-snapshot commit (Finding 1)", () => {
       bathrooms: null,
       unit: null,
       county: null,
+      temperatureF: null,
+      weather: null,
     });
   });
 
@@ -250,7 +253,9 @@ describe("PropertyInfoForm select commit", () => {
     const { container } = renderPF(
       <PropertyInfoForm inspection={{ propertyType: "residential" }} onCommit={onCommit} />,
     );
-    const select = container.querySelector("select") as HTMLSelectElement;
+    const select = Array.from(container.querySelectorAll("select")).find((s) =>
+      Array.from(s.options).some((o) => o.value === "slab"),
+    ) as HTMLSelectElement;
     expect(select).toBeTruthy();
     fireEvent.change(select, { target: { value: "slab" } });
     expect(onCommit).toHaveBeenCalledWith({
@@ -262,6 +267,8 @@ describe("PropertyInfoForm select commit", () => {
       bathrooms: null,
       unit: null,
       county: null,
+      temperatureF: null,
+      weather: null,
     });
   });
 
@@ -323,5 +330,102 @@ describe("PropertyInfoForm — Fetch property details (#200)", () => {
 
     await waitFor(() => expect(screen.getByText(/is not set up for your company/i)).toBeTruthy());
     expect(onCommit).not.toHaveBeenCalled();
+  });
+});
+
+describe("PropertyInfoForm temperature/weather (condition fields)", () => {
+  const commercialPresetWithoutTempWeather = [
+    { id: "yearBuilt", label: "Year built", type: "number" as const, group: "Identity" },
+    { id: "sqft", label: "Building area", type: "number" as const, group: "Physical" },
+    { id: "county", label: "County", type: "text" as const, group: "Identity" },
+  ];
+
+  it("renders Temperature and Weather for residential and when templateFields lacks them", () => {
+    const residential = renderPF(<PropertyInfoForm inspection={{ propertyType: "residential" }} />);
+    expect(residential.getByText("Temp °F")).toBeTruthy();
+    expect(residential.getByText("Weather")).toBeTruthy();
+    residential.unmount();
+
+    const commercial = renderPF(
+      <PropertyInfoForm inspection={{ propertyType: "commercial" }} templateFields={commercialPresetWithoutTempWeather} />,
+    );
+    expect(commercial.getByText("Temp °F")).toBeTruthy();
+    expect(commercial.getByText("Weather")).toBeTruthy();
+  });
+
+  it("shows needed badge when empty, hides when filled, and hides when published even if empty", () => {
+    const { container } = renderPF(<PropertyInfoForm inspection={{ propertyType: "residential" }} />);
+    expect(container.querySelector('[data-testid="needed-temperatureF"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="needed-weather"]')).toBeTruthy();
+
+    const { container: c2 } = renderPF(
+      <PropertyInfoForm inspection={{ propertyType: "residential", temperatureF: 64, weather: "clear" }} />,
+    );
+    expect(c2.querySelector('[data-testid="needed-temperatureF"]')).toBeNull();
+    expect(c2.querySelector('[data-testid="needed-weather"]')).toBeNull();
+
+    const { container: c3 } = renderPF(
+      <PropertyInfoForm inspection={{ propertyType: "residential", temperatureF: 0 }} />,
+    );
+    expect(c3.querySelector('[data-testid="needed-temperatureF"]')).toBeNull();
+
+    const { container: c4 } = renderPF(
+      <PropertyInfoForm inspection={{ propertyType: "residential", reportStatus: "published" }} />,
+    );
+    expect(c4.querySelector('[data-testid="needed-temperatureF"]')).toBeNull();
+    expect(c4.querySelector('[data-testid="needed-weather"]')).toBeNull();
+  });
+
+  it("rounds temperature to integer on blur and commits with temperatureF alongside other fields", () => {
+    const onCommit = vi.fn();
+    const { container } = renderPF(<Harness initial={{ propertyType: "residential" }} onCommit={onCommit} />);
+    const input = labelInput(container, "Temp °F")!;
+    expect(input).toBeTruthy();
+    fireEvent.change(input, { target: { value: "64.6" } });
+    fireEvent.blur(input);
+    const facts = onCommit.mock.calls.at(-1)![0] as Record<string, unknown>;
+    expect(facts.temperatureF).toBe(65);
+    expect(facts.yearBuilt).toBeNull();
+    expect(facts.sqft).toBeNull();
+    expect(facts.foundationType).toBeNull();
+    expect(facts.lotSize).toBeNull();
+    expect(facts.bedrooms).toBeNull();
+    expect(facts.bathrooms).toBeNull();
+    expect(facts.unit).toBeNull();
+    expect(facts.county).toBeNull();
+  });
+
+  it("phone weather renders as radiogroup with four radios, clicking Rain calls onSave and onCommit, clicking selected clears it", () => {
+    const onCommit = vi.fn();
+    const { container } = renderPF(<Harness initial={{ propertyType: "residential" }} phone onCommit={onCommit} />);
+    const group = container.querySelector('[role="radiogroup"]');
+    expect(group).toBeTruthy();
+    expect(group?.getAttribute("aria-label")).toBe("Weather");
+    const radios = within(group as HTMLElement).getAllByRole("radio");
+    expect(radios).toHaveLength(4);
+    const rain = radios.find((b) => b.textContent?.toLowerCase().includes("rain"))!;
+    expect(rain).toBeTruthy();
+    fireEvent.click(rain);
+    expect(rain.getAttribute("aria-checked")).toBe("true");
+    expect((onCommit.mock.calls.at(-1)![0] as Record<string, unknown>).weather).toBe("rain");
+
+    fireEvent.click(rain);
+    expect(rain.getAttribute("aria-checked")).toBe("false");
+    expect((onCommit.mock.calls.at(-1)![0] as Record<string, unknown>).weather).toBeNull();
+  });
+
+  it("desktop weather select has localized labels and raw id values", () => {
+    const { container } = renderPF(<PropertyInfoForm inspection={{ propertyType: "residential" }} />);
+    const selects = Array.from(container.querySelectorAll("select"));
+    const weatherSelect = selects.find((s) => Array.from(s.options).some((o) => o.value === "clear")) as HTMLSelectElement | undefined;
+    expect(weatherSelect).toBeTruthy();
+    const options = Array.from(weatherSelect!.options).filter((o) => o.value !== "");
+    const values = options.map((o) => o.value).sort();
+    expect(values).toEqual(["clear", "cloudy", "rain", "snow"]);
+    const labels = options.map((o) => o.textContent);
+    expect(labels).toContain("Clear");
+    expect(labels).toContain("Cloudy");
+    expect(labels).toContain("Rain");
+    expect(labels).toContain("Snow");
   });
 });
