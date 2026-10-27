@@ -78,7 +78,7 @@ export interface CannedCommentTabsProps {
   requiredDefectFields?: { location: boolean; trade: boolean };
 
   /** Renders the per-defect photo thumbnails + "add photo" chip (closes over onAddDefectPhoto/onOpenDefectPhoto/photoUploading). */
-  defectPhotoChip: (target: { kind: "canned" | "custom"; id: string }, photos: Array<{ key: string }>) => React.ReactNode;
+  defectPhotoChip: (target: { kind: "canned" | "custom"; id: string }, photos: Array<{ key: string }>, name?: string) => React.ReactNode;
   /** A canned defect's own photos[], for the count chip + thumbnail strip. */
   cannedDefectPhotos: (cannedId: string) => Array<{ key: string; annotatedKey?: string; croppedKey?: string }>;
 
@@ -250,7 +250,7 @@ export function CannedCommentTabs(props: CannedCommentTabsProps) {
                         <button type="button" onClick={stop(() => setEditingCommentId(isEditing ? null : entry.id))} aria-label={m.editor_canned_edit_comment_aria()} className={defectRowButtonClass}>
                           <Icon name="edit" size={13} /><span className="text-[12px] font-medium">{m.common_edit()}</span>
                         </button>
-                        {isDefectIncluded && defectPhotoChip({ kind: "canned", id: entry.id }, cannedDefectPhotos(entry.id))}
+                        {isDefectIncluded && defectPhotoChip({ kind: "canned", id: entry.id }, cannedDefectPhotos(entry.id), entry.title)}
                         <button type="button" onClick={stop(() => onFlagChange?.(activeTab, entry.id, !isFlagged))} aria-label={isFlagged ? m.editor_canned_unflag_aria() : m.editor_canned_flag_aria()} className={`inline-flex items-center gap-1 px-2 h-11 rounded-md border ${isFlagged ? "border-ih-bad-fg text-ih-bad-fg" : "border-ih-border-strong text-ih-fg-3 hover:border-ih-primary hover:text-ih-primary-text"}`}>
                           <Icon name="flag" size={13} /><span className="text-[12px] font-medium">{m.editor_canned_flag_label()}</span>
                         </button>
@@ -410,7 +410,7 @@ export function CannedCommentTabs(props: CannedCommentTabsProps) {
               >
                 {/* FE-3 — photo pinned to this custom defect */}
                 {cd.included !== false &&
-                  defectPhotoChip({ kind: "custom", id: cd.id }, Array.isArray(cd.photos) ? cd.photos : [])}
+                  defectPhotoChip({ kind: "custom", id: cd.id }, Array.isArray(cd.photos) ? cd.photos : [], cd.title)}
               </CannedCommentRow>
             ))}
 

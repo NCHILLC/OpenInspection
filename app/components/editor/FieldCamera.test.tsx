@@ -130,19 +130,91 @@ describe("FieldCamera — the stream survives a parent re-render", () => {
 });
 
 describe("FieldCamera — shoot-to-annotate (field eval P1)", () => {
-    it("shows the mark button only on the newest thumbnail, once onAnnotateNewest is given", async () => {
-        const onAnnotateNewest = vi.fn();
-        await open({ onAnnotateNewest });
+    it("Mark up opens markup on the newest shot; tapping an older shot opens that one", async () => {
+        const onMarkUp = vi.fn();
+        await open({ onMarkUp });
         await shutter();
         await shutter();
-        expect(screen.getAllByTestId("camera-annotate-newest")).toHaveLength(1);
-        screen.getByTestId("camera-annotate-newest").click();
-        expect(onAnnotateNewest).toHaveBeenCalledTimes(1);
+        await act(async () => { screen.getByTestId("camera-markup").click(); });
+        expect(onMarkUp).toHaveBeenLastCalledWith({ defect: false, fromEnd: 0 });
+        // Newest first, so the second thumbnail is the older shot.
+        await act(async () => { screen.getAllByTestId("camera-shot")[1].click(); });
+        expect(onMarkUp).toHaveBeenLastCalledWith({ defect: false, fromEnd: 1 });
     });
 
-    it("hides the mark button entirely when onAnnotateNewest is omitted", async () => {
+    it("cannot mark up with no shots, or with no handler", async () => {
+        await open({ onMarkUp: vi.fn() });
+        expect((screen.getByTestId("camera-markup") as HTMLButtonElement).disabled).toBe(true);
+        cleanup();
         await open();
         await shutter();
-        expect(screen.queryByTestId("camera-annotate-newest")).toBeNull();
+        expect((screen.getByTestId("camera-markup") as HTMLButtonElement).disabled).toBe(true);
+        expect((screen.getByTestId("camera-shot") as HTMLButtonElement).disabled).toBe(true);
+    });
+});
+
+describe("FieldCamera — the session strip, count and hint", () => {
+    it("says each tap saves one photo until the first shot, then counts the session", async () => {
+        await open();
+        expect(screen.getByText("Each tap of the shutter saves one photo.")).toBeTruthy();
+        expect(screen.getByTestId("camera-count").textContent).toBe("0 photos this session");
+        await shutter();
+        expect(screen.queryByText("Each tap of the shutter saves one photo.")).toBeNull();
+        expect(screen.getByTestId("camera-count").textContent).toBe("1 photo this session");
+        await shutter();
+        expect(screen.getByTestId("camera-count").textContent).toBe("2 photos this session");
+    });
+});
+
+describe("FieldCamera — the Item / Defect target", () => {
+    it("shows only the whole-item target when no defect armed the session", async () => {
+        await open();
+        expect(screen.getByTestId("camera-target-item").getAttribute("aria-checked")).toBe("true");
+        expect(screen.queryByTestId("camera-target-defect")).toBeNull();
+    });
+
+    it("starts on the defect, and flipping to the item re-aims the caller and the next shots", async () => {
+        const onTargetChange = vi.fn();
+        const onMarkUp = vi.fn();
+        await open({ defectName: "Discharge at foundation", onTargetChange, onMarkUp });
+        const defect = screen.getByTestId("camera-target-defect");
+        expect(defect.getAttribute("aria-checked")).toBe("true");
+        expect(defect.textContent).toContain("Discharge at foundation");
+        await shutter();
+        await act(async () => { screen.getByTestId("camera-target-item").click(); });
+        expect(onTargetChange).toHaveBeenLastCalledWith("item");
+        expect(screen.getByTestId("camera-target-item").getAttribute("aria-checked")).toBe("true");
+        await shutter();
+        // Only the defect shot carries the red dot, and each shot knows its own target.
+        expect(screen.getAllByTestId("camera-shot-defect")).toHaveLength(1);
+        await act(async () => { screen.getAllByTestId("camera-shot")[0].click(); });
+        expect(onMarkUp).toHaveBeenLastCalledWith({ defect: false, fromEnd: 0 });
+        await act(async () => { screen.getAllByTestId("camera-shot")[1].click(); });
+        expect(onMarkUp).toHaveBeenLastCalledWith({ defect: true, fromEnd: 0 });
+        await act(async () => { screen.getByTestId("camera-target-defect").click(); });
+        expect(onTargetChange).toHaveBeenLastCalledWith("defect");
+    });
+});
+
+describe("FieldCamera — flash", () => {
+    it("hides the flash button where the track has no torch", async () => {
+        await open();
+        expect(screen.queryByTestId("camera-flash")).toBeNull();
+    });
+
+    it("toggles the torch where the track supports it", async () => {
+        const applyConstraints = vi.fn(() => Promise.resolve());
+        Object.assign(track, { getCapabilities: () => ({ torch: true }), applyConstraints });
+        try {
+            await open();
+            const flash = screen.getByTestId("camera-flash");
+            expect(flash.getAttribute("aria-pressed")).toBe("false");
+            await act(async () => { flash.click(); });
+            expect(applyConstraints).toHaveBeenCalledWith({ advanced: [{ torch: true }] });
+            expect(screen.getByTestId("camera-flash").getAttribute("aria-pressed")).toBe("true");
+        } finally {
+            delete (track as Partial<typeof track & { getCapabilities: unknown; applyConstraints: unknown }>).getCapabilities;
+            delete (track as Partial<typeof track & { getCapabilities: unknown; applyConstraints: unknown }>).applyConstraints;
+        }
     });
 });

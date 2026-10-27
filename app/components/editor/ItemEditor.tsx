@@ -77,7 +77,7 @@ interface ItemEditorProps {
  onSaveDefectToLibrary?: (input: { title: string; comment: string; category: CustomDefectCategory }) => void;
  onToggleCustomDefect?: (customId: string, included: boolean) => void;
  /** FE-3 — open the photo picker targeting a specific defect row. */
- onAddDefectPhoto?: (target: { kind: "canned" | "custom"; id: string }) => void;
+ onAddDefectPhoto?: (target: { kind: "canned" | "custom"; id: string }, name?: string) => void;
  /** Open the defect-scoped MediaViewer at one of a defect's own photos. */
  onOpenDefectPhoto?: (itemId: string, target: { kind: "canned" | "custom"; id: string }, index: number) => void;
  defectStates?: Map<string, DefectFieldsValue>;

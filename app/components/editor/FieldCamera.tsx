@@ -7,6 +7,14 @@ import { captureQuarterTurns } from "./cameraTurns";
 interface Shot {
   id: string;
   url: string;
+  /** Where this frame went when it was taken; the toggle can change mid-session. */
+  defect: boolean;
+}
+
+/** Which shot to mark up: `fromEnd` counts the LATER shots of the same kind, so the caller can index the right photos[] from the end. */
+export interface ShotRef {
+  defect: boolean;
+  fromEnd: number;
 }
 
 export interface FieldCameraProps {
@@ -20,8 +28,12 @@ export interface FieldCameraProps {
    * inspector standing in front of a defect always gets a camera.
    */
   onUnavailable: () => void;
-  /** Field eval P1 — mark the newest shot without leaving the camera. */
-  onAnnotateNewest?: () => void;
+  /** Name of the defect this session was opened from; absent for a whole-item session. */
+  defectName?: string;
+  /** The inspector flipped the Item / Defect toggle; the caller re-aims the next frames. */
+  onTargetChange?: (target: "item" | "defect") => void;
+  /** Field eval P1 — mark a shot up without leaving the camera. */
+  onMarkUp?: (shot: ShotRef) => void;
 }
 
 /** Below this the frame cannot carry a shingle nail head; say so rather than
@@ -49,7 +61,7 @@ const MIN_USABLE_LONG_EDGE = 1280;
  * queue and the doc. Deleting from the item's photo strip (which has undo)
  * covers a bad frame; revisit if that turns out to be a common move.
  */
-export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotateNewest }: FieldCameraProps) {
+export function FieldCamera({ open, onClose, onCapture, onUnavailable, defectName, onTargetChange, onMarkUp }: FieldCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -59,6 +71,11 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
   const [shots, setShots] = useState<Shot[]>([]);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
+  // A session starts aimed at its defect; this records a flip to the whole item.
+  const [itemOnly, setItemOnly] = useState(false);
+  // Torch is Android Chrome only; the flash button is hidden everywhere else.
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
   // Read through refs, NOT effect dependencies. The route passes both as
   // inline arrows, and every shot re-renders the route (the pending photo
@@ -87,6 +104,9 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
       if (videoRef.current) videoRef.current.srcObject = stream;
       const s = stream.getVideoTracks()[0]?.getSettings();
       setDims(s?.width && s?.height ? { w: s.width, h: s.height } : null);
+      const caps: (MediaTrackCapabilities & { torch?: boolean }) | undefined = stream.getVideoTracks()[0]?.getCapabilities?.();
+      setTorchSupported(!!caps?.torch);
+      setTorchOn(false);
     } catch {
       onUnavailableRef.current();
       onCloseRef.current();
@@ -111,6 +131,9 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
       stopCamera();
       clearShots();
       setDims(null);
+      setItemOnly(false);
+      setTorchSupported(false);
+      setTorchOn(false);
     }
     return () => stopCamera();
   }, [open, facing, startCamera, stopCamera, clearShots]);
@@ -148,6 +171,25 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
 
   if (!open) return null;
 
+  const defectTarget = !!defectName && !itemOnly;
+
+  function pickTarget(target: "item" | "defect") {
+    setItemOnly(target === "item");
+    onTargetChange?.(target);
+  }
+
+  function toggleTorch() {
+    const next = !torchOn;
+    const advanced: Array<MediaTrackConstraintSet & { torch?: boolean }> = [{ torch: next }];
+    void streamRef.current?.getVideoTracks()[0]?.applyConstraints({ advanced }).then(() => setTorchOn(next), () => {});
+  }
+
+  /** The ref handed to `onMarkUp` for the shot at `index`. */
+  function shotRef(index: number): ShotRef {
+    const defect = shots[index].defect;
+    return { defect, fromEnd: shots.slice(index + 1).filter((x) => x.defect === defect).length };
+  }
+
   function shoot() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -157,6 +199,7 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
     void (globalThis.DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> } | undefined)?.requestPermission?.().catch(() => {});
     const w = video.videoWidth;
     const h = video.videoHeight;
+    const defect = defectTarget;
     const turns = captureQuarterTurns(gravityRef.current.x, gravityRef.current.y, screen.orientation?.angle ?? 0);
     canvas.width = turns % 2 ? h : w;
     canvas.height = turns % 2 ? w : h;
@@ -174,7 +217,7 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
         // this there is nothing to tell a gloved hand the frame was taken.
         haptic(HAPTIC_TAP);
         onCapture(blob);
-        const shot = { id: crypto.randomUUID(), url: URL.createObjectURL(blob) };
+        const shot = { id: crypto.randomUUID(), url: URL.createObjectURL(blob), defect };
         shotsRef.current = [...shotsRef.current, shot];
         setShots(shotsRef.current);
       },
@@ -214,56 +257,118 @@ export function FieldCamera({ open, onClose, onCapture, onUnavailable, onAnnotat
             {m.editor_camera_resolution({ width: dims.w, height: dims.h })}
           </div>
         )}
-        {/* ds-allow: over-video control — stays light-on-dark regardless of theme (legible over arbitrary camera footage) */}
-        <IconButton type="button" onClick={switchFacing} aria-label={m.editor_camera_switch_aria()} className="w-12 h-12 rounded-full bg-black/40 text-white hover:bg-black/60">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0114-3M20 15a8 8 0 01-14 3" /></svg>
-        </IconButton>
+        <div className="flex items-center gap-2">
+          {torchSupported && (
+            /* ds-allow: over-video control — stays light-on-dark regardless of theme (legible over arbitrary camera footage) */
+            <IconButton
+              type="button"
+              onClick={toggleTorch}
+              aria-label={m.editor_camera_flash_aria()}
+              aria-pressed={torchOn}
+              data-testid="camera-flash"
+              className={`w-12 h-12 rounded-full ${torchOn ? "bg-ih-primary text-ih-primary-fg" : "bg-black/40 text-white hover:bg-black/60"}`}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 2L3 14h9l-1 8 10-12h-9z" /></svg>
+            </IconButton>
+          )}
+          {/* ds-allow: over-video control — stays light-on-dark regardless of theme (legible over arbitrary camera footage) */}
+          <IconButton type="button" onClick={switchFacing} aria-label={m.editor_camera_switch_aria()} className="w-12 h-12 rounded-full bg-black/40 text-white hover:bg-black/60">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0114-3M20 15a8 8 0 01-14 3" /></svg>
+          </IconButton>
+        </div>
+      </div>
+
+      {/* Where the next frame goes. The defect segment exists only when the
+          session was opened from a defect; it is red so a defect photo is never
+          mistaken for an item photo. */}
+      <div
+        role="radiogroup"
+        aria-label={m.editor_camera_target_aria()}
+        className={`relative z-10 mt-3 mx-3 grid gap-1.5 ${defectName ? "grid-cols-[110px_minmax(0,1fr)]" : "grid-cols-1"}`}
+      >
+        {/* ds-allow: over-video segments — light-on-dark in both themes; the defect segment is the red alert token */}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!defectTarget}
+          onClick={() => pickTarget("item")}
+          data-testid="camera-target-item"
+          className={`h-14 rounded-md px-2.5 flex flex-col items-start justify-center min-w-0 ${!defectTarget ? "bg-ih-primary text-ih-primary-fg" : "border border-white/40 bg-black/40 text-white"}`}
+        >
+          <span className="text-[13px] font-bold tracking-wider uppercase">{m.editor_camera_target_item()}</span>
+          <span className="text-[15px] font-bold truncate max-w-full">{m.editor_camera_target_item_name()}</span>
+        </button>
+        {defectName && (
+          /* ds-allow: over-video segment — light-on-dark in both themes; red alert token */
+          <button
+            type="button"
+            role="radio"
+            aria-checked={defectTarget}
+            onClick={() => pickTarget("defect")}
+            data-testid="camera-target-defect"
+            className={`h-14 rounded-md px-2.5 flex flex-col items-start justify-center min-w-0 ${defectTarget ? "bg-ih-bad text-white" : "border border-white/40 bg-black/40 text-white"}`}
+          >
+            <span className="text-[13px] font-bold tracking-wider uppercase">{m.editor_camera_target_defect()}</span>
+            <span className="text-[15px] font-bold truncate max-w-full">{defectName}</span>
+          </button>
+        )}
       </div>
 
       <div className="flex-1" />
 
-      {/* What has been shot this session — the confirmation that a tap landed,
-          which in gloves and glare is the whole point of showing them. */}
-      {shots.length > 0 && (
-        <div className="relative z-10 mb-3 px-4">
-          {/* ds-allow: fixed-dark camera overlay thumbnails (light-on-dark border) */}
-          <div className="flex gap-2 overflow-x-auto pb-1" data-testid="camera-thumbnails">
+      {/* ds-allow: over-video count pill — light-on-dark in both themes */}
+      <div
+        data-testid="camera-count"
+        aria-live="polite"
+        className="relative z-10 mb-3 ml-3 self-start h-8 px-3 rounded-full bg-black/80 text-white text-[15px] font-bold flex items-center tabular-nums"
+      >
+        {shots.length === 1 ? m.editor_camera_session_one() : m.editor_camera_session_other({ count: shots.length })}
+      </div>
+
+      {/* This session's shots, newest first: the confirmation that a tap landed, which
+          in gloves and glare is the point. Tap one for markup; a red dot is a defect shot. */}
+      <div className="relative z-10 mb-3 px-4 h-[72px] flex items-center">
+        {shots.length === 0 ? (
+          /* ds-allow: over-video hint — light-on-dark in both themes */
+          <span className="text-[15px] text-white/80">{m.editor_camera_hint()}</span>
+        ) : (
+          <div className="flex gap-2 overflow-x-auto" data-testid="camera-thumbnails">
             {shots.map((s, i) => (
-              <div key={s.id} className="relative shrink-0">
-                <img
-                  src={s.url}
-                  className="w-16 h-16 object-cover rounded-md border-2 border-white/30"
-                  alt={m.editor_camera_frame_alt()}
-                />
-                {/* Field eval P1 — shoot-to-annotate. Only the newest frame: an
-                    older one is one you have already moved past.
-                    ds-allow: badge over the fixed-dark camera overlay — the
-                    dark border is legible against any thumbnail content. */}
-                {i === shots.length - 1 && onAnnotateNewest && (
-                  <button
-                    type="button"
-                    onClick={onAnnotateNewest}
-                    data-testid="camera-annotate-newest"
-                    aria-label={m.editor_camera_annotate_aria()}
-                    className="absolute -top-1.5 -right-1.5 w-8 h-8 rounded-full bg-ih-primary text-white flex items-center justify-center shadow-ih-popover border-2 border-black/40"
-                  >
-                    <Icon name="edit" className="w-4 h-4" />
-                  </button>
+              <button
+                key={s.id}
+                type="button"
+                disabled={!onMarkUp}
+                onClick={() => onMarkUp?.(shotRef(i))}
+                aria-label={s.defect ? m.editor_camera_shot_defect_aria({ n: i + 1 }) : m.editor_camera_shot_item_aria({ n: i + 1 })}
+                data-testid="camera-shot"
+                className="relative shrink-0"
+              >
+                {/* ds-allow: fixed-dark camera overlay thumbnails (light-on-dark border) */}
+                <img src={s.url} alt="" className="w-16 h-16 object-cover rounded-md border-2 border-white/30" />
+                {s.defect && (
+                  /* ds-allow: dot over the fixed-dark camera overlay — the dark border keeps it legible on any thumbnail */
+                  <span data-testid="camera-shot-defect" aria-hidden="true" className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-ih-bad border-2 border-black" />
                 )}
-              </div>
-            ))}
+              </button>
+            )).reverse()}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Bottom action row */}
       <div className="relative z-10 pb-8 px-4 flex items-center justify-between gap-4">
-        {shots.length > 0 ? (
-          /* ds-allow: over-video count — light-on-dark in both themes */
-          <div data-testid="camera-count" className="w-24 text-white text-[15px] font-bold tabular-nums">
-            {m.editor_camera_captured_count({ count: shots.length })}
-          </div>
-        ) : <div className="w-24" />}
+        {/* ds-allow: over-video control — light-on-dark in both themes */}
+        <button
+          type="button"
+          disabled={shots.length === 0 || !onMarkUp}
+          onClick={() => onMarkUp?.(shotRef(shots.length - 1))}
+          aria-label={m.editor_camera_annotate_aria()}
+          data-testid="camera-markup"
+          className="w-24 h-14 rounded-md border border-white/40 bg-black/40 text-white flex flex-col items-center justify-center gap-0.5 disabled:opacity-40"
+        >
+          <Icon name="edit" className="w-5 h-5" />
+          <span className="text-[14px] font-semibold">{m.editor_camera_markup()}</span>
+        </button>
 
         {/* ds-allow: fixed-dark camera shutter (white button + dark label, stays fixed in both themes) */}
         <button

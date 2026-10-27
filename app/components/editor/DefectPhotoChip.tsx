@@ -40,16 +40,16 @@ type DefectChipPhoto = { key: string; annotatedKey?: string; croppedKey?: string
  * surfaces.
  */
 export function makeDefectPhotoChip(
-    onAddDefectPhoto: ((target: DefectPhotoTarget) => void) | undefined,
+    onAddDefectPhoto: ((target: DefectPhotoTarget, name?: string) => void) | undefined,
     photoUploading: boolean | undefined,
     photoUrl: (key: string) => string,
     onOpenDefectPhoto?: (target: DefectPhotoTarget, index: number) => void,
 ) {
-    return (target: DefectPhotoTarget, photos: DefectChipPhoto[]) => {
+    return (target: DefectPhotoTarget, photos: DefectChipPhoto[], name?: string) => {
         if (!onAddDefectPhoto) return null;
         const count = photos.length;
         const add = (e: { preventDefault(): void; stopPropagation(): void }) => {
-            e.preventDefault(); e.stopPropagation(); onAddDefectPhoto(target);
+            e.preventDefault(); e.stopPropagation(); onAddDefectPhoto(target, name);
         };
         if (count === 0) {
             return (

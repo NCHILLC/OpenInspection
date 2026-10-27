@@ -213,5 +213,16 @@
   "editor_details_occupied": "Ocupada",
   "editor_details_utilities_on": "Servicios conectados",
   "editor_details_utilities_off": "Servicios desconectados",
-  "editor_details_back": "Volver a la inspección"
+  "editor_details_back": "Volver a la inspección",
+  "editor_camera_target_aria": "Las fotos van a",
+  "editor_camera_target_item": "Elemento",
+  "editor_camera_target_item_name": "Todo el elemento",
+  "editor_camera_target_defect": "Defecto",
+  "editor_camera_flash_aria": "Flash",
+  "editor_camera_markup": "Marcar",
+  "editor_camera_hint": "Cada toque del obturador guarda una foto.",
+  "editor_camera_session_one": "1 foto en esta sesión",
+  "editor_camera_session_other": "{count} fotos en esta sesión",
+  "editor_camera_shot_item_aria": "Foto {n}, elemento. Marcar",
+  "editor_camera_shot_defect_aria": "Foto {n}, defecto. Marcar"
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type * as Y from "yjs";
 import { findingKey } from "~/hooks/findings/shared";
 import { pushToast } from "~/hooks/useToast";
@@ -12,6 +12,7 @@ import type { useInspectionState } from "~/hooks/useInspection";
 import type { useFindings } from "~/hooks/useFindings";
 import type { GalleryPhoto } from "~/lib/inspection-media";
 import type { useDefectPhotoOps } from "~/hooks/useDefectPhotoOps";
+import type { ShotRef } from "~/components/editor/FieldCamera";
 
 type InspectionState = ReturnType<typeof useInspectionState>;
 type Findings = ReturnType<typeof useFindings>;
@@ -70,11 +71,20 @@ export interface EditorPhotoUpload {
      */
     openPickerForItem: () => void;
     /** Open the picker for one defect row's photos (FE-3). */
-    openPickerForDefect: (target: NonNullable<PendingPhotoTarget>) => void;
+    openPickerForDefect: (target: NonNullable<PendingPhotoTarget>, name?: string) => void;
     /** The inspector backed out of the chooser — drop any armed target. */
     clearPhotoTarget: () => void;
-    /** Field eval P1 — mark the just-taken photo without leaving the camera (toasts while it is still uploading). */
-    handleAnnotateNewest: () => void;
+    /** The armed defect's name while its camera session lasts, for the camera's Defect segment. */
+    armedDefectName: string | null;
+    /** The camera's Item / Defect toggle: aim the next frames at the armed defect, or at the whole item. */
+    setCameraTarget: (kind: "item" | "defect") => void;
+    /**
+     * Field eval P1 — mark a photo up without leaving the camera (toasts while it
+     * is still uploading). With no argument: the last photo of whichever array
+     * the session is shooting into. With a shot: that shot of the item's or the
+     * armed defect's array, counted from the end.
+     */
+    handleAnnotateShot: (shot?: ShotRef) => void;
 }
 
 // Task 16 — Worker subrequest safety: a single submission fans out one
@@ -113,6 +123,10 @@ export function useEditorPhotoUpload({
     defectPhotoOps,
 }: EditorPhotoUploadDeps): EditorPhotoUpload {
     const pendingPhotoTargetRef = useRef<PendingPhotoTarget>(null);
+    // Kept apart from the pending target so the camera's toggle can aim at the
+    // item and back without forgetting which defect the session came from.
+    const armedDefectRef = useRef<PendingPhotoTarget>(null);
+    const [armedDefectName, setArmedDefectName] = useState<string | null>(null);
 
     /* Defect-targeted uploads, serialised. See the note at the push site. */
     const fetcherQueueRef = useRef<FormData[]>([]);
@@ -345,7 +359,7 @@ export function useEditorPhotoUpload({
 
     /** Arms the target, then opens whichever picker this device wants. */
     const openPicker = useCallback(
-        (target: PendingPhotoTarget) => {
+        (target: PendingPhotoTarget, name?: string) => {
             // The fetcher is now reached ONLY before the collab doc is live, so
             // that is the only state where a second submit could abort the one in
             // flight. With a doc, a defect add rides the queue like an item add
@@ -361,6 +375,8 @@ export function useEditorPhotoUpload({
             }
             const itemId = state.activeItemId;
             pendingPhotoTargetRef.current = target;
+            armedDefectRef.current = target;
+            setArmedDefectName(target ? (name ?? null) : null);
             // Task 16 — desktop file pickers already offer camera-vs-library
             // natively, so go straight to the multi-select library input; mobile
             // needs the explicit chooser (camera capture has no multi-select).
@@ -372,26 +388,31 @@ export function useEditorPhotoUpload({
 
     const openPickerForItem = useCallback(() => openPicker(null), [openPicker]);
     const openPickerForDefect = useCallback(
-        (target: NonNullable<PendingPhotoTarget>) => openPicker(target),
+        (target: NonNullable<PendingPhotoTarget>, name?: string) => openPicker(target, name),
         [openPicker],
     );
     const clearPhotoTarget = useCallback(() => {
         pendingPhotoTargetRef.current = null;
+        armedDefectRef.current = null;
+        setArmedDefectName(null);
+    }, []);
+    const setCameraTarget = useCallback((kind: "item" | "defect") => {
+        pendingPhotoTargetRef.current = kind === "defect" ? armedDefectRef.current : null;
     }, []);
 
     // The camera's edit badge. It used to return silently for a defect session — a
     // visible button that did nothing — because only the item annotator was wired.
-    const handleAnnotateNewest = useCallback(() => {
+    const handleAnnotateShot = useCallback((shot?: ShotRef) => {
         const itemId = state.cameraItemId;
         if (!itemId) return;
-        const target = pendingPhotoTargetRef.current;
+        const target = shot ? (shot.defect ? armedDefectRef.current : null) : pendingPhotoTargetRef.current;
         const gallery = target ? defectPhotoOps.galleryPhotos(itemId, target) : itemGalleryPhotos(itemId);
-        const photo = gallery.at(-1);
+        const photo = gallery.at(-1 - (shot?.fromEnd ?? 0));
         if (!photo) return;
         if (photo.pending) return pushToast({ message: m.editor_camera_annotate_still_uploading(), variant: "warning", durationMs: 2500 });
         const key = photo.croppedKey || photo.originalKey || photo.key;
         const url = `/api/inspections/${state.inspection.id}/photo?key=${encodeURIComponent(key)}`;
-        const index = photo.photoIndex ?? gallery.length - 1;
+        const index = photo.photoIndex ?? gallery.length - 1 - (shot?.fromEnd ?? 0);
         if (target) defectPhotoOps.setStudio({ itemId, target, photoIndex: index, url, sectionId: state.currentSection?.id });
         else openPhotoStudio({ url, key, index, total: gallery.length });
     }, [state.cameraItemId, state.inspection.id, state.currentSection, itemGalleryPhotos, openPhotoStudio, defectPhotoOps]);
@@ -402,6 +423,8 @@ export function useEditorPhotoUpload({
         openPickerForItem,
         openPickerForDefect,
         clearPhotoTarget,
-        handleAnnotateNewest,
+        armedDefectName,
+        setCameraTarget,
+        handleAnnotateShot,
     };
 }
