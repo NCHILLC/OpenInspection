@@ -36,8 +36,6 @@
   "editor_camera_switch_aria": "Cambiar de cámara",
   "editor_camera_shutter_aria": "Tomar foto",
   "editor_camera_shoot": "Disparar",
-  "editor_camera_captured_count": "{count} tomadas",
-  "editor_camera_frame_alt": "Foto recién tomada",
   "editor_camera_resolution": "{width} x {height}",
   "editor_camera_annotate_aria": "Marcar esta foto",
   "editor_camera_annotate_still_uploading": "Todavía subiendo — inténtalo de nuevo en un momento",

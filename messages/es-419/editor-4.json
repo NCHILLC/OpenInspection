@@ -228,5 +228,16 @@
   "editor_search_up_next": "siguiente pendiente",
   "editor_search_one_finding": "1 hallazgo",
   "editor_search_empty": "Nada en este informe coincide con “{query}”.",
-  "editor_search_defect_group": "Defectos {severity}"
+  "editor_search_defect_group": "Defectos {severity}",
+  "editor_camera_target_aria": "Las fotos van a",
+  "editor_camera_target_item": "Elemento",
+  "editor_camera_target_item_name": "Todo el elemento",
+  "editor_camera_target_defect": "Defecto",
+  "editor_camera_flash_aria": "Flash",
+  "editor_camera_markup": "Marcar",
+  "editor_camera_hint": "Cada toque del obturador guarda una foto.",
+  "editor_camera_session_one": "1 foto en esta sesión",
+  "editor_camera_session_other": "{count} fotos en esta sesión",
+  "editor_camera_shot_item_aria": "Foto {n}, elemento. Marcar",
+  "editor_camera_shot_defect_aria": "Foto {n}, defecto. Marcar"
 }

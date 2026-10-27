@@ -1079,7 +1079,7 @@ export default function InspectionEditPage() {
  /* Photo upload */
  /* ---------------------------------------------------------------- */
 
- const { handlePhotoUpload, handleCameraFrame, openPickerForItem, openPickerForDefect, clearPhotoTarget, handleAnnotateNewest } = useEditorPhotoUpload({
+ const { handlePhotoUpload, handleCameraFrame, openPickerForItem, openPickerForDefect, clearPhotoTarget, armedDefectName, setCameraTarget, handleAnnotateShot } = useEditorPhotoUpload({
  state,
  findings,
  uploadFetcher,
@@ -1670,7 +1670,7 @@ export default function InspectionEditPage() {
  onClose={() => { state.setCameraOpen(false); state.setCameraItemId(null); clearPhotoTarget(); }}
  onCapture={handleCameraFrame}
  onUnavailable={() => cameraInputRef.current?.click()}
- onAnnotateNewest={handleAnnotateNewest}
+ defectName={armedDefectName ?? undefined} onTargetChange={setCameraTarget} onMarkUp={handleAnnotateShot}
  />
  {/* Photo studio overlay */}
  <PhotoAnnotator

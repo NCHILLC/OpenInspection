@@ -86,7 +86,7 @@
   "app/routes/calendar.tsx": 417,
   "server/services/agreement/signer-state.ts": 413,
   "app/components/portal/sections/ReportView.tsx": 410,
-  "app/routes/inspection-edit/useEditorPhotoUpload.ts": 408,
+  "app/routes/inspection-edit/useEditorPhotoUpload.ts": 431,
   "playwright.config.ts": 406,
   "app/routes/team.tsx": 405,
   "scripts/check-non-translatable.mjs": 402,
