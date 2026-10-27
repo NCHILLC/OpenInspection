@@ -286,5 +286,6 @@
   "editor_offline_synced_title": "All synced",
   "editor_offline_synced_sub": "Every rating and photo is on the server.",
   "editor_photo_pending_dot_legend": "A yellow dot means the photo is saved on this phone and has not uploaded yet.",
-  "editor_review_photo_pending_aria": "Photo {n}, not uploaded"
+  "editor_review_photo_pending_aria": "Photo {n}, not uploaded",
+  "editor_hero_today": "Today"
 }

@@ -32,10 +32,14 @@ export function MobileAppBar({ eyebrow, title, onBack, onMore, onSearch, backLab
                 className="w-12 h-12"
                 aria-label={backLabel ?? m.common_back()}
             ><Icon name="back" size={20} /></IconButton>
-            <div className="flex-1 min-w-0 pl-1">
-                <div className="text-[14px] font-semibold uppercase tracking-[0.08em] text-ih-fg-3 truncate">{eyebrow}</div>
-                <div className="text-[22px] leading-tight font-bold truncate">{title}</div>
-            </div>
+            {eyebrow === "" && title === "" ? (
+                <div className="flex-1 min-w-0 pl-1" />
+            ) : (
+                <div className="flex-1 min-w-0 pl-1">
+                    <div className="text-[14px] font-semibold uppercase tracking-[0.08em] text-ih-fg-3 truncate">{eyebrow}</div>
+                    <div className="text-[22px] leading-tight font-bold truncate">{title}</div>
+                </div>
+            )}
             {onSearch && (
                 <IconButton
                     onClick={onSearch}

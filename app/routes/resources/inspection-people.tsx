@@ -17,5 +17,5 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     if (!res?.ok) return [];
     return (await res.json()).data
         .filter((p) => p.kind !== "other")
-        .map(({ id, roleLabel, name, phone, agency }) => ({ id, roleLabel, name, phone, agency }));
+        .map(({ id, roleLabel, name, phone, agency, kind }) => ({ id, roleLabel, name, phone, agency, kind }));
 }

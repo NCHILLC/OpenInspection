@@ -286,5 +286,6 @@
   "editor_offline_synced_title": "Todo sincronizado",
   "editor_offline_synced_sub": "Todas las calificaciones y fotos están en el servidor.",
   "editor_photo_pending_dot_legend": "Un punto amarillo significa que la foto está guardada en este teléfono y aún no se ha subido.",
-  "editor_review_photo_pending_aria": "Foto {n}, sin subir"
+  "editor_review_photo_pending_aria": "Foto {n}, sin subir",
+  "editor_hero_today": "Hoy"
 }
