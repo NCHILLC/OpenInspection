@@ -8,27 +8,45 @@ vi.mock("react-router", async () => {
   return {
     ...actual,
     useFetcher: vi.fn(),
+    // No auth layout here, so useDisplayTimeZone falls back to UTC.
+    useRouteLoaderData: vi.fn(() => undefined),
   };
 });
 
 import { useFetcher } from "react-router";
 const mockedUseFetcher = vi.mocked(useFetcher);
 
+const NOON_UTC = new Date("2026-10-27T12:00:00Z");
+
 describe("heroEyebrow", () => {
   it("names today and the time of day", () => {
-    const result = heroEyebrow("2026-10-27T09:00:00Z", new Date(2026, 9, 27, 12, 0), "en-US");
+    const result = heroEyebrow("2026-10-27T09:00:00Z", NOON_UTC, "en-US");
     expect(result).toBe(`Today · 9:00 AM`);
   });
 
   it("writes another day as a short date, with the time after it", () => {
-    const result = heroEyebrow("2026-10-28T14:30:00Z", new Date(2026, 9, 27, 12, 0), "en-US");
+    const result = heroEyebrow("2026-10-28T14:30:00Z", NOON_UTC, "en-US");
     expect(result).toContain("Oct");
     expect(result.endsWith("2:30 PM")).toBe(true);
   });
 
   it("drops the time when the date has none", () => {
-    const result = heroEyebrow("2026-10-27", new Date(2026, 9, 27, 12, 0), "en-US");
+    const result = heroEyebrow("2026-10-27", NOON_UTC, "en-US");
     expect(result).toBe("Today");
+  });
+
+  it("reads a stored instant in the viewer's zone, not UTC", () => {
+    // 9:00 AM in Charlotte is stored as 13:00Z.
+    expect(heroEyebrow("2026-10-27T13:00:00.000Z", NOON_UTC, "en-US", "America/New_York")).toBe("Today · 9:00 AM");
+  });
+
+  it("keeps an evening inspection on its local day", () => {
+    // 9:30 PM on Oct 27 in Charlotte is already Oct 28 in UTC.
+    expect(heroEyebrow("2026-10-28T01:30:00.000Z", NOON_UTC, "en-US", "America/New_York")).toBe("Today · 9:30 PM");
+  });
+
+  it("drops the time for local midnight", () => {
+    expect(heroEyebrow("2026-10-27T04:00:00.000Z", NOON_UTC, "en-US", "America/New_York")).toBe("Today");
   });
 });
 
