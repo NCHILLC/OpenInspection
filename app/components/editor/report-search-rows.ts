@@ -48,6 +48,7 @@ export interface DefectRow {
     path: string;
     /** The tenant's severity name for this defect, "" when it has none. */
     severity: string;
+    location: string;
 }
 
 interface StoredDefect { cannedId?: string; location?: string | null; category?: string | null; comment?: string | null }
@@ -80,7 +81,7 @@ export function collectDefects(
             const path = (location: string | null | undefined) =>
                 [section.title ?? "", item.label ?? ""].filter(Boolean).join(" › ") + (location ? ` · ${location}` : "");
             const push = (cannedId: string, title: string, comment: string, location: string | null | undefined, category: string | null | undefined) => {
-                const row = { sectionId: section.id, itemId: item.id, cannedId, title, path: path(location), severity: severityName(category) };
+                const row = { sectionId: section.id, itemId: item.id, cannedId, title, path: path(location), severity: severityName(category), location: location ?? "" };
                 if (!text || `${title} ${comment} ${row.path} ${row.severity}`.toLowerCase().includes(text)) out.push(row);
             };
             const included = getIncludedSet(tabs, result, "defects");

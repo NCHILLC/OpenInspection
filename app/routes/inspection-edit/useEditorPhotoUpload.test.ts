@@ -48,7 +48,7 @@ function makeState() {
         cameraItemId: "item-1",
         currentSection: { id: "sec-1" },
         sectionIdForItem: () => "sec-1",
-    } as never;
+    };
 }
 
 /** `collabDoc: null` keeps a case on the FETCHER path, which is where the
@@ -57,19 +57,20 @@ function makeState() {
  *  Fetcher submissions serialise (see "serialises a burst" below), so a test
  *  that submits twice has to let the first one finish in between — which is
  *  what `settle()` models: submitting, then back to idle. */
-function setup(collabDoc: unknown = null) {
+function setup(collabDoc: unknown = null, state = makeState(), isMobile = false) {
     const fetcher = { state: "idle", data: undefined, submit };
+    const setAddMediaChooser = vi.fn();
     const view = renderHook(() =>
         useEditorPhotoUpload({
-            state: makeState(),
+            state: state as never,
             findings: { addPhotoToItem: vi.fn(), addPhotoToDefect: vi.fn() } as never,
             uploadFetcher: fetcher as never,
             collabDoc: collabDoc as never,
             activeUnitId: null,
             cameraInputRef: createRef<HTMLInputElement>(),
             libraryInputRef: createRef<HTMLInputElement>(),
-            isMobile: false,
-            setAddMediaChooser: vi.fn(),
+            isMobile,
+            setAddMediaChooser,
             drain,
             itemGalleryPhotos: itemGalleryPhotos as never,
             openPhotoStudio,
@@ -82,7 +83,7 @@ function setup(collabDoc: unknown = null) {
         fetcher.state = "idle";
         await act(async () => view.rerender());
     };
-    return { ...view, fetcher, settle };
+    return { ...view, fetcher, settle, setAddMediaChooser };
 }
 
 /** Drive handlePhotoUpload with one file and let its async body settle. */
@@ -129,6 +130,26 @@ beforeEach(() => {
 });
 
 describe("useEditorPhotoUpload — the photo lands where the inspector aimed it", () => {
+    it("opens capture from a checklist with no active item, and retains that row as the upload target", async () => {
+        const state = { ...makeState(), activeItemId: null } as unknown as ReturnType<typeof makeState>;
+        const { result, setAddMediaChooser } = setup(null, state, true);
+        act(() => result.current.openPickerForChecklistItem("row-2"));
+        expect(setAddMediaChooser).toHaveBeenCalledWith({ itemId: "row-2" });
+        await pickAPhoto(result.current.handlePhotoUpload);
+        const fd = submit.mock.calls.at(-1)?.[0] as FormData;
+        expect(fd.get("itemId")).toBe("row-2");
+        expect(fd.get("targetType")).toBeNull();
+    });
+
+    it("checklist capture clears a previously armed defect target", async () => {
+        const { result } = setup();
+        act(() => result.current.openPickerForDefect({ kind: "canned", id: "defect-1" }));
+        act(() => result.current.openPickerForChecklistItem("row-2"));
+        await pickAPhoto(result.current.handlePhotoUpload);
+        const fd = submit.mock.calls.at(-1)?.[0] as FormData;
+        expect(fd.get("itemId")).toBe("row-2");
+        expect(lastTarget()).toEqual({ targetType: null, customId: null });
+    });
     it("sends a photo opened from the item to the item", async () => {
         const { result } = setup();
         act(() => result.current.openPickerForItem());
@@ -271,7 +292,7 @@ describe("useEditorPhotoUpload — every item photo rides the queue", () => {
         const busy = { ...uploadFetcher, state: "submitting" };
         const { result } = renderHook(() =>
             useEditorPhotoUpload({
-                state: makeState(),
+                state: makeState() as never,
                 findings: { addPhotoToItem: vi.fn(), addPhotoToDefect: vi.fn() } as never,
                 uploadFetcher: busy as never,
                 collabDoc: doc,

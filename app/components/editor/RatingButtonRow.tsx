@@ -23,6 +23,8 @@ export interface RatingButtonRowProps {
   onRating: (rating: string) => void;
   /** Names the group when several rows share a screen (the phone checklist). */
   ariaLabel?: string;
+  /** Phone checklist tiles may wrap to keep every target at least 48px. */
+  wrap?: boolean;
 }
 
 /* Rating buttons — driven by the rating system's levels (C-14a). Delegates to
@@ -32,7 +34,7 @@ export interface RatingButtonRowProps {
    radiogroup a11y semantics (role="radio"/aria-checked + roving tabindex +
    Arrow/Home/End key support) in place of the former plain-button +
    aria-pressed markup. */
-export function RatingButtonRow({ levels, activeLevel, onRating, ariaLabel }: RatingButtonRowProps) {
+export function RatingButtonRow({ levels, activeLevel, onRating, ariaLabel, wrap = false }: RatingButtonRowProps) {
   const ratings: RatingOption[] = levels.map((r, idx) => {
     const full = r.label ?? r.name ?? r.id;
     return {
@@ -54,7 +56,8 @@ export function RatingButtonRow({ levels, activeLevel, onRating, ariaLabel }: Ra
         value={activeLevel?.id ?? null}
         onChange={onRating}
         ariaLabel={ariaLabel ?? m.editor_rating_aria()}
-        className="flex-nowrap gap-3"
+        size={wrap ? "touch" : "md"}
+        className={wrap ? "flex-wrap gap-2 [&_button]:min-w-[48px] [&_button]:min-h-[48px]" : "flex-nowrap gap-3"}
       />
     </div>
   );

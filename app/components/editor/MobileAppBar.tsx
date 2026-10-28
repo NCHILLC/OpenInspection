@@ -26,30 +26,30 @@ export function MobileAppBar({ eyebrow, title, onBack, onMore, onSearch, backLab
     return (
         // h-16, and every control 48dp: the bar an inspector hits hundreds of
         // times a job clears the 48dp floor, not only the 44pt one.
-        <header className="sticky top-0 z-30 h-16 bg-ih-bg-card border-b border-ih-border flex items-center px-1 gap-1">
+        <header className="sticky top-0 z-30 h-[64px] bg-ih-bg-app border-b border-ih-border flex items-center px-1 gap-1">
             <IconButton
                 onClick={onBack}
-                className="w-12 h-12"
+                className="w-[48px] h-[48px]"
                 aria-label={backLabel ?? m.common_back()}
             ><Icon name="back" size={20} /></IconButton>
             {eyebrow === "" && title === "" ? (
                 <div className="flex-1 min-w-0 pl-1" />
             ) : (
                 <div className="flex-1 min-w-0 pl-1">
-                    <div className="text-[14px] font-semibold uppercase tracking-[0.08em] text-ih-fg-3 truncate">{eyebrow}</div>
+                    <div className="text-sm font-semibold uppercase tracking-[0.08em] text-ih-fg-3 truncate">{eyebrow}</div>
                     <div className="text-[22px] leading-tight font-bold truncate">{title}</div>
                 </div>
             )}
             {onSearch && (
                 <IconButton
                     onClick={onSearch}
-                    className="w-12 h-12"
+                    className="w-[48px] h-[48px]"
                     aria-label={m.editor_mobile_search()}
                 ><Icon name="search" size={20} /></IconButton>
             )}
             <IconButton
                 onClick={onMore}
-                className="w-12 h-12"
+                className="w-[48px] h-[48px]"
                 aria-label={m.editor_mobile_more()}
             >⋮</IconButton>
         </header>

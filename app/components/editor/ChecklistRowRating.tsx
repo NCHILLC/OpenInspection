@@ -29,6 +29,7 @@ export function checklistRowRating(
     items: ReadonlyArray<{ id: string; label: string }>,
     levels: EditorRatingLevel[],
     findings: Pick<CollabFindingsApi, "getResult" | "setRating" | "addCustomLimitation">,
+    controls?: (itemId: string) => ReactNode,
 ): (itemId: string) => ReactNode {
     const ratingOf = (itemId: string) => (findings.getResult(itemId, sectionId).rating as string | undefined) || null;
     const upNextId = items.find((i) => !ratingOf(i.id))?.id;
@@ -60,7 +61,8 @@ export function checklistRowRating(
             <ChecklistRow
                 key={itemId}
                 label={item?.label ?? ""}
-                upNext={itemId === upNextId}
+                upNext={!controls && itemId === upNextId}
+                controls={controls?.(itemId)}
                 levels={levels}
                 rating={ratingOf(itemId)}
                 needsReason={needsReason(itemId)}
@@ -73,7 +75,7 @@ export function checklistRowRating(
 
 /** One row's footer. A component, not inline JSX, because the sheet's open
  *  state belongs to the row. */
-function ChecklistRow({ label, upNext, levels, rating, needsReason, onRate, onAddReason }: {
+function ChecklistRow({ label, upNext, levels, rating, needsReason, onRate, onAddReason, controls }: {
     label: string;
     upNext: boolean;
     levels: EditorRatingLevel[];
@@ -81,24 +83,27 @@ function ChecklistRow({ label, upNext, levels, rating, needsReason, onRate, onAd
     needsReason: boolean;
     onRate: (rating: string) => boolean;
     onAddReason: (title: string) => void;
+    controls?: ReactNode;
 }) {
     const [sheetOpen, setSheetOpen] = useState(false);
     return (
-        <div className="pb-2">
-            <div className="flex items-center gap-2 px-3">
+        <div className={controls ? "" : "pb-2"}>
+            <div className={`flex items-center gap-2 ${controls ? "flex-wrap" : "px-3"}`}>
                 {upNext && (
                     <span className="shrink-0 rounded px-1.5 py-0.5 bg-ih-primary-tint text-[13px] font-semibold text-ih-primary-text">
                         {m.editor_mobile_up_next()}
                     </span>
                 )}
-                <div className="min-w-0 flex-1">
+                <div className={`flex-1 ${controls ? levels.length > 3 ? "min-w-0 basis-full" : "min-w-[160px]" : "min-w-0"}`}>
                     <RatingButtonRow
                         levels={levels}
                         activeLevel={findRatingLevel(levels, rating)}
                         onRating={(r) => { if (onRate(r)) setSheetOpen(true); }}
                         ariaLabel={m.editor_mobile_rate_item({ label })}
+                        wrap={!!controls}
                     />
                 </div>
+                {controls}
             </div>
             {needsReason && !sheetOpen && (
                 <button
