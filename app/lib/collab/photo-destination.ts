@@ -28,7 +28,7 @@ function bucket(doc: Y.Doc, at: PhotoAddress): Y.Map<unknown> | undefined {
     const rows = tabs?.get('defects') as Y.Array<Y.Map<unknown>>;
     return rows?.toArray().find(r => r.get(ref.kind === 'canned' ? 'cannedId' : 'id') === ref.id);
 }
-export function destinationExists(doc: Y.Doc, at: PhotoAddress, requireIncluded = false): boolean {
+function destinationExists(doc: Y.Doc, at: PhotoAddress, requireIncluded = false): boolean {
     const row = bucket(doc, at);
     return !!row && (!at.defectTarget || !requireIncluded || row.get('included') === true);
 }
