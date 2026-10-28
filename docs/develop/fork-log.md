@@ -40,6 +40,33 @@ bake endpoints read the D1 projection and cannot safely address a just-moved
 photo or a different unit. No API or database schema was added. English and
 Spanish publish-block titles count items, including mixed facts and defects.
 
+## Phone section checklist — 2026-10-28
+
+The approved phone section screen is a working checklist, not a structural list
+with an optional rating footer. Upstream through `3647c614` contains the
+`field-ui` package move and phone polishing, but no equivalent of this fork's
+approved S04 checklist to port.
+
+`PhoneChecklist` supplies row content to the shared `ItemList`: inline template
+ratings and Undo, independent findings, included-finding summaries, row-targeted
+photo capture/counts, Details, and section totals. Edit Items returns to the
+shared structural menus and reorder behavior. Desktop and authoring retain their
+existing list presentation. Completion and Up next use `isItemComplete`, including
+answered typed fields; F remains derived from included defects, never a rating.
+Photo counts include queued item and included-defect attachments. The closed-drawer
+accessibility flags are ported from upstream `793a4161`: parked sheets are inert
+and hidden from assistive technology until opened.
+
+Capture from a checklist has no active item, so the picker retains its explicit
+item target through file selection. The native-camera fallback preserves that
+target when the in-app camera closes; camera markup saves to the camera's item
+when no detail screen is open. Existing media queue and collaboration writes are
+reused. The phone footer uses bounded columns, and checklist rating tiles wrap
+rather than shrinking below the approved 48px target. No API, schema, theme-token
+or production-data change is required.
+
+![Built phone checklist in Field theme](images/phone-checklist-field.png)
+
 ## Refreshing the numbers
 
 ```bash

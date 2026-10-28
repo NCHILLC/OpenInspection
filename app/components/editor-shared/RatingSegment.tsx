@@ -35,7 +35,7 @@ export interface RatingSegmentProps {
   onChange: (value: string) => void;
   /** `sm` (compact/icon tiles) · `md` (default row, RatingButtonRow-like) ·
    *  `lg` (large touch tiles, SpeedMode-like). Default `md`. */
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "touch";
   /** Accessible name for the radiogroup. */
   ariaLabel?: string;
   className?: string;
@@ -73,6 +73,7 @@ const TONE_IDLE: Record<RatingTone, string> = {
 const SIZE_CLASSES: Record<NonNullable<RatingSegmentProps["size"]>, string> = {
   sm: "h-8 min-w-8 px-2 rounded text-[14px] font-bold",
   md: "h-11 min-w-0 flex-1 px-3 rounded-lg text-[16px] font-bold @container",
+  touch: "h-[48px] min-w-[48px] flex-1 px-2 rounded-md text-base font-bold @container",
   lg: "h-20 w-20 rounded-xl text-sm font-bold @container",
 };
 

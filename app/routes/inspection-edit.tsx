@@ -74,7 +74,7 @@ import { SectionPickerModal } from "~/components/editor/SectionPickerModal";
 import { TagPickerModal } from "~/components/editor/TagPickerModal";
 import { useIsMobile } from "~/hooks/useBreakpoint";
 import { MobileDrillShell, type MobileDrawerId } from "~/components/editor/MobileDrillShell";
-import { checklistRowRating } from "~/components/editor/ChecklistRowRating";
+import { PhoneChecklist } from "~/components/editor/PhoneChecklist";
 import { MobileReportSearch } from "~/components/editor/MobileReportSearch";
 import { EmptyTemplate } from "~/components/editor/PhoneTemplateChooser";
 import { useEditorUrlNav } from "./inspection-edit/useEditorUrlNav";
@@ -213,6 +213,7 @@ export default function InspectionEditPage() {
  // (multiple, no capture — "Add from library", desktop's default add-photo
  // affordance). Both feed the same handlePhotoUpload batch handler.
  const cameraInputRef = useRef<HTMLInputElement>(null);
+ const nativeCameraFallbackRef = useRef(false);
  const libraryInputRef = useRef<HTMLInputElement>(null);
 
  /* Plan 7 — add-media chooser (photo OR video) + video capture overlay. The
@@ -689,8 +690,7 @@ export default function InspectionEditPage() {
  const [photoStudioKey, setPhotoStudioKey] = useState<string | null>(null);
  const [photoStudioIndex, setPhotoStudioIndex] = useState(0);
  const [photoStudioTotal, setPhotoStudioTotal] = useState(0);
- // Single entry point for opening the PhotoAnnotator — keeps the five state
- // setters in lockstep across every caller (gallery annotate, tools dock).
+ // Keep photo-studio state in lockstep across gallery and camera callers.
  const openPhotoStudio = useCallback(
   (next: { url: string | null; key: string | null; index: number; total: number }) => {
    setPhotoStudioUrl(next.url);
@@ -1079,7 +1079,7 @@ export default function InspectionEditPage() {
  /* Photo upload */
  /* ---------------------------------------------------------------- */
 
- const { handlePhotoUpload, handleCameraFrame, openPickerForItem, openPickerForDefect, clearPhotoTarget, armedDefectName, setCameraTarget, handleAnnotateShot } = useEditorPhotoUpload({
+ const { handlePhotoUpload, handleCameraFrame, openPickerForItem, openPickerForChecklistItem, openPickerForDefect, clearPhotoTarget, armedDefectName, setCameraTarget, handleAnnotateShot } = useEditorPhotoUpload({
  state,
  findings,
  uploadFetcher,
@@ -1133,10 +1133,7 @@ export default function InspectionEditPage() {
  openPickerForItem,
  });
 
- /* ---------------------------------------------------------------- */
- /* Visible items (filtered + searched) */
- /* ---------------------------------------------------------------- */
-
+ /* Visible items (filtered + searched). */
  const visibleItems = useMemo(() => {
  return state.currentSectionItems.filter((item) => {
  if (!state.itemPassesFilter(item, state.currentSection?.id)) return false;
@@ -1188,8 +1185,10 @@ export default function InspectionEditPage() {
  />
  );
 
+ const Checklist = isMobile ? PhoneChecklist : ItemList;
  const itemListEl = (
- <ItemList
+ <Checklist
+ findings={findings} allItems={state.currentSectionItems} defectCategories={loaderData.defectCategories ?? []} onAddPhoto={openPickerForChecklistItem}
  mode="fill"
  items={visibleItems}
  sectionId={state.currentSection?.id || ""}
@@ -1209,7 +1208,6 @@ export default function InspectionEditPage() {
  onRenameItem={canEditStructure ? (itemId, label) => structure.renameItem(state.currentSection?.id || "", itemId, label) : undefined}
  groups={statutoryGroups} ratingLevels={state.ratingLevels}
  onAddGroupInstance={(groupId) => setAddingToGroup(groupId)}
- rowFooter={isMobile ? checklistRowRating(state.currentSection?.id || "", visibleItems, state.ratingLevels, findings) : undefined}
  />
  );
 
@@ -1670,9 +1668,9 @@ export default function InspectionEditPage() {
   * getUserMedia, so a refusal never leaves the inspector without a camera. */}
  <FieldCamera
  open={state.cameraOpen}
- onClose={() => { state.setCameraOpen(false); state.setCameraItemId(null); clearPhotoTarget(); }}
+ onClose={() => { state.setCameraOpen(false); state.setCameraItemId(null); if (!nativeCameraFallbackRef.current) clearPhotoTarget(); nativeCameraFallbackRef.current = false; }}
  onCapture={handleCameraFrame}
- onUnavailable={() => cameraInputRef.current?.click()}
+ onUnavailable={() => { nativeCameraFallbackRef.current = true; cameraInputRef.current?.click(); }}
  defectName={armedDefectName ?? undefined} onTargetChange={setCameraTarget} onMarkUp={handleAnnotateShot}
  />
  {/* Photo studio overlay */}
@@ -1683,7 +1681,7 @@ export default function InspectionEditPage() {
  totalPhotos={photoStudioTotal}
  sectionName={state.currentSection?.title || state.currentSection?.name || ""}
  initialAnnotationsJson={null}
- target="item" subject={(state.activeItem?.label || state.activeItem?.name) as string | undefined}
+ target="item" subject={(state.activeItem?.label || state.activeItem?.name || state.currentSectionItems.find(i => i.id === state.cameraItemId)?.label) as string | undefined}
  isCover={!!photoStudioKey && (state.inspection.coverPhotoId as string | null) === photoStudioKey}
  onSetCover={photoStudioKey ? () => {
   const isCover = (state.inspection.coverPhotoId as string | null) === photoStudioKey;
@@ -1693,7 +1691,7 @@ export default function InspectionEditPage() {
   );
  } : undefined}
  onSave={({ blob, nodesJson }) => {
-  const itemId = state.activeItemId;
+  const itemId = state.activeItemId ?? state.cameraItemId;
   if (itemId && photoStudioIndex != null) {
    const sectionId = state.currentSection?.id;
    // #181 — the Y.Doc owns results.data: bake the annotation PNG to R2 + mirror

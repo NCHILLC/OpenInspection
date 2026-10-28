@@ -230,4 +230,83 @@ test.describe.serial('Phone drill-down navigation', () => {
         expect(touchAction, 'a button still allows double-tap zoom, which eats rapid taps')
             .toBe('manipulation');
     });
+
+    test('checklist rates in place, opens details, and retains the answer after reload', async ({ page }) => {
+        await gotoMobile(page, `/inspections/${inspectionId}/edit?section=${SECTION_B.id}`, adminToken);
+        await expectLevel(page, 'items');
+        const row = page.getByRole('article', { name: ITEM_B1.label });
+        await expect(row.getByRole('radiogroup', { name: `Rate ${ITEM_B1.label}` })).toBeVisible();
+        const rating = row.getByRole('radio').first();
+        const ratingName = await rating.getAttribute('aria-label');
+        await rating.click();
+        await expect(rating).toHaveAttribute('aria-checked', 'true');
+        await expectLevel(page, 'items');
+        await expect(page.getByTestId('checklist-summary')).toContainText('1 of 1 rated');
+        await page.reload({ waitUntil: 'networkidle' });
+        await expect(row.getByRole('radio', { name: ratingName!, exact: true })).toHaveAttribute('aria-checked', 'true');
+        await row.getByRole('button', { name: `Open details — ${ITEM_B1.label}` }).click();
+        await expectLevel(page, 'item');
+        await page.goBack();
+        await expectLevel(page, 'items');
+    });
+
+    test('checklist camera attaches a library photo to its row with no active item', async ({ page }) => {
+        await gotoMobile(page, `/inspections/${inspectionId}/edit?section=${SECTION_B.id}`, adminToken);
+        await expectLevel(page, 'items');
+        expect(new URL(page.url()).searchParams.get('item')).toBeNull();
+        const row = page.getByRole('article', { name: ITEM_B1.label });
+        const photo = row.getByRole('button', { name: `Add photo — ${ITEM_B1.label}` });
+        await photo.click();
+        await expect(page.getByRole('dialog', { name: 'Add media' })).toBeVisible();
+        const fileChooser = page.waitForEvent('filechooser');
+        await page.getByRole('button', { name: 'Add from library' }).click();
+        const chooser = await fileChooser;
+        // A real, decodable image exercises preprocessing and the normal upload path.
+        const png = await page.evaluate(async () => {
+            const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32;
+            canvas.getContext('2d')!.fillRect(0, 0, 32, 32);
+            return Array.from(new Uint8Array(await (await fetch(canvas.toDataURL('image/png'))).arrayBuffer()));
+        });
+        await chooser.setFiles({ name: 'checklist.png', mimeType: 'image/png', buffer: Buffer.from(png) });
+        await expect(photo).toContainText('1', { timeout: NAV_TIMEOUT });
+        await expectLevel(page, 'items');
+        await page.reload({ waitUntil: 'networkidle' });
+        await expect(photo).toContainText('1');
+        await expect(page.getByTestId('checklist-summary')).toContainText('1 photo');
+        // Denied in-app camera falls back to the native picker without losing its row target.
+        await page.evaluate(() => {
+            navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Test camera denial', 'NotAllowedError'));
+        });
+        await photo.click();
+        const nativeChooser = page.waitForEvent('filechooser');
+        await page.getByRole('button', { name: 'Take photo', exact: true }).click();
+        await (await nativeChooser).setFiles({ name: 'native.png', mimeType: 'image/png', buffer: Buffer.from(png) });
+        await expect(photo).toContainText('2', { timeout: NAV_TIMEOUT });
+        await page.reload({ waitUntil: 'networkidle' });
+        await expect(photo).toContainText('2');
+        await expectLevel(page, 'items');
+    });
+
+    test('checklist controls fit narrow phones in Field and Sun themes', async ({ page }) => {
+        await gotoMobile(page, `/inspections/${inspectionId}/edit?section=${SECTION_B.id}`, adminToken);
+        for (const theme of ['field', 'sun']) {
+            await page.evaluate(t => document.documentElement.setAttribute('data-color-scheme', t), theme);
+            for (const width of [320, 375, 412]) {
+                await page.setViewportSize({ width, height: 915 });
+                const row = page.getByRole('article', { name: ITEM_B1.label });
+                await expect(row).toBeVisible();
+                expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+                for (const control of await row.locator('button').all()) {
+                    const bounds = await control.boundingBox();
+                    expect(bounds?.height).toBeGreaterThanOrEqual(48);
+                    if (await control.getAttribute('role') === 'radio') expect(bounds?.width).toBeGreaterThanOrEqual(48);
+                    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+                }
+                const preview = await page.getByRole('button', { name: 'Preview', exact: true }).first().boundingBox();
+                const next = await page.getByTestId('mobile-next-item').boundingBox();
+                expect(preview!.x + preview!.width).toBeLessThanOrEqual(next!.x);
+                await page.screenshot({ path: `test-results/checklist-${theme}-${width}.png`, fullPage: true });
+            }
+        }
+    });
 });

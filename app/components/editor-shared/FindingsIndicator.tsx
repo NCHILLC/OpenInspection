@@ -9,6 +9,8 @@ export interface FindingsIndicatorProps {
      */
     onActivate?: () => void;
     className?: string;
+    /** A checklist keeps findings distinct from the filled inspection rating. */
+    outlined?: boolean;
 }
 
 /**
@@ -36,16 +38,16 @@ export interface FindingsIndicatorProps {
  * With no `onActivate` it renders as `output` — a live region reporting a
  * derived value, which is exactly what it is when nothing can be done with it.
  */
-export function FindingsIndicator({ active, onActivate, className = "" }: FindingsIndicatorProps) {
+export function FindingsIndicator({ active, onActivate, className = "", outlined = false }: FindingsIndicatorProps) {
     const label = active ? m.editor_findings_present() : m.editor_findings_none();
     // Matches RatingSegment's `md` tile geometry (h-11 = the 44px touch floor)
     // so it reads as part of the same row.
     const shape =
-        `inline-flex items-center justify-center h-11 min-w-11 px-3 rounded-lg ` +
-        `text-[16px] font-bold select-none transition-colors ` +
+        `inline-flex items-center justify-center px-3 font-bold select-none transition-colors ` +
+        (outlined ? "h-[48px] min-w-[48px] rounded-md text-base " : "h-11 min-w-11 rounded-lg text-[16px] ") +
         (active
-            ? "bg-ih-bad text-ih-fg-inverse"
-            : "bg-transparent text-ih-fg-3 border border-ih-border") +
+            ? outlined ? "bg-ih-bad-bg text-ih-bad-fg border border-ih-bad/60" : "bg-ih-bad text-ih-fg-inverse"
+            : outlined ? "bg-transparent text-ih-fg-3 border border-ih-border-strong" : "bg-transparent text-ih-fg-3 border border-ih-border") +
         (className ? ` ${className}` : "");
 
     if (!onActivate) {

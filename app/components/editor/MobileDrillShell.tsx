@@ -42,8 +42,8 @@ export interface MobileDrillShellProps {
     percentComplete: number;
     /**
      * Open the capture screen for the item being edited. Drives the camera FAB,
-     * which only exists on the item level — there is nothing to attach a photo
-     * to on the section or item-list screens.
+     * which only exists on the item level. Checklist rows target their own
+     * item explicitly through the shared media picker.
      */
     onCapture?: () => void;
     /** The screen for the current level. */
@@ -66,11 +66,10 @@ export interface MobileDrillShellProps {
  * also what makes the hardware back button mean something (see
  * `useEditorUrlNav`), which on Android is the button people actually press.
  *
- * The three screens are NOT new components. `SectionRail` and `ItemList` come
- * from `editor-shared` — the same components the desktop rails and the template
- * editor's preview render — handed a different `onSelect`. That is deliberate:
- * a phone-specific twin of either would drift from the desktop one, and only
- * one of the two would get the next fix.
+ * `SectionRail` and `ItemList` come from `editor-shared`. The phone checklist
+ * supplies the shared list's row presentation, while structure editing still
+ * uses its menus and reorder handlers. Ratings and media use the same writes
+ * as the item editor; the phone does not maintain a second results store.
  */
 export function MobileDrillShell({
     level,
@@ -145,14 +144,14 @@ export function MobileDrillShell({
                 </button>
             )}
 
-            <nav className="fixed left-0 right-0 bottom-0 z-30 h-18 bg-ih-bg-card border-t border-ih-border flex items-center gap-2 px-3">
+            <nav className="fixed left-0 right-0 bottom-0 z-30 h-18 bg-ih-bg-card border-t border-ih-border grid grid-cols-[minmax(0,1fr)_64px_minmax(104px,0.9fr)] items-center gap-1.5 px-3">
                 {/* Completion reads as a number, not only a ring: a ring alone
                     cannot be read at a glance in direct sun on a roof. The sync
                     readout sits under it — never hidden, see MobileSyncPill. */}
-                <div className="flex-1 min-w-0 flex items-center gap-2.5" aria-live="polite">
-                    <SectionDonut rated={percentComplete} total={100} size={32} />
+                <div className="min-w-0 flex items-center gap-1.5" aria-live="polite">
+                    <span className="hidden min-[360px]:block shrink-0"><SectionDonut rated={percentComplete} total={100} size={28} /></span>
                     <div className="flex flex-col items-start gap-0.5 min-w-0">
-                        <span className="text-[18px] leading-tight font-bold tabular-nums whitespace-nowrap">
+                        <span className="text-[14px] leading-tight font-bold tabular-nums whitespace-nowrap">
                             {m.editor_mobile_percent_complete({ percent: percentComplete })}
                         </span>
                         <MobileSyncPill inspectionId={inspectionId} connection={connection} />
@@ -161,7 +160,7 @@ export function MobileDrillShell({
                 <button
                     type="button"
                     onClick={onOpenPreview}
-                    className="w-[76px] h-14 shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-md text-ih-fg-2 hover:bg-ih-bg-muted active:bg-ih-bg-muted"
+                    className="w-[64px] h-14 flex flex-col items-center justify-center gap-0.5 rounded-md text-ih-fg-2 hover:bg-ih-bg-muted active:bg-ih-bg-muted"
                 >
                     <Icon name="file" size={22} />
                     <span className="text-[14px] font-semibold">{m.editor_route_drawer_preview()}</span>
@@ -177,7 +176,7 @@ export function MobileDrillShell({
                     disabled={!onNext}
                     data-testid="mobile-next-item"
                     aria-label={nextLabel ? m.editor_mobile_next_to({ label: nextLabel }) : undefined}
-                    className="h-[52px] shrink-0 max-w-[170px] flex items-center gap-2.5 pl-4 pr-3 rounded-md bg-ih-primary text-ih-primary-fg disabled:opacity-40"
+                    className="h-[52px] w-full min-w-0 flex items-center gap-2 pl-3 pr-2 rounded-md bg-ih-primary text-ih-primary-fg disabled:opacity-40"
                 >
                     <span className="flex flex-col items-start min-w-0 leading-tight">
                         <span className="text-[18px] font-extrabold">{m.editor_mobile_next_item()}</span>

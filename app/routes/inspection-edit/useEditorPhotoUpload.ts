@@ -55,21 +55,9 @@ export interface EditorPhotoUpload {
     handlePhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     /** One frame from the in-app camera, queued without closing the camera. */
     handleCameraFrame: (blob: Blob) => void;
-    /**
-     * Open the picker for THIS ITEM's photos.
-     *
-     * ⚠️ OPENING A PICKER AND SAYING WHERE THE PHOTO GOES ARE ONE ACT, WHICH IS
-     * WHY THEY ARE ONE FUNCTION. They used to be two: a bare ref the defect chip
-     * armed, cleared only when a photo actually arrived. Arm it and then CANCEL
-     * the picker and it stayed armed — so the next photo added from the
-     * item-level button silently attached to a finding the inspector had walked
-     * away from. In the editor it just appears somewhere they did not put it; in
-     * the report it is missing from the item and stuck on the finding.
-     *
-     * A test could catch a call site that forgot to clear. Not being able to
-     * open a picker without stating the target is better than catching it.
-     */
+    /** Opening an item picker also clears an abandoned defect target. */
     openPickerForItem: () => void;
+    openPickerForChecklistItem: (itemId: string) => void;
     /** Open the picker for one defect row's photos (FE-3). */
     openPickerForDefect: (target: NonNullable<PendingPhotoTarget>, name?: string) => void;
     /** The inspector backed out of the chooser — drop any armed target. */
@@ -123,6 +111,7 @@ export function useEditorPhotoUpload({
     defectPhotoOps,
 }: EditorPhotoUploadDeps): EditorPhotoUpload {
     const pendingPhotoTargetRef = useRef<PendingPhotoTarget>(null);
+    const pickerItemIdRef = useRef<string | null>(null);
     // Kept apart from the pending target so the camera's toggle can aim at the
     // item and back without forgetting which defect the session came from.
     const armedDefectRef = useRef<PendingPhotoTarget>(null);
@@ -239,8 +228,8 @@ export function useEditorPhotoUpload({
     const handlePhotoUpload = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
             const all = Array.from(e.target.files ?? []);
-            if (all.length === 0 || !state.activeItemId) return;
-            const itemId = state.activeItemId;
+            const itemId = pickerItemIdRef.current ?? state.activeItemId;
+            if (all.length === 0 || !itemId) return;
             // The cap is a Worker subrequest guard on the FETCHER path, where one
             // submission fans out one upstream call per file. Kept for the library
             // picker, which is the only way to hand over 20+ files at once.
@@ -359,7 +348,7 @@ export function useEditorPhotoUpload({
 
     /** Arms the target, then opens whichever picker this device wants. */
     const openPicker = useCallback(
-        (target: PendingPhotoTarget, name?: string) => {
+        (target: PendingPhotoTarget, name?: string, itemId = state.activeItemId) => {
             // The fetcher is now reached ONLY before the collab doc is live, so
             // that is the only state where a second submit could abort the one in
             // flight. With a doc, a defect add rides the queue like an item add
@@ -373,7 +362,8 @@ export function useEditorPhotoUpload({
                 });
                 return;
             }
-            const itemId = state.activeItemId;
+            if (!itemId) return;
+            pickerItemIdRef.current = itemId;
             pendingPhotoTargetRef.current = target;
             armedDefectRef.current = target;
             setArmedDefectName(target ? (name ?? null) : null);
@@ -387,11 +377,13 @@ export function useEditorPhotoUpload({
     );
 
     const openPickerForItem = useCallback(() => openPicker(null), [openPicker]);
+    const openPickerForChecklistItem = useCallback((id: string) => openPicker(null, undefined, id), [openPicker]);
     const openPickerForDefect = useCallback(
         (target: NonNullable<PendingPhotoTarget>, name?: string) => openPicker(target, name),
         [openPicker],
     );
     const clearPhotoTarget = useCallback(() => {
+        pickerItemIdRef.current = null;
         pendingPhotoTargetRef.current = null;
         armedDefectRef.current = null;
         setArmedDefectName(null);
@@ -421,6 +413,7 @@ export function useEditorPhotoUpload({
         handlePhotoUpload,
         handleCameraFrame,
         openPickerForItem,
+        openPickerForChecklistItem,
         openPickerForDefect,
         clearPhotoTarget,
         armedDefectName,

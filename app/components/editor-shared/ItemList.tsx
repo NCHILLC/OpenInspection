@@ -19,7 +19,7 @@ import { ratingDotClass } from "./ratingDot";
 // label, or rating dot. Desktop reveals on hover; touch always shows them.
 const REVEAL = "invisible group-hover:visible focus-within:visible [@media(hover:none)]:visible";
 
-interface SharedItemListProps {
+export interface SharedItemListProps {
   mode: EditorMode;
   /**
    * The section's items, in the order they are printed.
@@ -80,6 +80,9 @@ interface SharedItemListProps {
   onAddGroupInstance?: (groupId: string) => void;
   /** A strip under each row: the phone checklist's inline rating. Hidden while batch-selecting. */
   rowFooter?: (itemId: string) => ReactNode;
+  /** Alternate row presentation; selection and structural editing stay in this shared list. */
+  rowContent?: (itemId: string) => ReactNode;
+  header?: ReactNode;
   /** Template rating levels used to resolve dot color from severity. */
   ratingLevels?: EditorRatingLevel[];
 }
@@ -143,6 +146,8 @@ export function ItemList({
   groups,
   onAddGroupInstance,
   rowFooter,
+  rowContent,
+  header,
   ratingLevels,
 }: SharedItemListProps) {
   const { heading: slotHeading, closes: groupClosedBy } = slotHeadings(groups, items);
@@ -179,16 +184,15 @@ export function ItemList({
   const { containerRef } = useSortableReorder<HTMLDivElement>({
     ids: items.map((i) => i.id),
     onReorder: onReorderItem ?? (() => {}),
-    disabled: !onReorderItem || Boolean(batchMode) || editingId !== null,
+    disabled: !!rowContent || !onReorderItem || Boolean(batchMode) || editingId !== null,
   });
 
   return (
     // Full-bleed below md — see the note on SectionRail. At 280px fixed this
     // left 63px of dead space on a 375px screen.
     <div data-shortcut-scope className="w-full md:w-[280px] md:flex-shrink-0 md:border-r border-ih-border overflow-y-auto flex flex-col">
-      {/* Filter chips live in the inspection-edit header row; this list renders
-          the items it is handed, already filtered by the parent. */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto p-2 space-y-0.5">
+      {header}
+      <div ref={containerRef} className={rowContent ? "flex-1" : "flex-1 overflow-y-auto p-2 space-y-0.5"}>
         {items.map((item) => {
           const result = scopedResult(item.id);
           const fullIdx = items.findIndex((i) => i.id === item.id);
@@ -202,7 +206,7 @@ export function ItemList({
                 {openSlot.slotLabel}
               </div>
             )}
-            <div
+            {rowContent && !batchMode ? rowContent(item.id) : <><div
               data-sortable-item
               data-sortable-id={item.id}
               onKeyDown={(e) => {
@@ -220,8 +224,6 @@ export function ItemList({
                   : "text-ih-fg-3 hover:bg-ih-bg-muted"
               }`}
             >
-              {/* Reserved drag-handle slot — own column, never covers number/label/dot.
-                  Hidden in batch mode (drag is disabled while selecting). */}
               {onReorderItem && !batchMode && (
                 <span
                   data-drag-handle
@@ -274,10 +276,6 @@ export function ItemList({
                       )}
                     </span>
                   )}
-                  {/* Indent, outline number, label and rating dot are ALWAYS
-                      visible. The number is what survives the 280px column's
-                      truncation, which is why it earns its place beside the
-                      indent rather than instead of it. */}
                   <ItemRowIndent depth={depths.get(item.id) ?? 0} outline={outlines.get(item.id) ?? ""} />
                   <span className="flex-1 truncate">{item.label}</span>
                   {/* Rated with no photograph — the gap that otherwise surfaces
@@ -384,6 +382,7 @@ export function ItemList({
               )}
             </div>
             {!batchMode && rowFooter?.(item.id)}
+            </>}
             {closingGroup && onAddGroupInstance && (
               <div className="px-2 pt-2">
                 <Button
