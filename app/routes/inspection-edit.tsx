@@ -1644,6 +1644,7 @@ export default function InspectionEditPage() {
    setShowPublishGate(false);
    state.setShowPublishModal(true);
   }}
+  onOpenDetails={() => { setShowPublishGate(false); state.setActiveView("property"); }}
   onJump={(b: PublishBlockingDefect) => {
    state.selectSectionById(b.sectionId);
    state.setActiveItemId(b.itemId);
@@ -1834,7 +1835,7 @@ export default function InspectionEditPage() {
   <MobileFinishDrawer
   open={mobileDrawer === "actions"}
   onClose={() => setMobileDrawer(null)}
-  finish={{ inspectionId: String(state.inspection.id), address: (state.inspection.propertyAddress as string) || m.editor_mobile_eyebrow_inspection(), rated: state.progress.rated, total: state.progress.total, findings: state.sections.reduce((n, sec) => n + state.sectionDefectCount(sec.id), 0), status: state.inspection.status as string, isAmendment: loaderData.nextPublishIsAmendment, autoSign, onAutoSignToggle: handleAutoSignToggle, publishError, isSubmitting: publishBusy, publishOk: !!publishFetcher.data?.ok, onPublish: publishNow, ...isn.modalProps, onFill: (b, patch) => findings.setDefectFields(b.sectionId, b.itemId, b.cannedId, patch), onOpen: (b) => urlNav.goToItemIn(b.sectionId, b.itemId) }}
+  finish={{ inspectionId: String(state.inspection.id), address: (state.inspection.propertyAddress as string) || m.editor_mobile_eyebrow_inspection(), rated: state.progress.rated, total: state.progress.total, findings: state.sections.reduce((n, sec) => n + state.sectionDefectCount(sec.id), 0), status: state.inspection.status as string, isAmendment: loaderData.nextPublishIsAmendment, autoSign, onAutoSignToggle: handleAutoSignToggle, publishError, isSubmitting: publishBusy, publishOk: !!publishFetcher.data?.ok, onPublish: publishNow, ...isn.modalProps, onFill: (b, patch) => findings.setDefectFields(b.sectionId, b.itemId, b.cannedId, patch), onOpen: (b) => urlNav.goToItemIn(b.sectionId, b.itemId), onOpenDetails: () => state.setActiveView("property") }}
   onSign={() => setSignModalOpen(true)}
   onOpenSettings={() => state.setSettingsOpen(true)}
   onFinishFieldwork={(state.inspection.status as string) !== "completed" ? handleFinishFieldwork : null}

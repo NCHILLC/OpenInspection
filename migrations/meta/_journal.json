@@ -22,6 +22,13 @@
       "when": 1792969974746,
       "tag": "0101_isn_unmatched_inspectors",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793099381972,
+      "tag": "0102_inspection_temp_weather",
+      "breakpoints": true
     }
   ]
 }

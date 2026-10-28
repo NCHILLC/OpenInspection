@@ -1,7 +1,7 @@
 import { m } from "~/paraglide/messages";
 import type { ProfileRow } from "./types";
 
-const GROUP_ORDER = ["identity", "physical", "occupancy", "compliance", "utilities", "maintenance"];
+const GROUP_ORDER = ["identity", "physical", "occupancy", "compliance", "utilities", "maintenance", "conditions"];
 
 /**
  * Commercial PCA Phase F — Building Profile fact list. Renders property facts
@@ -20,6 +20,7 @@ export function BuildingProfile({ rows }: { rows: ProfileRow[] }) {
     compliance: m.pca_building_profile_group_compliance(),
     utilities: m.pca_building_profile_group_utilities(),
     maintenance: m.pca_building_profile_group_maintenance(),
+    conditions: m.pca_building_profile_group_conditions(),
   };
   const known = new Set(GROUP_ORDER);
   const extraGroups = Array.from(new Set(rows.map((r) => r.group))).filter((g) => !known.has(g));

@@ -5,6 +5,8 @@
 export const DEDICATED_FACT_KEYS = [
   "yearBuilt",
   "sqft",
+  "temperatureF",
+  "weather",
   "foundationType",
   "lotSize",
   "bedrooms",

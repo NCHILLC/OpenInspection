@@ -5,6 +5,7 @@ import { REPORT_STATUSES } from '../../../status/report-status';
 import { CANCELLATION_REASONS } from '../../../cancellation-reason';
 import { templates } from './template-rating';
 import { discountCodes } from './services';
+import { INSPECTION_WEATHER } from '../../../inspection-weather';
 
 export const inspections = sqliteTable('inspections', {
     id:                  text('id').primaryKey(),
@@ -97,6 +98,13 @@ export const inspections = sqliteTable('inspections', {
     internalNotes:       text('internal_notes'),
     yearBuilt:           integer('year_built'),
     sqft:                integer('sqft'),
+    // Whole degrees F on site; NULL = not recorded. Required to publish a NEW
+    // report, but that rule lives in computePublishReadinessFromState, not here,
+    // so reports published before the column existed stay valid.
+    temperatureF:        integer('temperature_f'),
+    // On-site conditions (clear|cloudy|rain|snow); NULL = not recorded. Same
+    // publish rule as temperatureF.
+    weather:             text('weather', { enum: INSPECTION_WEATHER }),
     // Plain text rather than an enum: getPropertyFacts coerces anything outside
     // basement/slab/crawlspace/other to 'other' on read, so an Estated autofill
     // value can land here without the write path having to reject it.

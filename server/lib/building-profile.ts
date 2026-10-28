@@ -49,3 +49,24 @@ export function resolveBuildingProfile(input: BuildingProfileInput): ProfileRow[
     })
     .filter((r) => r.value !== null);
 }
+
+/**
+ * Resolve the on-site condition rows (temperature, weather) for the report.
+ * These apply to every property type, so unlike `resolveBuildingProfile` they
+ * depend on neither a preset nor `propertyType`. Only present values surface,
+ * so a report with no recorded conditions adds no rows.
+ */
+export function resolveConditionRows(input: {
+  temperatureF?: number | null;
+  weather?: string | null;
+}): ProfileRow[] {
+  const rows: ProfileRow[] = [];
+  if (input.temperatureF !== null && input.temperatureF !== undefined) {
+    rows.push({ id: 'temperatureF', group: 'conditions', label: 'Temperature', value: input.temperatureF, unit: '°F' });
+  }
+  if (typeof input.weather === 'string' && input.weather !== '') {
+    const weather = input.weather.charAt(0).toUpperCase() + input.weather.slice(1);
+    rows.push({ id: 'weather', group: 'conditions', label: 'Weather', value: weather, unit: null });
+  }
+  return rows;
+}

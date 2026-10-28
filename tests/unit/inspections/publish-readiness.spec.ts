@@ -198,4 +198,64 @@ describe('computePublishReadinessFromState', () => {
         const r = computePublishReadinessFromState(schemaWithDefault, results);
         expect(r.ready).toBe(true);
     });
+
+    describe('facts', () => {
+        const baseSchema = {
+            sections: [{
+                id: 'sec1', title: 'Roof', items: [{
+                    id: 'item1', label: 'Roof Covering', type: 'rich',
+                    tabs: { information: [], limitations: [], defects: [
+                        { id: 'rd1', title: 'Missing shingles', category: 'safety', location: '', comment: 'Repair promptly.', photos: [], default: false },
+                    ] },
+                }],
+            }],
+        } as any;
+        const completeResults = {
+            item1: { tabs: { defects: [{ cannedId: 'rd1', included: true, location: 'SE corner', trade: 'licensed-roofer' }] } },
+        };
+
+        it('facts omitted -> missingFacts [] and ready unchanged', () => {
+            const r = computePublishReadinessFromState(baseSchema, completeResults);
+            expect(r.missingFacts).toEqual([]);
+            expect(r.ready).toBe(true);
+        });
+
+        it('facts {temperatureF:null, weather:null} -> missingFacts [\'temperature\',\'weather\'] and ready false', () => {
+            const r = computePublishReadinessFromState(baseSchema, completeResults, 'both', { temperatureF: null, weather: null });
+            expect(r.missingFacts).toEqual(['temperature', 'weather']);
+            expect(r.ready).toBe(false);
+        });
+
+        it('only weather missing -> [\'weather\']', () => {
+            const r = computePublishReadinessFromState(baseSchema, completeResults, 'both', { temperatureF: 72, weather: null });
+            expect(r.missingFacts).toEqual(['weather']);
+            expect(r.ready).toBe(false);
+        });
+
+        it('empty-string weather counts as missing', () => {
+            const r = computePublishReadinessFromState(baseSchema, completeResults, 'both', { temperatureF: 72, weather: '' });
+            expect(r.missingFacts).toEqual(['weather']);
+            expect(r.ready).toBe(false);
+        });
+
+        it('both present -> ready true and missingFacts []', () => {
+            const r = computePublishReadinessFromState(baseSchema, completeResults, 'both', { temperatureF: 72, weather: 'clear' });
+            expect(r.ready).toBe(true);
+            expect(r.missingFacts).toEqual([]);
+        });
+
+        it('defect blockers plus complete facts -> still not ready', () => {
+            const badResults = {
+                item1: { tabs: { defects: [{ cannedId: 'rd1', included: true }] } },
+            };
+            const r = computePublishReadinessFromState(baseSchema, badResults, 'both', { temperatureF: 72, weather: 'clear' });
+            expect(r.ready).toBe(false);
+        });
+
+        it('temperatureF 0 counts as present', () => {
+            const r = computePublishReadinessFromState(baseSchema, completeResults, 'both', { temperatureF: 0, weather: 'clear' });
+            expect(r.ready).toBe(true);
+            expect(r.missingFacts).toEqual([]);
+        });
+    });
 });

@@ -2,6 +2,7 @@ import { useMemo, useCallback, useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { isDedicatedFactKey } from "~/lib/property-facts-keys";
 import { m } from "~/paraglide/messages";
+import { INSPECTION_WEATHER } from "../../../server/lib/inspection-weather";
 
 interface MetadataField {
   id: string;
@@ -10,14 +11,17 @@ interface MetadataField {
   group?: string;
   options?: string[];
   unit?: string;
+  required?: boolean;
+  integer?: boolean;
+  optionLabels?: Record<string, string>;
 }
 
 // Field ids here MUST be persistable keys of PropertyFactsSchema
-// (server/lib/validations/inspection/read.ts): yearBuilt, sqft, foundationType,
-// lotSize, bedrooms, bathrooms, unit, county. `reportTier`/`commercialSubtype`
-// are owned by CommercialReportControls, not this form. `unit`/`county` are real
-// text columns on `inspections` (autofilled at intake) and are now in
-// PropertyFactsSchema, so edits here persist through the property-facts write.
+// (server/lib/validations/inspection/read.ts): yearBuilt, sqft, temperatureF,
+// weather, foundationType, lotSize, bedrooms, bathrooms, unit, county.
+// `reportTier`/`commercialSubtype` are owned by CommercialReportControls, not this form.
+// `unit`/`county` are real text columns on `inspections` (autofilled at intake) and are
+// now in PropertyFactsSchema, so edits here persist through the property-facts write.
 function residentialFields(): MetadataField[] {
   return [
     { id: "yearBuilt", label: m.editor_property_field_year_built(), type: "number", group: m.editor_property_group_facts() },
@@ -42,6 +46,27 @@ function commercialFields(): MetadataField[] {
     { id: "lotSize", label: m.editor_property_field_lot_size(), type: "text", group: m.editor_property_group_facts() },
     { id: "county", label: m.editor_property_field_county(), type: "text", group: m.editor_property_group_facts() },
   ];
+}
+
+function conditionFields(): MetadataField[] {
+  return [
+    { id: "temperatureF", label: m.editor_property_field_temperature(), type: "number", group: m.editor_property_group_facts(), unit: "°F", required: true, integer: true },
+    { id: "weather", label: m.editor_property_field_weather(), type: "select", group: m.editor_property_group_facts(), options: [...INSPECTION_WEATHER], optionLabels: { clear: m.editor_property_weather_clear(), cloudy: m.editor_property_weather_cloudy(), rain: m.editor_property_weather_rain(), snow: m.editor_property_weather_snow() }, required: true },
+  ];
+}
+
+function withConditionFields(fields: MetadataField[]): MetadataField[] {
+  const result = [...fields];
+  const existing = new Set(result.map((f) => f.id));
+  const toAdd = conditionFields().filter((f) => !existing.has(f.id));
+  if (toAdd.length === 0) return result;
+  const sqftIndex = result.findIndex((f) => f.id === "sqft");
+  if (sqftIndex >= 0) {
+    result.splice(sqftIndex + 1, 0, ...toAdd);
+  } else {
+    result.push(...toAdd);
+  }
+  return result;
 }
 
 interface PropertyInfoFormProps {
@@ -69,7 +94,8 @@ interface PropertyInfoFormProps {
 
 export function PropertyInfoForm({ inspection, templateFields, propertyAddress, phone, onSave, onCommit }: PropertyInfoFormProps) {
   const defaultFields = inspection.propertyType === "commercial" ? commercialFields() : residentialFields();
-  const metaFields = templateFields?.length ? templateFields : defaultFields;
+  const baseFields = templateFields?.length ? templateFields : defaultFields;
+  const metaFields = withConditionFields(baseFields);
 
   const filled = useMemo(() => metaFields.filter((f) => inspection[f.id]).length, [metaFields, inspection]);
 
@@ -99,7 +125,10 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
   function coerce(field: MetadataField, value: unknown): unknown {
     if (field.type === "boolean") return Boolean(value);
     if (value === "" || value === null || value === undefined) return null;
-    if (field.type === "number") return Number(value);
+    if (field.type === "number") {
+      if (field.integer) return Math.round(Number(value));
+      return Number(value);
+    }
     return String(value);
   }
 
@@ -238,6 +267,9 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
                   {Boolean(inspection[`_prefilled_${f.id}`]) && (
                     <span className="text-[12px] font-semibold text-ih-primary-text normal-case tracking-normal">{m.editor_property_prefilled()}</span>
                   )}
+                  {f.required && (inspection[f.id] === "" || inspection[f.id] === null || inspection[f.id] === undefined) && (inspection.reportStatus as string) !== "published" && (
+                    <span data-testid={`needed-${f.id}`} className="normal-case tracking-normal text-[12px] font-bold px-2 py-0.5 rounded-full bg-ih-watch-bg text-ih-watch-fg ring-1 ring-inset ring-ih-watch/40">{m.editor_property_needed_to_publish()}</span>
+                  )}
                 </span>
                 {(f.type === "text" || f.type === "number" || f.type === "date") && (
                   <input
@@ -253,6 +285,7 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
                   <div role="radiogroup" aria-label={f.label} className="mt-1 grid grid-cols-4 gap-1.5">
                     {(f.options ?? []).map((opt) => {
                       const on = inspection[f.id] === opt;
+                      const label = f.optionLabels?.[opt] ?? opt;
                       return (
                         <button
                           key={opt}
@@ -263,7 +296,7 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
                           onClick={() => { const v = on ? "" : opt; onSave?.(f.id, v); commitAll(f, v); }}
                           className={`h-12 rounded-md border text-[15px] capitalize ${on ? "border-ih-primary bg-ih-primary-tint text-ih-primary-text font-bold" : "border-ih-border-strong text-ih-fg-2 font-semibold"}`}
                         >
-                          {opt}
+                          {label}
                         </button>
                       );
                     })}
@@ -277,7 +310,7 @@ export function PropertyInfoForm({ inspection, templateFields, propertyAddress, 
                   >
                     <option value="">&mdash;</option>
                     {(f.options ?? []).map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                      <option key={opt} value={opt}>{f.optionLabels?.[opt] ?? opt}</option>
                     ))}
                   </select>
                 )}

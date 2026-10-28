@@ -87,6 +87,7 @@ describe('publishInspection publishes a report the readiness check flags', () =>
             id: INSPECTION_ID, tenantId: TENANT, propertyAddress: '1 Main St',
             templateId: TEMPLATE_ID, templateSnapshot: JSON.stringify(templateSnapshot),
             date: '2026-08-11', status: 'completed', createdAt: new Date(),
+            temperatureF: 72, weather: 'clear',
         } as never);
     }
 

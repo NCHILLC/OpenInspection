@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveBuildingProfile } from '../../../server/lib/building-profile';
+import { resolveBuildingProfile, resolveConditionRows } from '../../../server/lib/building-profile';
 
 describe('resolveBuildingProfile', () => {
   it('returns [] when propertyType is null', () => {
@@ -74,5 +74,30 @@ describe('resolveBuildingProfile', () => {
       foundationType: 'Basement',
     });
     expect(rows.find((r) => r.id === 'foundationType')?.value).toBe('Basement');
+  });
+
+  describe('resolveConditionRows', () => {
+    it('both present -> two rows with ids temperatureF/weather, group \'conditions\', unit \'°F\' and weather capitalized (\'rain\' -> \'Rain\')', () => {
+      const rows = resolveConditionRows({ temperatureF: 72, weather: 'rain' });
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toEqual({ id: 'temperatureF', group: 'conditions', label: 'Temperature', value: 72, unit: '°F' });
+      expect(rows[1]).toEqual({ id: 'weather', group: 'conditions', label: 'Weather', value: 'Rain', unit: null });
+    });
+
+    it('only temperature 0 -> one row (zero is a value)', () => {
+      const rows = resolveConditionRows({ temperatureF: 0 });
+      expect(rows).toHaveLength(1);
+      expect(rows[0].id).toBe('temperatureF');
+      expect(rows[0].value).toBe(0);
+    });
+
+    it('nothing recorded -> []', () => {
+      expect(resolveConditionRows({})).toEqual([]);
+    });
+
+    it('works with no propertyType (it never needs one)', () => {
+      const rows = resolveConditionRows({ temperatureF: 65, weather: 'clear' });
+      expect(rows).toHaveLength(2);
+    });
   });
 });

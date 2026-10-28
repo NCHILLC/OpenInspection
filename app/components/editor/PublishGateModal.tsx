@@ -10,6 +10,8 @@ export interface PublishGateModalProps {
     /** IA-7 warning mode — called by "Publish anyway" when nothing blocks
      *  but soft gaps exist. Omitting it hides the button. */
     onProceed?: () => void;
+    /** Opens the inspection details form, where the missing temperature and weather are recorded. */
+    onOpenDetails?: () => void;
 }
 
 function DefectList({ entries, onJump, tone }: {
@@ -50,10 +52,12 @@ function DefectList({ entries, onJump, tone }: {
     );
 }
 
-export function PublishGateModal({ open, readiness, onClose, onJump, onProceed }: PublishGateModalProps) {
+export function PublishGateModal({ open, readiness, onClose, onJump, onProceed, onOpenDetails }: PublishGateModalProps) {
     if (!open || !readiness) return null;
     const warnings = readiness.warningDefects ?? [];
     const blocking = readiness.blockingDefects;
+    const facts = readiness.missingFacts ?? [];
+    const blockCount = blocking.length + facts.length;
     // IA-7: ready + warnings = soft gate ("Publish anyway" allowed);
     // !ready = hard gate, warnings (if any) listed beneath the blockers.
     const warningOnly = readiness.ready && warnings.length > 0;
@@ -65,7 +69,7 @@ export function PublishGateModal({ open, readiness, onClose, onJump, onProceed }
                     <h2 className="text-[14px] font-bold">
                         {warningOnly
                             ? (warnings.length === 1 ? m.editor_gate_warn_title_one({ count: warnings.length }) : m.editor_gate_warn_title_other({ count: warnings.length }))
-                            : (blocking.length === 1 ? m.editor_gate_block_title_one({ count: blocking.length }) : m.editor_gate_block_title_other({ count: blocking.length }))}
+                            : (blockCount === 1 ? m.editor_gate_block_title_one({ count: blockCount }) : m.editor_gate_block_title_other({ count: blockCount }))}
                     </h2>
                     <IconButton
                         onClick={onClose}
@@ -76,6 +80,19 @@ export function PublishGateModal({ open, readiness, onClose, onJump, onProceed }
                     </IconButton>
                 </div>
                 <div className="flex-1 overflow-y-auto">
+                    {facts.length > 0 && (
+                        <div data-testid="gate-missing-facts" className="px-5 py-3 flex items-center gap-3 border-b border-ih-border">
+                            <span aria-hidden="true" className="inline-block w-2 h-2 rounded-full shrink-0 bg-ih-bad-fg" />
+                            <div className="flex-1 min-w-0 text-[16px] font-bold">
+                                {facts.length === 2 ? m.editor_gate_facts_both() : facts[0] === 'temperature' ? m.editor_gate_facts_temperature() : m.editor_gate_facts_weather()}
+                            </div>
+                            {onOpenDetails && (
+                                <Button variant="primary" size="sm" onClick={onOpenDetails}>
+                                    {m.editor_gate_facts_open()} <Icon name="arrowR" size={13} />
+                                </Button>
+                            )}
+                        </div>
+                    )}
                     {blocking.length > 0 && <DefectList entries={blocking} onJump={onJump} tone="blocking" />}
                     {warnings.length > 0 && (
                         <>

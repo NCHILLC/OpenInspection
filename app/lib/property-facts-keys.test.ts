@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { DEDICATED_FACT_KEYS, isDedicatedFactKey } from "./property-facts-keys";
 
 describe("DEDICATED_FACT_KEYS", () => {
-  it("contains exactly the ten schema-backed keys", () => {
+  it("contains exactly the twelve schema-backed keys", () => {
     expect([...DEDICATED_FACT_KEYS].sort()).toEqual(
       [
         "bathrooms",
@@ -14,7 +14,9 @@ describe("DEDICATED_FACT_KEYS", () => {
         "lotSize",
         "reportTier",
         "sqft",
+        "temperatureF",
         "unit",
+        "weather",
         "yearBuilt",
       ].sort(),
     );

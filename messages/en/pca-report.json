@@ -12,6 +12,7 @@
   "pca_building_profile_group_compliance": "Compliance",
   "pca_building_profile_group_utilities": "Utilities",
   "pca_building_profile_group_maintenance": "Maintenance",
+  "pca_building_profile_group_conditions": "Conditions on site",
   "pca_conformance_verb_conforms": "conforms",
   "pca_conformance_verb_does_not_conform": "does not conform",
   "pca_conformance_statement": "This report {verb} to ASTM {standard}.",

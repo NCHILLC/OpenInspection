@@ -8022,7 +8022,7 @@
       "body": null
     },
     "summary": "Check whether an inspection is ready to publish (required defect fields filled)",
-    "description": "Returns ready=true when every included defect has its REQUIRED fields filled (configurable per tenant/inspection — Track H IA-7); non-required gaps surface as warningDefects."
+    "description": "Returns ready=true when every included defect has its REQUIRED fields filled (configurable per tenant/inspection — Track H IA-7) and missing temperature/weather also makes ready=false for a first publish; non-required gaps surface as warningDefects."
   },
   {
     "operationId": "getInspectionRepairRequestLog",

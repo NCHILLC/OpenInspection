@@ -18,6 +18,8 @@ export interface PublishReadiness {
      *  yellow warnings, never block. Optional so stale server responses
      *  (pre-split) still type-check. */
     warningDefects?: PublishBlockingDefect[];
+    // optional so stale server responses still type-check
+    missingFacts?: Array<'temperature' | 'weather'>;
 }
 
 export interface ItemAttribute {

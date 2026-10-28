@@ -4,6 +4,7 @@ import { Errors } from '../../lib/errors';
 import { sanitizeDefectStates, type PropertyFacts, type PropertyFactFoundation } from './shared';
 import { InspectionSubService } from './base';
 import { appendDeviation as appendDeviationPure, type DeviationInput } from '../../lib/pca-deviations';
+import type { InspectionWeather } from '../../lib/inspection-weather';
 
 /**
  * Inspection results writes: field results merge, property-facts read/write,
@@ -22,6 +23,8 @@ export class InspectionResultsService extends InspectionSubService {
         const row = await db.select({
             yearBuilt:      inspections.yearBuilt,
             sqft:           inspections.sqft,
+            temperatureF:   inspections.temperatureF,
+            weather:        inspections.weather,
             foundationType: inspections.foundationType,
             lotSize:        inspections.lotSize,
             bedrooms:       inspections.bedrooms,
@@ -42,6 +45,8 @@ export class InspectionResultsService extends InspectionSubService {
         return {
             yearBuilt:      row.yearBuilt      ?? null,
             sqft:           row.sqft           ?? null,
+            temperatureF:   row.temperatureF   ?? null,
+            weather:        (row.weather ?? null) as InspectionWeather | null,
             foundationType,
             lotSize:        row.lotSize        ?? null,
             bedrooms:       row.bedrooms       ?? null,
@@ -58,6 +63,8 @@ export class InspectionResultsService extends InspectionSubService {
     async updatePropertyFacts(id: string, tenantId: string, facts: {
         yearBuilt?:      number | null | undefined;
         sqft?:           number | null | undefined;
+        temperatureF?:   number | null | undefined;
+        weather?:        InspectionWeather | null | undefined;
         foundationType?: PropertyFactFoundation | null | undefined;
         lotSize?:        string | null | undefined;
         bedrooms?:       number | null | undefined;
@@ -91,6 +98,8 @@ export class InspectionResultsService extends InspectionSubService {
         const update: Partial<typeof inspections.$inferInsert> = {};
         if (facts.yearBuilt      !== undefined) update.yearBuilt      = facts.yearBuilt;
         if (facts.sqft           !== undefined) update.sqft           = facts.sqft;
+        if (facts.temperatureF   !== undefined) update.temperatureF   = facts.temperatureF;
+        if (facts.weather        !== undefined) update.weather        = facts.weather;
         if (facts.foundationType !== undefined) update.foundationType = facts.foundationType;
         if (facts.lotSize        !== undefined) update.lotSize        = facts.lotSize;
         if (facts.bedrooms       !== undefined) update.bedrooms       = facts.bedrooms;

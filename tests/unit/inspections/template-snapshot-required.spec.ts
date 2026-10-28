@@ -146,6 +146,7 @@ describe('computePublishReadiness stops re-acquiring the live template', () => {
             id: INSPECTION_ID, tenantId: TENANT, propertyAddress: '1 Main St',
             templateId: TEMPLATE_ID, templateSnapshot, date: '2026-08-11',
             status: 'scheduled', createdAt: new Date(),
+            temperatureF: 72, weather: 'clear',
         } as never);
     }
 

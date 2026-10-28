@@ -138,13 +138,15 @@ const publishReadinessRoute = createRoute(withMcpMetadata({
                         // Track H (IA-7) — incomplete-but-not-required defects:
                         // yellow warning on the gate, never a block.
                         warningDefects: z.array(PublishDefectEntrySchema),
+                        // missing temperature/weather also makes ready=false for a first publish.
+                        missingFacts: z.array(z.enum(['temperature', 'weather'])),
                     }),
                 },
             },
         },
     },
     operationId: 'getInspectionPublishReadiness',
-    description: 'Returns ready=true when every included defect has its REQUIRED fields filled (configurable per tenant/inspection — Track H IA-7); non-required gaps surface as warningDefects.',
+    description: 'Returns ready=true when every included defect has its REQUIRED fields filled (configurable per tenant/inspection — Track H IA-7) and missing temperature/weather also makes ready=false for a first publish; non-required gaps surface as warningDefects.',
 }, { scopes: ['read'], tier: 'extended' }));
 
 /**
