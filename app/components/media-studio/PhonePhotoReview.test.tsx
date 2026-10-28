@@ -85,7 +85,7 @@ describe("PhonePhotoReview", () => {
 
   it("Move lists the other items, moves the selected photo by index, and says where it went", () => {
     const { onBulkMove } = setup({ startIndex: 0 });
-    onBulkMove.mockReturnValue(undefined);
+    onBulkMove.mockReturnValue(vi.fn());
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     expect(screen.getByRole("dialog", { name: "Move photo to" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Roof › Flashing/ }));
@@ -116,17 +116,28 @@ describe("PhonePhotoReview", () => {
     }
   });
 
-  it("when onBulkMove returns undefined there is no actionLabel", () => {
+  it("a stale destination leaves the photo selected and reports no success", () => {
     const { onBulkMove } = setup({ startIndex: 0 });
     onBulkMove.mockReturnValue(undefined);
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     fireEvent.click(screen.getByRole("button", { name: /Roof › Flashing/ }));
-    const call = vi.mocked(pushToast).mock.calls[0][0];
-    expect(call.actionLabel).toBeUndefined();
+    expect(pushToast).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Photo 1" }).getAttribute("aria-pressed")).toBe("true");
   });
 
   it("hides Move when there is nowhere to move to", () => {
     setup({ moveTargets: [] });
     expect(screen.queryByRole("button", { name: "Move" })).toBeNull();
   });
+  it("passes canned and custom destinations on the same item without confusing their identities", () => {
+    const onBulkMove = vi.fn(() => vi.fn());
+    setup({ onBulkMove, moveTargets: [
+      { kind: "defect", itemId: "i1", sectionId: "s1", unitId: "unit-a", defect: { kind: "canned", id: "d" }, label: "Canned leak" },
+      { kind: "defect", itemId: "i1", sectionId: "s1", unitId: "unit-a", defect: { kind: "custom", id: "d" }, label: "Custom leak" },
+    ] });
+    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom leak" }));
+    expect(onBulkMove).toHaveBeenCalledWith([0], { kind: "defect", itemId: "i1", sectionId: "s1", unitId: "unit-a", defect: { kind: "custom", id: "d" } });
+  });
+
 });

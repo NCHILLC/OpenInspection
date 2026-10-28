@@ -1,3 +1,4 @@
+import { destinationIdentity, type PhotoDestination, type PhotoMoveTarget } from "~/lib/collab/photo-destination";
 import { useEffect, useRef, useState } from "react";
 import Sortable from "sortablejs";
 import { Button } from "@core/shared-ui";
@@ -60,13 +61,13 @@ export interface ItemPhotoStripProps {
    * Task 9b — the OTHER items this strip's photos can be moved to. When present
    * (and non-empty), the bulk bar shows a "Move to" picker next to Delete.
    */
-  moveTargets?: Array<{ itemId: string; label: string; sectionId?: string }>;
+  moveTargets?: PhotoMoveTarget[];
   /**
    * Task 9b — move the selected photos to the chosen target item/section.
    * Indices are emitted DESC (high→low), mirroring {@link onBulkDetach}, so the
    * caller can POST them one per round trip without invalidating earlier indices.
    */
-  onBulkMove?: (indices: number[], to: { itemId: string; sectionId?: string }) => void | (() => void);
+  onBulkMove?: (indices: number[], to: PhotoDestination) => void | (() => void);
   /**
    * Plan 7 — resolve a Stream poster thumbnail URL for a video entry. Returns
    * null when the Stream customer subdomain is unavailable (fail closed) — the
@@ -200,10 +201,12 @@ export function ItemPhotoStrip({
                       defaultValue=""
                       disabled={sel.size === 0}
                       onChange={(e) => {
-                        const t = moveTargets.find((mt) => mt.itemId === e.target.value);
+                        const t = moveTargets.find((mt) => destinationIdentity(mt) === e.target.value);
                         e.currentTarget.value = "";
                         if (!t) return;
-                        onBulkMove([...sel].sort((a, b) => b - a), { itemId: t.itemId, sectionId: t.sectionId });
+                        const { label: _label, ...destination } = t;
+                        void _label;
+                        onBulkMove([...sel].sort((a, b) => b - a), destination);
                         exitSelect();
                       }}
                     >
@@ -211,7 +214,7 @@ export function ItemPhotoStrip({
                         {m.media_strip_choose_item()}
                       </option>
                       {moveTargets.map((mt) => (
-                        <option key={mt.itemId} value={mt.itemId}>
+                        <option key={destinationIdentity(mt)} value={destinationIdentity(mt)}>
                           {mt.label}
                         </option>
                       ))}

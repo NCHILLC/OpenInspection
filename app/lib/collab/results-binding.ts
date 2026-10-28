@@ -20,7 +20,6 @@ import {
     replacePhoto as docReplacePhoto,
     replacePhotoByPendingId as docReplacePhotoByPendingId,
     reorderPhotos as docReorderPhotos,
-    movePhoto as docMovePhoto,
     upsertCanned,
     upsertCustomComment,
     upsertRecommendation,
@@ -248,20 +247,6 @@ export function reorderPhotos(
     orderedKeys: string[],
 ): void {
     docReorderPhotos(doc, findingKey, orderedKeys);
-}
-
-/**
- * Move one photo (by original `key`) from one finding to another, in a single
- * transaction. No-op if the photo is absent on the source. Both keys are
- * composite finding keys.
- */
-export function movePhoto(
-    doc: Y.Doc,
-    fromFindingKey: string,
-    toFindingKey: string,
-    photoKey: string,
-): void {
-    docMovePhoto(doc, fromFindingKey, toFindingKey, photoKey);
 }
 
 /** Detach (delete) a photo from a finding's photo array, by original `key`. */

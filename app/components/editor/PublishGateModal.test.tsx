@@ -20,7 +20,7 @@ describe("PublishGateModal missing facts", () => {
     it("counts the missing facts in the title and opens the details form", () => {
         const onOpenDetails = vi.fn();
         setup({ ready: false, blockingDefects: [], warningDefects: [], missingFacts: ["temperature", "weather"] }, { onOpenDetails });
-        expect(screen.getByRole("heading").textContent).toContain("2");
+        expect(screen.getByRole("heading").textContent).toBe("Cannot publish — 2 items need attention");
         expect(screen.getByText("Record the temperature and weather")).toBeTruthy();
 
         fireEvent.click(screen.getByRole("button", { name: /Open details/ }));
@@ -30,6 +30,16 @@ describe("PublishGateModal missing facts", () => {
     it("names only the weather when that is the only gap", () => {
         setup({ ready: false, blockingDefects: [], warningDefects: [], missingFacts: ["weather"] });
         expect(screen.getByText("Record the weather")).toBeTruthy();
-        expect(screen.getByRole("heading").textContent).toContain("1");
+        expect(screen.getByRole("heading").textContent).toBe("Cannot publish — 1 item needs attention");
     });
+    it("counts mixed fact and defect gaps and keeps each repair action", () => {
+        const defect = { sectionId: "s", itemId: "i", sectionTitle: "Roof", itemLabel: "Flashing", cannedId: "d", cannedTitle: "Leak", missing: ["location" as const], unresolvedTokens: [] };
+        const { props } = setup({ ready: false, blockingDefects: [defect], warningDefects: [], missingFacts: ["weather"] }, { onOpenDetails: vi.fn() });
+        expect(screen.getByRole("heading").textContent).toBe("Cannot publish — 2 items need attention");
+        fireEvent.click(screen.getByRole("button", { name: /Jump/ }));
+        expect(props.onJump).toHaveBeenCalledWith(defect);
+        fireEvent.click(screen.getByRole("button", { name: /Open details/ }));
+        expect(props.onOpenDetails).toHaveBeenCalledTimes(1);
+    });
+
 });

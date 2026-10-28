@@ -74,6 +74,7 @@ describe("PhoneFinishScreen missing facts", () => {
             { onOpenDetails },
         );
         expect(await screen.findByText("Record the temperature and weather")).toBeTruthy();
+        expect(screen.queryByText("Every required field is filled")).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "Record details to publish" }));
         expect(props.onPublish).not.toHaveBeenCalled();
 

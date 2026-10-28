@@ -1,3 +1,5 @@
+import { prepareDefectPhotoMove } from "~/components/editor/defect-photo-move-targets";
+import type { ItemTabs } from "~/components/editor-shared/item-tab-projections";
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type * as Y from "yjs";
 import { resolvePhotoDisplayKey, clearAnnotationOnRecrop } from "~/components/media-studio/photo-display-key";
@@ -20,7 +22,7 @@ import {
 import { enqueueMedia } from "~/lib/collab/media-upload-queue";
 import { getPendingMedia } from "~/lib/collab/media-pending-store";
 import { deletePhotoWithUndo } from "./photo-delete-undo";
-import { movePhotosWithUndo } from "./photo-move-undo";
+import { movePhotoEntries, pendingPhotoIds, type PhotoDestination, type PhotoMoveTarget } from "~/lib/collab/photo-destination";
 import type { PhotoEntry } from "../../server/lib/collab/results-doc.types";
 
 /** #181 PR-G — offline detection. The legacy app/lib/offline helper was removed
@@ -150,16 +152,7 @@ export function usePhotoOps(ctx: {
   // Collect every pending id currently present in the live results map. A change
   // to this set (a new offline capture, or one resolving) re-runs the loader.
   const pendingIds = useMemo(() => {
-    const ids = new Set<string>();
-    if (!collabDoc) return ids;
-    for (const sec of state.sections) {
-      for (const it of sec.items || []) {
-        for (const p of getItemPhotos(it.id)) {
-          if (p.pendingId) ids.add(p.pendingId);
-        }
-      }
-    }
-    return ids;
+    return collabDoc ? pendingPhotoIds(collabDoc) : new Set<string>();
     // state.results drives getItemPhotos; depend on it so resolution re-runs.
   }, [collabDoc, state.sections, state.results, getItemPhotos]);
 
@@ -363,34 +356,35 @@ export function usePhotoOps(ctx: {
   /* Task 9b — the OTHER items photos can be moved to: every item across the
    * inspection except the one currently being edited, each carrying its own
    * section id so the move resolves the right composite finding key on arrival. */
-  const moveTargets = useMemo(
+  const moveTargets = useMemo<PhotoMoveTarget[]>(
     () =>
       state.sections.flatMap((sec) =>
         (sec.items || []).map((it) => ({
+          kind: "item" as const,
+          unitId: activeUnitId,
           itemId: it.id,
           label: `${sec.title} › ${it.label || it.name || it.id}`,
           sectionId: sec.id,
         })),
       ),
-    [state.sections],
+    [state.sections, activeUnitId],
   );
 
-  /* Task 9b — bulk-move photos by index to a target item; returns an undo. The source section is the current one. */
   const onBulkMovePhotos = useCallback(
-    (fromItemId: string, indices: number[], to: { itemId: string; sectionId?: string }): (() => void) | undefined => {
-      const s = state.currentSection?.id;
-      return movePhotosWithUndo({
-        collabDoc,
-        fromItemId,
-        fromFindingKey: docFindingKey(fromItemId, s),
-        toItemId: to.itemId,
-        toFindingKey: docFindingKey(to.itemId, to.sectionId),
-        snapshot: getItemPhotos(fromItemId),
-        indices,
-        patchItemPhotos,
-      });
+    (fromItemId: string, indices: number[], to: PhotoDestination): (() => void) | undefined => {
+      if (!collabDoc || (to.unitId !== undefined && to.unitId !== activeUnitId)) return;
+      const fromFk = docFindingKey(fromItemId, state.currentSection?.id);
+      const targetSection = state.sections.find(sec => sec.id === (to.sectionId ?? state.sectionIdForItem(to.itemId)));
+      if (!fromFk || !targetSection?.items?.some(it => it.id === to.itemId)) return;
+      if (to.kind === "defect" && (to.itemId !== fromItemId || to.sectionId !== state.currentSection?.id)) return;
+      const toFk = docFindingKey(to.itemId, targetSection.id); if (!toFk) return;
+      const templateTabs = targetSection.items?.find(it => it.id === to.itemId)?.tabs;
+      if (to.kind === "defect" && !prepareDefectPhotoMove(collabDoc, toFk, to.defect, (templateTabs ?? {}) as ItemTabs)) return;
+      return movePhotoEntries(collabDoc, { findingKey: fromFk }, {
+        findingKey: toFk, ...(to.kind === "defect" ? { defectTarget: to.defect } : {}),
+      }, indices.flatMap(i => getItemPhotos(fromItemId)[i] ? [getItemPhotos(fromItemId)[i]] : []));
     },
-    [state.currentSection, collabDoc, docFindingKey, getItemPhotos, patchItemPhotos],
+    [state.currentSection, state.sections, state.sectionIdForItem, activeUnitId, collabDoc, docFindingKey, getItemPhotos],
   );
 
   /* Task 8 — route a viewer per-photo action to the right mutation. */

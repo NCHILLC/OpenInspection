@@ -70,6 +70,12 @@ describe("InspectionHero", () => {
     expect(screen.getByText("Jordan Sample · Huntersville · Built 1998")).toBeTruthy();
   });
 
+  it("uses the editor's explicit display zone without an auth layout", () => {
+    mockedUseFetcher.mockReturnValue({ data: [], load: vi.fn() } as never);
+    render(<InspectionHero inspectionId="123" address="123 Main St" date="2026-10-28T01:30:00Z" timeZone="America/New_York" />);
+    expect(screen.getByTestId("inspection-hero").textContent).toContain("9:30 PM");
+  });
+
   it("omits the subline when nothing is known", () => {
     mockedUseFetcher.mockReturnValue({
       data: [],

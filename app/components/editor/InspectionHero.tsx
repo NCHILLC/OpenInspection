@@ -4,12 +4,12 @@ import { m } from "~/paraglide/messages";
 import { getLocale } from "~/paraglide/runtime";
 import type { loader as peopleLoader } from "~/routes/resources/inspection-people";
 import { todayInZone } from "~/lib/civil-time";
-import { useDisplayTimeZone } from "~/hooks/useSessionContext";
 
 export interface InspectionHeroProps {
   inspectionId: string;
   address: string;
   date: string;
+  timeZone?: string;
   city?: string | null;
   yearBuilt?: number | null;
 }
@@ -39,10 +39,10 @@ export function InspectionHero({
   inspectionId,
   address,
   date,
+  timeZone = "UTC",
   city,
   yearBuilt,
 }: InspectionHeroProps) {
-  const timeZone = useDisplayTimeZone();
   const people = useFetcher<typeof peopleLoader>();
   useEffect(() => {
     const q = `?inspectionId=${encodeURIComponent(inspectionId)}`;

@@ -235,3 +235,14 @@ export function resolvePendingDefectPhoto(
             return { ...keep, key };
         }));
 }
+
+/** Resolve a moved pending derivative in its current defect bucket. */
+export function resolvePendingDefectDerivative(doc: Y.Doc, findingKey: string, ref: DefectRef,
+    pendingId: string, result: { croppedKey?: string; annotatedKey?: string }): void {
+    patchDefectPhotos(doc, findingKey, ref, photos => photos.map(p => {
+        if (p.pendingId !== pendingId) return p;
+        const { pendingId: _id, pendingUpload: _u, pendingKind: _k, ...keep } = p;
+        void _id; void _u; void _k;
+        return { ...keep, ...result };
+    }));
+}

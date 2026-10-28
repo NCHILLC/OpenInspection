@@ -795,7 +795,7 @@ export default function InspectionEditPage() {
  });
 
  // Defect-photo view + annotate + crop (separate from usePhotoOps — see hook doc).
- const defectPhotoOps = useDefectPhotoOps({
+ const defectPhotoOps = useDefectPhotoOps({ pendingPhotoUrl,
   state, findings, collabDoc: collab?.doc ?? null, activeUnitId, setRecropWarn,
  });
 
@@ -1853,7 +1853,7 @@ export default function InspectionEditPage() {
      overview would be unreachable from a phone. The empty-template CTA still
      wins over both: an inspection with no sections has no details to show. */}
  {emptyTemplateEl ?? (state.activeView === "property" ? propertyOverviewEl : urlNav.level === "item" ? itemEditorEl : urlNav.level === "items" ? itemListEl : <>
-  <InspectionHero inspectionId={String(state.inspection.id)} address={(state.inspection.propertyAddress as string) || ""} date={String(state.inspection.date ?? "")}
+  <InspectionHero timeZone={loaderData.displayTimeZone} inspectionId={String(state.inspection.id)} address={(state.inspection.propertyAddress as string) || ""} date={String(state.inspection.date ?? "")}
    city={state.inspection.addressCity as string | null | undefined} yearBuilt={state.inspection.yearBuilt as number | null | undefined} />
   <InspectionProgressCard rated={state.progress.rated} total={state.progress.total} photos={inspectionPhotoCount}
    findings={state.sections.reduce((n, sec) => n + state.sectionDefectCount(sec.id), 0)}

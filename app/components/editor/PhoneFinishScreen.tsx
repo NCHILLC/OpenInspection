@@ -198,9 +198,9 @@ export function PhoneFinishScreen(p: PhoneFinishScreenProps) {
                                     );
                                 })}
                             </section>
-                        ) : (
+                        ) : facts.length === 0 ? (
                             <section className={`${card} bg-ih-ok-bg border-ih-ok/30 flex items-center gap-2 text-ih-ok-fg text-[17px] font-bold`}><Icon name="check" size={20} />{m.editor_finish_all_filled()}</section>
-                        )}
+                        ) : null}
 
                         {warnings > 0 && (
                             <div className={`${card} bg-ih-watch-bg border-ih-watch/50 text-ih-watch-fg text-[15px]`}>

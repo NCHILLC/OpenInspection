@@ -39,9 +39,10 @@ export function useDefectPhotoOps(ctx: {
   findings: ReturnType<typeof useFindings>;
   collabDoc: Y.Doc | null;
   activeUnitId: string | null;
+  pendingPhotoUrl?: (id: string) => string | undefined;
   setRecropWarn: (v: { run: () => void } | null) => void;
 }) {
-  const { state, findings, collabDoc, activeUnitId, setRecropWarn } = ctx;
+  const { state, findings, collabDoc, activeUnitId, setRecropWarn, pendingPhotoUrl } = ctx;
 
   const [viewer, setViewer] = useState<{ itemId: string; target: DefectPhotoTarget; index: number | null }>({
     itemId: "", target: { kind: "canned", id: "" }, index: null,
@@ -71,9 +72,11 @@ export function useDefectPhotoOps(ctx: {
     (itemId: string, target: DefectPhotoTarget): GalleryPhoto[] =>
       getDefectPhotos(itemId, target).map((p, i) => {
         const dk = resolvePhotoDisplayKey(p);
+        const local = p.pendingId ? pendingPhotoUrl?.(p.pendingId) : undefined;
         return {
-          key: dk,
-          url: `/api/inspections/${state.inspection.id}/photo?key=${encodeURIComponent(dk)}`,
+          key: dk || p.pendingId || "",
+          url: local || (dk ? `/api/inspections/${state.inspection.id}/photo?key=${encodeURIComponent(dk)}` : ""),
+          pendingPlaceholder: !!p.pendingId && !local && !dk,
           label: "",
           itemId,
           photoIndex: i,
@@ -82,10 +85,10 @@ export function useDefectPhotoOps(ctx: {
           croppedKey: p.croppedKey,
           // Read by the camera's edit badge: nothing to annotate until the
           // drain has swapped the real key in.
-          pending: !!p.pendingUpload,
+          pending: !!p.pendingId,
         };
       }),
-    [getDefectPhotos, state.inspection.id],
+    [getDefectPhotos, state.inspection.id, pendingPhotoUrl],
   );
 
   const onOpenDefectPhoto = useCallback((itemId: string, target: DefectPhotoTarget, index: number) => {
