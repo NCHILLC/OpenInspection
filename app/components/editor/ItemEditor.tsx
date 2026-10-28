@@ -1,3 +1,5 @@
+import { defectPhotoMoveTargets } from "./defect-photo-move-targets";
+import { type PhotoDestination, type PhotoMoveTarget } from "~/lib/collab/photo-destination";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@core/shared-ui";
 import { CommentTypeahead } from "./CommentTypeahead";
@@ -132,9 +134,9 @@ interface ItemEditorProps {
  /** Task 9 — bulk-detach the given photoIndex set (strip emits indices high→low). */
  onBulkDetachPhotos?: (itemId: string, indices: number[]) => void;
  /** Task 9b — the OTHER items this item's photos can be moved to. */
- moveTargets?: Array<{ itemId: string; label: string; sectionId?: string }>;
+ moveTargets?: PhotoMoveTarget[];
  /** Task 9b — bulk-move the given photoIndex set (high→low) to a target item. */
- onBulkMovePhotos?: (itemId: string, indices: number[], to: { itemId: string; sectionId?: string }) => void | (() => void);
+ onBulkMovePhotos?: (itemId: string, indices: number[], to: PhotoDestination) => void | (() => void);
  /** Phone (S09 photo review): set the cover / delete (with undo) for one of this item photos. */
  onPhotoAction?: (itemId: string, index: number, action: "cover" | "delete") => void;
  /** Plan 7 — resolve a Stream poster URL for a video strip thumbnail (fail-closed → null). */
@@ -312,7 +314,7 @@ export function ItemEditor({
  onAddDefectPhoto,
  photoUploading,
  (k) => `/api/inspections/${inspectionId}/photo?key=${encodeURIComponent(k)}`,
- onOpenDefectPhoto ? (target, i) => onOpenDefectPhoto(item.id, target, i) : undefined,
+ onOpenDefectPhoto ? (target, i) => onOpenDefectPhoto(item.id, target, i) : undefined, pendingPhotoUrl,
  );
 
  const submitCustomDefect = () => {
@@ -539,7 +541,7 @@ export function ItemEditor({
  onReorder={onReorderPhotos ? (order) => onReorderPhotos(item.id, order) : undefined}
  selectable={!!onBulkDetachPhotos || !!onBulkMovePhotos}
  onBulkDetach={onBulkDetachPhotos ? (indices) => onBulkDetachPhotos(item.id, indices) : undefined}
- moveTargets={moveTargets ? moveTargets.filter((mt) => mt.itemId !== item.id) : undefined}
+ moveTargets={moveTargets ? [...moveTargets.filter((mt) => mt.itemId !== item.id), ...defectPhotoMoveTargets(item.id, tabs, result, moveTargets)] : undefined}
  onBulkMove={onBulkMovePhotos ? (indices, to) => onBulkMovePhotos(item.id, indices, to) : undefined}
  onPhotoAction={onPhotoAction ? (i, a) => onPhotoAction(item.id, i, a) : undefined} itemLabel={item.label}
  videoPosterUrl={videoPosterUrl}

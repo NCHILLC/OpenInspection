@@ -205,17 +205,20 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
  }
 
  let tenantSlug: string | null = null;
+ let displayTimeZone = "UTC";
  let videoProvider: "r2" | "stream" = "r2";
  let collabEditing = false;
  if (sessRes?.ok) {
  const sb = await sessRes.json() as {
   data?: {
-   branding?: { tenantSlug?: string | null };
+   branding?: { tenantSlug?: string | null; defaultTimezone?: string };
+   user?: { timezone?: string | null };
    videoProvider?: "r2" | "stream";
    collabEditing?: boolean;
   };
  };
  tenantSlug = sb.data?.branding?.tenantSlug ?? null;
+ displayTimeZone = sb.data?.user?.timezone || sb.data?.branding?.defaultTimezone || "UTC";
  // Plan 7 — resolved video backend provider for this tenant (default 'r2').
  // Drives VideoCapture/VideoPlayer branch selection in the editor.
  videoProvider = sb.data?.videoProvider ?? "r2";
@@ -371,5 +374,5 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
  // `report_versions.length`; both mean "a version already exists".
  const nextPublishIsAmendment = isReportPublished(inspection.reportStatus);
 
- return { inspection, schema, results, resultId, ratingLevels, token, tagLibrary, tenantSlug, streamCustomerSubdomain, videoProvider, collabEditing, templateSnapshot, revisionStatus, pcaNarrative, defectCategories, units, unitProgress, unitInspectionMode, compliance, relianceText, commercialPresets, statutoryDetails, statutoryCoverage, nextPublishIsAmendment };
+ return { inspection, schema, results, resultId, ratingLevels, token, tagLibrary, tenantSlug, displayTimeZone, streamCustomerSubdomain, videoProvider, collabEditing, templateSnapshot, revisionStatus, pcaNarrative, defectCategories, units, unitProgress, unitInspectionMode, compliance, relianceText, commercialPresets, statutoryDetails, statutoryCoverage, nextPublishIsAmendment };
 }

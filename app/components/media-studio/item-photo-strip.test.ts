@@ -129,10 +129,10 @@ describe('ItemPhotoStrip', () => {
     // change the "Move to" combobox → fires onBulkMove([1], { itemId, sectionId })
     const combo = container!.querySelector('select') as HTMLSelectElement;
     act(() => {
-      combo.value = 'other';
+      combo.value = combo.options[1].value;
       combo.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    expect(onBulkMove).toHaveBeenCalledWith([1], { itemId: 'other', sectionId: undefined });
+    expect(onBulkMove).toHaveBeenCalledWith([1], { itemId: 'other' });
   });
 
   it('Plan 7 — video entries render a poster thumb + play-glyph + m:ss duration badge', () => {

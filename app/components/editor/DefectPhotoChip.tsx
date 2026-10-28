@@ -1,3 +1,4 @@
+import { PendingPhotoDot } from "~/components/media-studio/PendingPhotoDot";
 import { Icon } from "@core/shared-ui";
 import { resolvePhotoDisplayKey } from "~/components/media-studio/photo-display-key";
 import { m } from "~/paraglide/messages";
@@ -20,7 +21,7 @@ const defectRowChrome =
  *  h-11 is the 44px touch floor (field eval P1 — these measured 24-28px). */
 export const defectRowButtonClass = `${defectRowChrome} h-11`;
 
-type DefectChipPhoto = { key: string; annotatedKey?: string; croppedKey?: string };
+type DefectChipPhoto = { key: string; annotatedKey?: string; croppedKey?: string; pendingId?: string };
 
 /**
  * Builds the per-defect "Photos" control shared by canned and custom rows —
@@ -44,6 +45,7 @@ export function makeDefectPhotoChip(
     photoUploading: boolean | undefined,
     photoUrl: (key: string) => string,
     onOpenDefectPhoto?: (target: DefectPhotoTarget, index: number) => void,
+    pendingPhotoUrl?: (id: string) => string | undefined,
 ) {
     return (target: DefectPhotoTarget, photos: DefectChipPhoto[], name?: string) => {
         if (!onAddDefectPhoto) return null;
@@ -96,12 +98,13 @@ export function makeDefectPhotoChip(
                 <span className="inline-flex flex-wrap items-center gap-1 ml-1 py-1 min-w-0">
                     {photos.map((p, i) => (
                         <button
-                            key={p.key}
+                            key={p.pendingId || p.key}
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenDefectPhoto?.(target, i); }}
-                            className="w-8 h-8 rounded overflow-hidden border border-ih-border-strong flex-shrink-0"
+                            className="relative w-8 h-8 rounded overflow-hidden border border-ih-border-strong flex-shrink-0"
                         >
-                            <img src={photoUrl(resolvePhotoDisplayKey(p))} alt="" className="w-full h-full object-cover" loading="lazy" />
+                            {(resolvePhotoDisplayKey(p) || (p.pendingId && pendingPhotoUrl?.(p.pendingId))) && <img src={(p.pendingId && pendingPhotoUrl?.(p.pendingId)) || photoUrl(resolvePhotoDisplayKey(p))} alt="" className="w-full h-full object-cover" loading="lazy" />}
+                            {p.pendingId && <PendingPhotoDot />}
                         </button>
                     ))}
                     <button

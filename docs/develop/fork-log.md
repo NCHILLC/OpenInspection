@@ -20,6 +20,26 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Phone follow-ups — 2026-10-28
+
+Checked upstream through `3647c614` before investigating the merged phone flows.
+The full-screen editor is outside `auth-layout`, so the hero's session hook
+always fell back to UTC. Pass its resolved display timezone from the editor's
+existing session read; a component regression test covers the explicit zone.
+No matching upstream fix was found. The phone finish screen also no longer
+claims every required field is filled while temperature or weather is missing.
+
+The fork's S09 move path now supports existing, included canned/custom defects
+on the same item as well as item destinations. Default-included canned rows
+remain eligible when their only stored override is a category. Move and Undo use live complete
+entries in the collaboration document; pending identities remain distinct and
+IndexedDB bindings follow each move. The drain resolves against the live doc,
+including changes made while the upload is in flight. Already-baked pending
+crop/annotation bytes use the existing binary upload endpoint: the index-based
+bake endpoints read the D1 projection and cannot safely address a just-moved
+photo or a different unit. No API or database schema was added. English and
+Spanish publish-block titles count items, including mixed facts and defects.
+
 ## Refreshing the numbers
 
 ```bash

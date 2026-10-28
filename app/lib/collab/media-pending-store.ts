@@ -203,3 +203,23 @@ export function deletePendingMedia(pendingId: string): Promise<void> {
         .then(() => undefined)
         .catch(() => undefined);
 }
+
+/** Change the destination without recreating a record already consumed by the drain. */
+export async function rebindPendingMedia(pendingId: string, destination: {
+    findingKey: string; defectTarget?: PendingMediaRecord['defectTarget'];
+}): Promise<void> {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        const store = tx.objectStore(STORE);
+        const read = store.get(pendingId);
+        read.onsuccess = () => {
+            if (!isPendingMediaRecord(read.result)) return;
+            const { defectTarget: _old, ...keep } = read.result;
+            void _old;
+            store.put({ ...keep, ...destination });
+        };
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onabort = tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+}

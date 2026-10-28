@@ -1,3 +1,4 @@
+import { destinationIdentity, photoIdentity, type PhotoMoveTarget } from "~/lib/collab/photo-destination";
 import { useState } from "react";
 import { Icon } from "@core/shared-ui";
 import { pushToast } from "~/hooks/useToast";
@@ -12,10 +13,6 @@ import { m } from "~/paraglide/messages";
  * flow, the delete-with-undo toast, the bulk move), so a photo changed here is
  * changed exactly as the viewer or the multi-select would change it.
  *
- * Not built: the canvas's Defect labels and its defect move targets. A defect's
- * photos live on the defect (their own array, their own handlers) and nothing
- * moves a photo between an item and a defect, so this screen covers the item's
- * own photos only.
  */
 type ReviewAction = "cover" | "delete";
 
@@ -34,7 +31,10 @@ const eyebrow = "text-[14px] font-bold uppercase tracking-[0.08em] text-ih-fg-3"
 const actionBtn = "flex-1 h-15 flex flex-col items-center justify-center gap-0.5 rounded-md border text-[14px] font-bold";
 
 export function PhonePhotoReview({ photos, coverKey, photoUrl, moveTargets, onBulkMove, onOpen, videoPosterUrl, pendingPhotoUrl, itemLabel, startIndex, onClose, onPhotoAction }: Props) {
-  const [sel, setSel] = useState<number | null>(startIndex);
+  const [selectedId, setSelectedId] = useState<string | null>(() => photos[startIndex] ? photoIdentity(photos[startIndex]) : null);
+  const selectedIndex = photos.findIndex(p => photoIdentity(p) === selectedId);
+  const sel = selectedIndex < 0 ? null : selectedIndex;
+  const setSel = (index: number | null) => setSelectedId(index === null ? null : photoIdentity(photos[index]));
   const [moving, setMoving] = useState(false);
 
   const thumb = (p: StripPhoto, dk: string) =>
@@ -47,8 +47,12 @@ export function PhonePhotoReview({ photos, coverKey, photoUrl, moveTargets, onBu
   const cover = () => { onClose(); onPhotoAction(sel!, "cover"); };
   const edit = () => { onClose(); onOpen(sel!); };
   const remove = () => { onPhotoAction(sel!, "delete"); setSel(null); };
-  const move = (to: { itemId: string; sectionId?: string; label: string }) => {
-    const undo = onBulkMove?.([sel!], { itemId: to.itemId, sectionId: to.sectionId });
+  const move = (to: PhotoMoveTarget) => {
+    if (sel === null) return;
+    const { label: _label, ...destination } = to;
+    void _label;
+    const undo = onBulkMove?.([sel], destination);
+    if (!undo) return;
     pushToast({
       message: m.editor_review_moved({ target: to.label }),
       variant: "neutral",
@@ -136,7 +140,7 @@ export function PhonePhotoReview({ photos, coverKey, photoUrl, moveTargets, onBu
             <h2 className="m-0 flex-none text-[22px] font-bold">{m.editor_review_move_title()}</h2>
             <ul className="m-0 min-h-0 list-none overflow-y-auto rounded-lg border border-ih-border p-0">
               {moveTargets?.map((t) => (
-                <li key={t.itemId} className="border-b border-ih-border last:border-b-0">
+                <li key={destinationIdentity(t)} className="border-b border-ih-border last:border-b-0">
                   <button type="button" onClick={() => move(t)} className="flex min-h-14 w-full items-center gap-2.5 px-3.5 text-left text-[17px] font-semibold">
                     <span className="flex-1">{t.label}</span>
                     <Icon name="chevR" size={20} />
