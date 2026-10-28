@@ -85,12 +85,44 @@ describe("PhonePhotoReview", () => {
 
   it("Move lists the other items, moves the selected photo by index, and says where it went", () => {
     const { onBulkMove } = setup({ startIndex: 0 });
+    onBulkMove.mockReturnValue(undefined);
     fireEvent.click(screen.getByRole("button", { name: "Move" }));
     expect(screen.getByRole("dialog", { name: "Move photo to" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Roof › Flashing/ }));
     expect(onBulkMove).toHaveBeenCalledWith([0], { itemId: "i2", sectionId: "s1" });
     expect(pushToast).toHaveBeenCalledWith(expect.objectContaining({ message: "Moved to Roof › Flashing" }));
     expect(screen.queryByRole("dialog", { name: "Move photo to" })).toBeNull();
+  });
+
+  it("when onBulkMove returns a function, toast has Undo action that calls it", () => {
+    const undo = vi.fn();
+    const { onBulkMove } = setup({ startIndex: 1 });
+    onBulkMove.mockReturnValue(undo);
+    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    fireEvent.click(screen.getByRole("button", { name: /Plumbing › Water heater/ }));
+    expect(onBulkMove).toHaveBeenCalledWith([1], { itemId: "i3", sectionId: "s2" });
+    expect(pushToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Moved to Plumbing › Water heater",
+        actionLabel: "Undo",
+        onAction: undo,
+        durationMs: 6000,
+      }),
+    );
+    const toastCall = vi.mocked(pushToast).mock.calls[0][0];
+    if (typeof toastCall.onAction === "function") {
+      toastCall.onAction();
+      expect(undo).toHaveBeenCalled();
+    }
+  });
+
+  it("when onBulkMove returns undefined there is no actionLabel", () => {
+    const { onBulkMove } = setup({ startIndex: 0 });
+    onBulkMove.mockReturnValue(undefined);
+    fireEvent.click(screen.getByRole("button", { name: "Move" }));
+    fireEvent.click(screen.getByRole("button", { name: /Roof › Flashing/ }));
+    const call = vi.mocked(pushToast).mock.calls[0][0];
+    expect(call.actionLabel).toBeUndefined();
   });
 
   it("hides Move when there is nowhere to move to", () => {

@@ -11,7 +11,6 @@ import type { useInspectionState } from "~/hooks/useInspection";
 import type { useFindings } from "~/hooks/useFindings";
 import {
   reorderPhotos as bindingReorderPhotos,
-  movePhoto as bindingMovePhoto,
   removePhoto as bindingRemovePhoto,
   revertPhoto as bindingRevertPhoto,
   setPhotoCrop as bindingSetPhotoCrop,
@@ -21,6 +20,7 @@ import {
 import { enqueueMedia } from "~/lib/collab/media-upload-queue";
 import { getPendingMedia } from "~/lib/collab/media-pending-store";
 import { deletePhotoWithUndo } from "./photo-delete-undo";
+import { movePhotosWithUndo } from "./photo-move-undo";
 import type { PhotoEntry } from "../../server/lib/collab/results-doc.types";
 
 /** #181 PR-G — offline detection. The legacy app/lib/offline helper was removed
@@ -375,20 +375,20 @@ export function usePhotoOps(ctx: {
     [state.sections],
   );
 
-  /* Task 9b — bulk-move photos by index to a target item. The doc is keyed by
-   * `key`, not index, so resolve index→key from the PRE-mutation snapshot and
-   * move each in the doc. The source section is the current one. */
+  /* Task 9b — bulk-move photos by index to a target item; returns an undo. The source section is the current one. */
   const onBulkMovePhotos = useCallback(
-    (fromItemId: string, indices: number[], to: { itemId: string; sectionId?: string }) => {
-      const fromSectionId = state.currentSection?.id;
-      const fromFk = docFindingKey(fromItemId, fromSectionId);
-      const toFk = docFindingKey(to.itemId, to.sectionId);
-      const snapshot = getItemPhotos(fromItemId);
-      const keys = indices
-        .map((i) => snapshot[i]?.key)
-        .filter((k): k is string => !!k);
-      patchItemPhotos(fromItemId, (photos) => photos.filter((_, i) => !indices.includes(i)));
-      if (collabDoc && fromFk && toFk) for (const key of keys) bindingMovePhoto(collabDoc, fromFk, toFk, key);
+    (fromItemId: string, indices: number[], to: { itemId: string; sectionId?: string }): (() => void) | undefined => {
+      const s = state.currentSection?.id;
+      return movePhotosWithUndo({
+        collabDoc,
+        fromItemId,
+        fromFindingKey: docFindingKey(fromItemId, s),
+        toItemId: to.itemId,
+        toFindingKey: docFindingKey(to.itemId, to.sectionId),
+        snapshot: getItemPhotos(fromItemId),
+        indices,
+        patchItemPhotos,
+      });
     },
     [state.currentSection, collabDoc, docFindingKey, getItemPhotos, patchItemPhotos],
   );
