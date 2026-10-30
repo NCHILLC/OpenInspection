@@ -20,6 +20,16 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Default-deny API — 2026-10-30
+
+Cherry-picked the central part of upstream `c0b10264`: `server/lib/auth/public-paths.ts` (the
+unauthenticated path list, moved out of `jwt-auth.ts`; without upstream's `/api/client/compat`,
+which the fork lacks) and `server/lib/auth/api-access-policy.ts` (anonymous `/api/*` refused
+unless listed; agent sessions limited to the agent surface). Before this, a request with no token
+fell through `jwt-auth` and any handler without its own `requireRole` answered. The commit's
+route-by-route tightening (send limits, assignment rules, PATCH schemas) is NOT taken here.
+Still untaken from the Oct 27 review: `096d47c5`, `ddefaff2`, webhook hardening, service-worker cache leak.
+
 ## Phone follow-ups — 2026-10-28
 
 Checked upstream through `3647c614` before investigating the merged phone flows.
