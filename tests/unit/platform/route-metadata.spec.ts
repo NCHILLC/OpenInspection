@@ -242,4 +242,20 @@ describe('route metadata', { timeout: 30_000 }, () => {
         }
         expect(issues, issues.join('\n')).toEqual([]);
     });
+
+    it('routes that take a multipart file body are never offered as MCP tools', () => {
+        // The MCP request builder sends JSON only, so a tool for a multipart route
+        // can never carry its file: every call answers 400 "file is missing" and
+        // an LLM keeps picking it. The HTTP route itself is unaffected.
+        const exposed: string[] = [];
+        let multipart = 0;
+        for (const { op, where } of eachOperation()) {
+            const takesFile = Object.keys(op.requestBody?.content ?? {}).some((t) => t.startsWith('multipart/'));
+            if (!takesFile) continue;
+            multipart += 1;
+            if (op['x-tier'] !== 'excluded') exposed.push(where);
+        }
+        expect(multipart, 'the scan sees multipart routes at all').toBeGreaterThan(0);
+        expect(exposed, `Multipart routes exposed to MCP: ${exposed.join(', ')}`).toEqual([]);
+    });
 });

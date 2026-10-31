@@ -20,6 +20,17 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream fixes, second pass — 2026-10-31
+
+Ported by hand from the Oct 27 TAKE list (hashes are upstream's):
+
+- `096d47c5` role guard on `/api/inspections/:id[/*]`. Rewritten on the fork's `requireRole(owner, manager, inspector)`: the fork has no `staff` role, no `ROLE_TIER` and no `permission-denied.ts`. Paths in `ANONYMOUS_API_ALLOW` (the published report's R2 video) skip it. The report-authoring guard it registers beside is not in the fork.
+- `ddefaff2` `lint:mutating-route-guards` (every write route names a guard). The checker's mount-guard reader now recognises the inspection path guard instead of upstream's report-authoring guard. Its allow-list was regenerated for the fork: two upload entries dropped (no such routes here), the ISN webhook and `/sms/inbound` added as webhook-signature, and the inspection-prefs `PATCH /` and `POST /report-link-expiry` added as `needs-owner-decision` (any staff role can write them today; the editor and hub do). `maxEntries` is 64, not upstream's 62.
+- `3cf12e4a` visit only under the company's own inspection; `6175a27f` no session token and no second snapshot copy in the editor loader (fork also returns `displayTimeZone`, not `outboundCoolingWindow`); `f198ef08` the editor action refuses an id that is not one path segment (`resources/media-upload.ts` does not exist here, so only the action takes it); `a01cb726` MCP `resources/read` of a missing record answers InvalidParams.
+- `0e50aa1c` multipart routes are `tier: 'excluded'` from MCP. Applied by a test that finds them (8 routes in the fork) rather than by the upstream file list.
+
+Not taken, and why: `2a05d3da`/`bd30362b` (the fork has no `qbo/customer-search.ts`); `4a911fba`, `c32ef0b5`, `f99f3bd5` (their threat is a restricted inspector, which exists only with the access model; the fork's inspectors see every inspection of their company and tenant filters already hold. Revisit with the access model; `f99f3bd5` also drops video poster keys that point at another company's object, which was not checked here); `ba7e749a` (OAuth authorize/login redirect loop; needs `session.server.ts` refactoring, still open).
+
 ## Default-deny API — 2026-10-30
 
 Cherry-picked the central part of upstream `c0b10264`: `server/lib/auth/public-paths.ts` (the
@@ -28,7 +39,7 @@ which the fork lacks) and `server/lib/auth/api-access-policy.ts` (anonymous `/ap
 unless listed; agent sessions limited to the agent surface). Before this, a request with no token
 fell through `jwt-auth` and any handler without its own `requireRole` answered. The commit's
 route-by-route tightening (send limits, assignment rules, PATCH schemas) is NOT taken here.
-Still untaken from the Oct 27 review: `096d47c5`, `ddefaff2`, webhook hardening, service-worker cache leak.
+Webhook hardening and the service-worker cache leak landed in #85; the rest of the Oct 27 TAKE list is under "Upstream fixes, second pass" below.
 
 ## Phone follow-ups — 2026-10-28
 

@@ -228,7 +228,7 @@ const saveAnnotationRoute = createRoute(withMcpMetadata({
     },
     operationId: "createInspectionItemsPhotosAnnotation",
     description: "Auto-generated placeholder for createInspectionItemsPhotosAnnotation (POST /{id}/items/{itemId}/photos/{photoIndex}/annotation, inspections domain). TODO: replace with a real description sourced from the handler."
-}, { scopes: ['write'], tier: 'extended' }));
+}, { scopes: ['write'], tier: 'excluded' }));
 
 // ── Media Studio (cover crop): POST /api/inspections/:id/cover ───────────────
 // Bakes a cropped JPEG derivative of the chosen cover source photo to R2 and
@@ -263,7 +263,7 @@ const setCoverCropRoute = createRoute(withMcpMetadata({
     },
     operationId: "setInspectionCover",
     description: "Bake and store a cropped report-cover JPEG derivative for an inspection and record its re-editable crop transform (POST /{id}/cover, inspections domain)."
-}, { scopes: ['write'], tier: 'extended' }));
+}, { scopes: ['write'], tier: 'excluded' }));
 
 // ── Media Studio (Plan 4): crop an item/defect photo ─────────────────────────
 const cropItemPhotoRoute = createRoute(withMcpMetadata({
@@ -301,7 +301,7 @@ const cropItemPhotoRoute = createRoute(withMcpMetadata({
     },
     operationId: "cropInspectionItemPhoto",
     description: "Bake and store a cropped derivative for an inspection-item or per-defect photo and record its re-editable crop transform (POST /{id}/items/{itemId}/photos/{photoIndex}/crop, inspections domain).",
-}, { scopes: ['write'], tier: 'extended' }));
+}, { scopes: ['write'], tier: 'excluded' }));
 
 
 // ── Route handlers ────────────────────────────────────────────────────────────

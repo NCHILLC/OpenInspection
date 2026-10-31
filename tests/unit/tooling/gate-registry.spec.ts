@@ -291,6 +291,15 @@ describe('gate registry', () => {
             // (310 ms over 4,002), both of which are on this rung.
             'agentterms',
             'agenttermsselftest',
+            // A write route registered with no role or capability guard is open to every
+            // signed-in user and is invisible to the capability-declaration check (which
+            // only sees routes that declare one) and to the default-deny spec (which only
+            // covers anonymous callers). The author typing the route is the one person who
+            // knows whether the missing guard was deliberate, so the question is asked at
+            // the commit. `mutatingrouteguardsselftest` is its positive control, on
+            // `agenttermsselftest`'s argument. ~0.3 s and ~60 ms, mostly node startup.
+            'mutatingrouteguards',
+            'mutatingrouteguardsselftest',
         ].sort();
         const actual = [...SCRIPT_GATES, DUP_GATE].filter((g) => g.rung === PRECOMMIT).map((g) => g.key).sort();
         expect(actual).toEqual(EXPECTED_PRECOMMIT);

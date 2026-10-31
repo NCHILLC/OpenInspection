@@ -2071,7 +2071,7 @@
       "write"
     ],
     "tag": "inspections",
-    "tier": "extended",
+    "tier": "excluded",
     "inputSchema": {
       "parameters": [
         {
@@ -5536,7 +5536,7 @@
       "admin"
     ],
     "tag": "admin",
-    "tier": "extended",
+    "tier": "excluded",
     "inputSchema": {
       "parameters": [],
       "body": null
@@ -5634,7 +5634,7 @@
       "write"
     ],
     "tag": "inspections",
-    "tier": "extended",
+    "tier": "excluded",
     "inputSchema": {
       "parameters": [
         {
@@ -18805,7 +18805,7 @@
       "write"
     ],
     "tag": "inspections",
-    "tier": "extended",
+    "tier": "excluded",
     "inputSchema": {
       "parameters": [
         {
@@ -23148,7 +23148,7 @@
       "write"
     ],
     "tag": "inspections",
-    "tier": "extended",
+    "tier": "excluded",
     "inputSchema": {
       "parameters": [
         {
@@ -23176,7 +23176,7 @@
       "write"
     ],
     "tag": "credentials",
-    "tier": "extended",
+    "tier": "excluded",
     "inputSchema": {
       "parameters": [
         {
@@ -23231,7 +23231,7 @@
       "write"
     ],
     "tag": "profile",
-    "tier": "extended",
+    "tier": "excluded",
     "inputSchema": {
       "parameters": [],
       "body": null
@@ -23247,7 +23247,7 @@
       "admin"
     ],
     "tag": "admin",
-    "tier": "extended",
+    "tier": "excluded",
     "inputSchema": {
       "parameters": [
         {

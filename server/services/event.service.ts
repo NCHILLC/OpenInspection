@@ -1,7 +1,8 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { eq, and, gte, lte, asc } from 'drizzle-orm';
-import { eventTypes, inspectionEvents, automations, automationLogs } from '../lib/db/schema';
+import { eventTypes, inspectionEvents, inspections, automations, automationLogs } from '../lib/db/schema';
 import { EVENT_TYPES } from './starter-content/fixtures/event-types';
+import { Errors } from '../lib/errors';
 import { logger } from '../lib/logger';
 import { PeopleService } from './people.service';
 import { resolveAutomationCompanyName } from './automation/company-name';
@@ -112,6 +113,11 @@ export class EventService {
 
     async createEvent(tenantId: string, inspectionId: string, data: Record<string, unknown>) {
         const d = drizzle(this.db);
+        // The inspection comes from the URL, so it has to be one of this company's: a visit hung on a
+        // foreign or invented id would be an orphan row that still shows up on the calendar.
+        const owned = await d.select({ id: inspections.id }).from(inspections)
+            .where(and(eq(inspections.id, inspectionId), eq(inspections.tenantId, tenantId))).get();
+        if (!owned) throw Errors.NotFound('Inspection not found');
         const row = {
             id:        crypto.randomUUID(),
             tenantId,

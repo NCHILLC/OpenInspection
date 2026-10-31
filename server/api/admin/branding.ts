@@ -113,7 +113,7 @@ const uploadLogoRoute = createRoute(withMcpMetadata({
     },
     operationId: "createTenantBrandingLogo",
     description: "Auto-generated placeholder for createTenantBrandingLogo (POST /branding/logo, admin domain). TODO: replace with a real description sourced from the handler."
-}, { scopes: ['admin'], tier: 'extended' }));
+}, { scopes: ['admin'], tier: 'excluded' }));
 
 
 const adminBrandingRoutes = createApiRouter()

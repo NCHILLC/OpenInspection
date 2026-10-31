@@ -68,7 +68,7 @@ const uploadPhotoRoute = createRoute(withMcpMetadata({
     },
     operationId: "uploadInspection",
     description: "Auto-generated placeholder for uploadInspection (POST /{id}/upload, inspections domain). TODO: replace with a real description sourced from the handler."
-}, { scopes: ['write'], tier: 'extended' }));
+}, { scopes: ['write'], tier: 'excluded' }));
 
 /* ── A-9 — Inspection photo serve ─────────────────────────────────────────
  * Item + pool photos are referenced across the editor (SideRail, PhotoStudio)
@@ -157,7 +157,7 @@ const mediaUploadRoute = createRoute(withMcpMetadata({
     },
     operationId: "uploadInspection",
     description: "Auto-generated placeholder for uploadInspection (POST /{id}/media/upload, inspections domain). TODO: replace with a real description sourced from the handler."
-}, { scopes: ['write'], tier: 'extended' }));
+}, { scopes: ['write'], tier: 'excluded' }));
 
 const mediaAttachRoute = createRoute(withMcpMetadata({
     method: 'post',

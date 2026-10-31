@@ -13,6 +13,7 @@ import { webhookIngressGuard } from './lib/middleware/webhook-ingress';
 import { enforceTenantActive } from './lib/middleware/tenant-status-guard';
 import { inspectorPaletteMiddleware } from './lib/middleware/inspector-palette';
 import { touchLastActiveMiddleware } from './lib/middleware/touch-last-active';
+import { registerInspectionScopeGuards } from './lib/middleware/inspection-scope';
 import { tenantRouter } from './features/tenant-routing';
 import { diMiddleware } from './lib/middleware/di';
 import { checkRateLimit } from './lib/rate-limit';
@@ -302,6 +303,8 @@ app.use('*', inspectorPaletteMiddleware);
 // so TeamStrip's "last active Nm ago" pill stays accurate without hammering
 // D1 on every fetch.
 app.use('/api/*', touchLastActiveMiddleware);
+// Ahead of every router: a path-level role refusal must come before any handler runs.
+registerInspectionScopeGuards(app);
 
 // API Routes
 
