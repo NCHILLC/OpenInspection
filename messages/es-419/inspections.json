@@ -351,5 +351,15 @@
   "inspections_isn_card_change_in_isn": "Cámbielos en ISN.",
   "inspections_isn_card_open_in_isn": "Abrir en ISN",
   "inspections_isn_card_yes": "Sí",
-  "inspections_isn_card_no": "No"
+  "inspections_isn_card_no": "No",
+  "inspections_field_log_mark": "Marcar problema",
+  "inspections_field_log_mark_placeholder": "¿Qué salió mal? (opcional)",
+  "inspections_field_log_save": "Guardar problema",
+  "inspections_field_log_cancel": "Cancelar",
+  "inspections_field_log_title": "Registro de campo",
+  "inspections_field_log_meta_title": "Registro de campo - OpenInspection",
+  "inspections_field_log_empty": "Aún no hay nada registrado para esta inspección.",
+  "inspections_field_log_card_toggle": "Registrar mi actividad durante las inspecciones",
+  "inspections_field_log_card_help": "Conserva pantallas, acciones, solicitudes fallidas y fallos durante 30 días, sin datos de clientes ni texto de notas.",
+  "inspections_field_log_issue": "Problema"
 }

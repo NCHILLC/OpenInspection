@@ -29,6 +29,13 @@
       "when": 1793099381972,
       "tag": "0102_inspection_temp_weather",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793465544103,
+      "tag": "0103_field_log",
+      "breakpoints": true
     }
   ]
 }

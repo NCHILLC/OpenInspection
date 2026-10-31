@@ -101,6 +101,7 @@ export default [
   // person reviewed the result before it became one. The API endpoints predate
   // this route by a long way and had no caller in `app/` at all.
   route("resources/ai-assist", "routes/resources/ai-assist.tsx"),
+  route("resources/field-log", "routes/resources/field-log.tsx"),
   route("resources/two-factor", "routes/resources/two-factor.tsx"),
   route("resources/discount-codes", "routes/resources/discount-codes.tsx"),
   route("resources/comments-library", "routes/resources/comments-library.tsx"),
@@ -187,6 +188,7 @@ export default [
     // `repair-requests` segment outranks nothing: `inspections/:id` is a leaf,
     // not a layout, so this is a sibling path and there is no collision.
     route("inspections/:id/repair-requests", "routes/inspection-repair-requests.tsx"),
+    route("inspections/:id/field-log", "routes/inspection-field-log.tsx"),
     route("calendar", "routes/calendar.tsx"),
     // Day-centric dispatch board. Static `dispatch` sits under the calendar
     // path but is its own route, not a mode of /calendar: the audience is

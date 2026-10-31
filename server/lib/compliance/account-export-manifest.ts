@@ -143,6 +143,7 @@ export const ACCOUNT_EXPORT_CLASSIFICATION: AccountExportFieldRule[] = [
     { field: 'deletedAt', column: 'deleted_at', disposition: 'export', reason: 'whether and when the account was soft-deleted; the subject is entitled to see that the deletion they asked for was recorded' },
     { field: 'termsAccepted', column: 'terms_accepted', disposition: 'export', reason: 'the acceptance evidence the subject generated — version, content hash, time, and the IP and country captured with it. All of it is about them' },
     { field: 'permissionOverrides', column: 'permission_overrides', disposition: 'export', reason: 'per-account capability diffs off the role template — what this subject may do' },
+    { field: 'fieldLogEnabled', column: 'is_field_log_enabled', disposition: 'export', reason: 'a preference the subject set' },
     { field: 'timezone', column: 'timezone', disposition: 'export', reason: 'a display preference the subject set' },
     { field: 'locale', column: 'locale', disposition: 'export', reason: 'the language the subject asked to be addressed in — a stated preference of the data subject' },
     { field: 'dateFormat', column: 'date_format', disposition: 'export', reason: 'a display preference the subject set' },
