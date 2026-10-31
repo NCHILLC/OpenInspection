@@ -15,6 +15,7 @@ let secrets: Record<string, string> | null = null;
 vi.mock('../../../server/lib/secrets-cache', () => ({ loadTenantSecrets: async () => secrets }));
 import { drizzle as mockDrizzle } from 'drizzle-orm/d1';
 const { reconcileIsnOrders, STALE_CLAIM_MS } = await import('../../../server/services/isn/order-reconcile');
+const { isnConfig, isnCall } = await import('../../../server/services/isn/api-base');
 const { isnOrderReconcileJob } = await import('../../../server/cron/jobs/integrations');
 
 const TENANT = 't-isn';
@@ -74,6 +75,24 @@ describe('reconcileIsnOrders', () => {
         ];
         await reconcileIsnOrders(D1, TENANT, CFG, null, 5, NOW);
         expect(pulled().sort()).toEqual(['changed', 'failed-create', 'new']);
+    });
+
+    it('an ISN error logged for a failed pull carries no configured credential', async () => {
+        const SECRET = 'secret-Xw2-Rt8nBc4';
+        const cfg = isnConfig({ ISN_DOMAIN: 'https://isn.test', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'a-key-1', ISN_SECRET_KEY: SECRET, ISN_WEBHOOK_SECRET: 'whsec-Hj5' })!;
+        listed = [{ id: 'a', modified: '1' }];
+        let calls = 0;
+        fetchMock.mockImplementation(async () => (++calls === 1
+            ? new Response(JSON.stringify({ status: 'ok', orders: listed }))
+            : new Response(`${'x'.repeat(190)}${SECRET} and whsec-Hj5`, { status: 502 })));
+        pull.mockImplementationOnce(async () => { await isnCall(cfg, 'GET', '/orders/a'); return 'a'; });
+        const lines: string[] = [];
+        const spies = (['info', 'warn', 'error'] as const).map((m) => vi.spyOn(console, m).mockImplementation((...a: unknown[]) => { lines.push(JSON.stringify(a)); }));
+        try { await reconcileIsnOrders(D1, TENANT, cfg, null, 5, NOW); } finally { spies.forEach((s) => s.mockRestore()); }
+        const logged = lines.join('\n');
+        expect(logged).toContain('order pull failed');
+        expect(logged).not.toMatch(/secret-|whsec-/);
+        fetchMock.mockImplementation(async () => new Response(JSON.stringify({ status: 'ok', orders: listed })));
     });
 
     it('keeps going past an order whose pull fails', async () => {

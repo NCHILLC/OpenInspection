@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import integrationsRoutes from '../../../server/api/integrations';
-import { isnIntakeState, redactIsnSecrets } from '../../../server/services/isn/api-base';
+import { isnConfig, isnCall, IsnError, isnIntakeState, redactIsnSecrets } from '../../../server/services/isn/api-base';
 import { AppError } from '../../../server/lib/errors';
 import type { HonoConfig } from '../../../server/types/hono';
 
@@ -130,10 +130,33 @@ describe('isn helpers', () => {
         expect(isnIntakeState({ ...KEYS, ISN_WEBHOOK_SECRET: WEBHOOK }).intakeOn).toBe(true);
     });
     it('redactIsnSecrets replaces every configured value and ignores unset ones', () => {
-        const env = { ...KEYS, ISN_WEBHOOK_SECRET: WEBHOOK };
-        const out = redactIsnSecrets(`${KEYS.ISN_ACCESS_KEY}|${KEYS.ISN_SECRET_KEY}|${WEBHOOK}|${KEYS.ISN_DOMAIN}`, env);
+        const cfg = isnConfig({ ...KEYS, ISN_WEBHOOK_SECRET: WEBHOOK })!;
+        const out = redactIsnSecrets(`${KEYS.ISN_ACCESS_KEY}|${KEYS.ISN_SECRET_KEY}|${WEBHOOK}|${KEYS.ISN_DOMAIN}`, cfg);
         expect(out).toBe('[redacted]|[redacted]|[redacted]|[redacted]');
-        expect(redactIsnSecrets('plain text', {})).toBe('plain text');
+        expect(redactIsnSecrets('plain text', isnConfig(KEYS)!)).toBe('plain text');
+    });
+    it('the webhook secret is not a field of the config', () => {
+        expect(JSON.stringify(isnConfig({ ...KEYS, ISN_WEBHOOK_SECRET: WEBHOOK }))).not.toContain(WEBHOOK);
+    });
+});
+
+describe('isnCall errors never carry configured credentials', () => {
+    const cfg = () => isnConfig({ ...KEYS, ISN_WEBHOOK_SECRET: WEBHOOK })!;
+    const fail = async (reply: string, asText: boolean) => {
+        vi.stubGlobal('fetch', asText ? vi.fn(async () => new Response(reply, { status: 502 })) : isnReply(reply));
+        try { await isnCall(cfg(), 'GET', '/orders'); } catch (e) { return e as IsnError; }
+        throw new Error('isnCall did not throw');
+    };
+    it('non-JSON text with the secret across the 200 cut leaves no prefix of it', async () => {
+        const e = await fail(`${'x'.repeat(192)}${KEYS.ISN_SECRET_KEY} tail`, true);
+        expect(e).toBeInstanceOf(IsnError);
+        for (const s of [e.message, e.isnMessage, e.stack ?? '']) expect(s).not.toContain('secret-');
+        expect(e.isnMessage).not.toMatch(/secret-?$/);
+    });
+    it('a JSON message with a credential is redacted', async () => {
+        const e = await fail(`Bad ${KEYS.ISN_ACCESS_KEY} and ${WEBHOOK}`, false);
+        expect(e.message + e.isnMessage + (e.stack ?? '')).not.toMatch(/access-zq9|whsec-/);
+        expect(e.isnMessage).toContain('[redacted]');
     });
 });
 

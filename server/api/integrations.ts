@@ -225,7 +225,7 @@ const integrationsRoutes = createApiRouter()
         const tenantId = c.get('tenantId');
         if (!tenantId) throw Errors.Unauthorized('Missing tenant scope');
         const uid = c.get('user')?.sub ?? null;
-        const { isnConfig, isnCall, IsnError, isnIntakeState, redactIsnSecrets } = await import('../services/isn/api-base');
+        const { isnConfig, isnCall, IsnError, isnIntakeState } = await import('../services/isn/api-base');
         const cfg = isnConfig(c.env);
         if (!cfg) {
             const message = 'The ISN keys are not all set.';
@@ -235,8 +235,8 @@ const integrationsRoutes = createApiRouter()
         try {
             await isnCall(cfg, 'GET', '/orders', { datetimeafter: new Date().toISOString().slice(0, 10) });
         } catch (e) {
-            // ISN answers 200 to errors; its own message is the signal, minus any credential it echoes.
-            const message = redactIsnSecrets(e instanceof IsnError ? e.isnMessage : 'Could not reach ISN.', c.env).slice(0, 300);
+            // ISN answers 200 to errors; its own message is the signal (isnCall already removed any credential it echoes).
+            const message = (e instanceof IsnError ? e.isnMessage : 'Could not reach ISN.').slice(0, 300);
             await logTest(c.env, tenantId, uid, 'isn', false, message);
             return c.json({ success: false as const, error: { code: 'ISN_REJECTED', message } }, 502);
         }
