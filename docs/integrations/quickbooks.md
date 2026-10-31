@@ -71,6 +71,10 @@ A QuickBooks company (its *realm*) can be connected to exactly one workspace. Co
 
 The reason is the webhook. It is a single unauthenticated endpoint shared by every connection — the path carries no workspace — so after verifying the Intuit signature the only thing that says whose books an event belongs to is the realm id inside the verified payload. Two workspaces claiming the same realm would make that answer ambiguous, and an ambiguous answer would post one company's payments into whichever workspace happened to be found first. Rather than guess, such an event is skipped and logged with both claimants named.
 
+The verifier token follows the same precedence as the other QuickBooks settings: the Worker environment wins, and the token saved in Settings → Integrations is the fallback (Stripe is the opposite: a workspace's saved value wins, see stripe.md). On a deployment with one fixed workspace the stored token is that workspace's. Where the path names no workspace, the realm id in the body is used only to choose which workspace's stored token to try; the Intuit signature must still verify against that token, and the events are then applied to that workspace alone. Another workspace's token cannot verify the payload.
+
+The webhook endpoint refuses a body larger than 256 KB with `413` and, where the `QBO_WEBHOOK_RATE_LIMITER` binding is configured (`wrangler.jsonc`, 120 requests per minute per source address), refuses a burst beyond it with `429`. Both are answered before any workspace or secret lookup and logged without the payload. Intuit's retry behaviour for a non-2xx answer is not documented here, so treat a logged refusal as a delivery that may need the next scheduled sync to catch up.
+
 ---
 
 ## What happens when a connection ends

@@ -33,6 +33,10 @@ type Handler = (event: { request: Request; respondWith: (r: unknown) => void }) 
 class FakeCache {
     entries = new Map<string, Response>();
 
+    delete(request: Request | string): Promise<boolean> {
+        return Promise.resolve(this.entries.delete(typeof request === 'string' ? request : request.url));
+    }
+
     put(request: Request | string, response: Response): Promise<void> {
         this.entries.set(typeof request === 'string' ? request : request.url, response);
         return Promise.resolve();
@@ -41,10 +45,11 @@ class FakeCache {
     /** Mirrors the real `ignoreSearch` semantics: compare urls without the query. */
     match(request: Request | string, opts?: { ignoreSearch?: boolean }): Promise<Response | undefined> {
         const url = typeof request === 'string' ? request : request.url;
-        if (!opts?.ignoreSearch) return Promise.resolve(this.entries.get(url));
+        // A real cache hands back a fresh Response each time; the worker reads bodies.
+        if (!opts?.ignoreSearch) return Promise.resolve(this.entries.get(url)?.clone());
         const bare = (u: string): string => u.split('?')[0];
         for (const [k, v] of this.entries) {
-            if (bare(k) === bare(url)) return Promise.resolve(v);
+            if (bare(k) === bare(url)) return Promise.resolve(v.clone());
         }
         return Promise.resolve(undefined);
     }
@@ -59,7 +64,10 @@ class FakeCache {
     }
 }
 
+/** The per-user cache: documents are stored here, stamped with the session marker. */
 let cache: FakeCache;
+/** Every other cache the worker opens (static assets, the signed-in marker). */
+let otherCaches: Map<string, FakeCache>;
 let online: boolean;
 let fetchHandler: Handler;
 
@@ -77,13 +85,24 @@ function loadServiceWorker(): Handler {
     const context = createContext({
         self,
         caches: {
-            open: () => Promise.resolve(cache),
+            open: (name: string) => {
+                if (name.includes('-user-')) return Promise.resolve(cache);
+                if (!otherCaches.has(name)) otherCaches.set(name, new FakeCache());
+                return Promise.resolve(otherCaches.get(name));
+            },
             keys: () => Promise.resolve([]),
             delete: () => Promise.resolve(true),
         },
-        // Offline is a rejected fetch, which is what a dead network actually does.
-        fetch: () => (online ? Promise.resolve(new Response('<html>editor</html>', { status: 200 })) : Promise.reject(new Error('offline'))),
+        // Offline is a rejected fetch, which is what a dead network actually does. A document
+        // rendered for a session carries the server's session marker; only those are stored.
+        fetch: () => (online
+            ? Promise.resolve(new Response('<html>editor</html>', {
+                status: 200,
+                headers: { 'content-type': 'text/html; charset=utf-8', 'x-oi-session': 'user-a' },
+            }))
+            : Promise.reject(new Error('offline'))),
         Response,
+        Headers,
         Request,
         URL,
         Promise,
@@ -128,6 +147,7 @@ const EDITOR = 'https://app.test/inspections/42/edit';
 
 beforeEach(() => {
     cache = new FakeCache();
+    otherCaches = new Map();
     online = true;
     fetchHandler = loadServiceWorker();
 });

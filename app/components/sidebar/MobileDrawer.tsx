@@ -5,6 +5,7 @@ import { ThemeSegmentControl } from "~/components/sidebar/ThemeSegmentControl";
 import { LocaleSwitcher } from "~/components/LocaleSwitcher";
 import { Avatar, Icon } from "@core/shared-ui";
 import { m } from "~/paraglide/messages";
+import { clearUserCacheOnSignOut } from "~/lib/sw-user-cache";
 
 // ─── Mobile drawer ─────────────────────────────────────────────────────────────
 export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -111,7 +112,7 @@ export function MobileDrawer({ open, onClose }: { open: boolean; onClose: () => 
               <div className="text-[12px] font-bold text-ih-fg-1 truncate">{userName}</div>
             </div>
           </div>
-          <a href="/logout" className="w-full flex items-center gap-3 px-3 py-2 rounded-ih-button text-ih-bad-fg hover:bg-ih-bad-bg transition-all font-medium text-[13px]">
+          <a href="/logout" onClick={clearUserCacheOnSignOut} className="w-full flex items-center gap-3 px-3 py-2 rounded-ih-button text-ih-bad-fg hover:bg-ih-bad-bg transition-all font-medium text-[13px]">
             <svg className={IC} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             <span>{m.nav_user_logout()}</span>
           </a>

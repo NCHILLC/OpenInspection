@@ -459,7 +459,8 @@ jobs:
   # shards would multiply the setup that is already most of the second leg.
   e2e:
     name: e2e (${{ matrix.suite.label }})
-    runs-on: ubuntu-latest
+    # Pinned: `ubuntu-latest` is 26.04, where Playwright 1.60 cannot install chromium.
+    runs-on: ubuntu-24.04
     # Push to main only — see the note on test-unit. This is the suite that
     # caught the revalidation bug, so it gates the merge commit, not the PR.
     if: github.event_name != 'pull_request'
