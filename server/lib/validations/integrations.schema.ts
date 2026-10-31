@@ -85,3 +85,9 @@ export const AiConnectionTestResultSchema = z
 export const IsnPullBodySchema = z.object({
     cursor: z.string().max(200).nullable().optional().describe('`nextCursor` from the previous batch; omit to start from the first order.'),
 });
+
+export const IsnIntakeStatusSchema = z.object({
+    keysSet: z.boolean().describe('All four ISN REST keys are set.'),
+    secretSet: z.boolean().describe('ISN_WEBHOOK_SECRET is set.'),
+    intakeOn: z.boolean().describe('Both are set: the cron and Pull now will import orders.'),
+}).openapi('IsnIntakeStatus');

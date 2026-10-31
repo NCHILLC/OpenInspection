@@ -9,11 +9,11 @@ from the Drizzle definitions in `server/lib/db/schema/` — the two that
 
 | | |
 |---|---|
-| Tables | 110 |
-| Columns | 1272 |
-| Indexes (excluding primary keys) | 184 |
+| Tables | 111 |
+| Columns | 1283 |
+| Indexes (excluding primary keys) | 186 |
 | Database foreign keys (all legacy, frozen) | 51 |
-| Columns carrying a source comment | 614 (48%) |
+| Columns carrying a source comment | 615 (48%) |
 
 **Tables without `tenant_id`.** Every table holding tenant data must carry it —
 `npm run lint:tenant-scope` is the gate. These are the tables that are not *about*
@@ -21,10 +21,10 @@ a tenant, which is the only reason to be missing it:
 
 `agent_terms_acceptances` · `deployment_legal_versions` · `discovery_objections` · `marketplace_libraries` · `parked_cmd_events` · `processed_cmd_events` · `processed_webhook_events` · `slug_reservations` · `sms_disclosure_versions` · `statutory_form_sightings` · `statutory_form_versions` · `sync_outbox` · `tenants`
 
-That is 13 of 110. If a table you just added appears here,
+That is 13 of 111. If a table you just added appears here,
 that is the bug, not the list.
 
-**Timestamps.** 206 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
+**Timestamps.** 207 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
 epoch MILLISECONDS, with no legacy `mode: 'timestamp'` columns left.
 Seconds and milliseconds are one multiplication apart and the mistake reads as a
 date tens of thousands of years out, so the Schema Rules allow only the former for
@@ -932,6 +932,32 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ---
 
+## `field_log_events`
+
+<sub>server/lib/db/schema/field-log.ts · 10 columns · primary key `id`</sub>
+
+> What happened on an inspector's phone during an inspection, recorded only for users who turned it on (`users.field_log_enabled`) and expired by the retention manifest.
+
+| Column | Type | Flags | Default | Values | Description |
+|---|---|---|---|---|---|
+| `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
+| `tenant_id` | text | NN IX |  |  | *Tenant isolation key. Every read and write must filter on it.* |
+| `user_id` | text | NN |  |  | *The staff user this belongs to (`users.id`). App-layer reference.* |
+| `inspection_id` | text | NN IX |  |  | *The inspection (order) this belongs to. App-layer reference.* |
+| `occurred_at` | integer | NN IX |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
+| `kind` | text | NN |  | `screen, action, request_failed, crash, network, issue` |  |
+| `name` | text | NN |  |  |  |
+| `route` | text |  |  |  |  |
+| `status` | integer |  |  |  | *State-machine column — see the Values column for the vocabulary.* |
+| `note` | text |  |  |  |  |
+
+**Indexes**
+
+- `idx_field_log_events_inspection` (tenant_id, inspection_id, occurred_at)
+- `idx_field_log_events_occurred_at` (occurred_at)
+
+---
+
 ## `idempotency_keys`
 
 <sub>server/lib/db/schema/idempotency.ts · 8 columns · primary key `tenant_id, key`</sub>
@@ -1436,7 +1462,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 |---|---|---|---|---|---|
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `tenant_id` | text | NN IX |  |  | *Tenant isolation key. Every read and write must filter on it.* |
-| `target` | text | NN IX |  | `sms, email, stripe, gemini` | Which integration was probed. Schema Rules: state/category column declares its enum. |
+| `target` | text | NN IX |  | `sms, email, stripe, gemini, isn` | Which integration was probed. Schema Rules: state/category column declares its enum. |
 | `provider` | text |  |  |  | Optional provider variant within a target (e.g. twilio/telnyx, resend/sendgrid/ postmark/mailgun). |
 | `is_ok` | integer | NN |  |  | *Boolean flag, stored as integer 0/1.* |
 | `detail` | text |  |  |  | Non-sensitive outcome summary (success blurb or provider error message). |
@@ -2902,7 +2928,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `users`
 
-<sub>server/lib/db/schema/tenant/user.ts · 30 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/tenant/user.ts · 31 columns · primary key `id`</sub>
 
 | Column | Type | Flags | Default | Values | Description |
 |---|---|---|---|---|---|
@@ -2936,6 +2962,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `service_origin_lng` | real |  |  |  | written only as a pair with _lat; a lone value is no anchor |
 | `statutory_license_type` | text |  |  |  | The STATE LICENCE CLASS this inspector holds — "Florida-licensed home inspector", "General, residential, building or roofing contractor", "Building code inspector". **[more]** |
 | `statutory_qualification` | text |  |  |  | The qualification category FL OIR-B1-1802 asks the inspector to declare for himself. A different axis from the licence class above, on the same person: the 1802 prints its own six categories and asks which one the signer qualifies under, beside — not instead of — his licence. |
+| `is_field_log_enabled` | integer | NN | `false` |  | Field log opt-in (`field_log_events`). Off unless the user turns it on. |
 
 **Indexes**
 

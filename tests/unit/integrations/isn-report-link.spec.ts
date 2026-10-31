@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isnCall, isnConfig, IsnError, isnOrderPageUrl } from '../../../server/services/isn/api-base';
 import { addReportLinkToIsnOrder } from '../../../server/services/isn/report-link-sync';
 
-const cfg = { domain: 'https://inspectionsupport.com', companyKey: 'co', accessKey: 'a', secretKey: 's' };
+const cfg = { domain: 'https://inspectionsupport.com', companyKey: 'co', accessKey: 'isn-access-7Qm2xKd', secretKey: 'isn-secret-9Zp4vLc' };
 const ORDER = '11111111-2222-4333-8444-555555555555';
 const ROW = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 
@@ -75,8 +75,8 @@ describe('isnCall', () => {
 
 describe('isnConfig', () => {
     it('is off unless all four are set — there is no default domain', () => {
-        expect(isnConfig({ ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'a', ISN_SECRET_KEY: 's' })).toBeNull();
-        expect(isnConfig({ ISN_DOMAIN: 'https://inspectionsupport.com/', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'a', ISN_SECRET_KEY: 's' })).toEqual(cfg);
+        expect(isnConfig({ ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'isn-access-7Qm2xKd', ISN_SECRET_KEY: 'isn-secret-9Zp4vLc' })).toBeNull();
+        expect(isnConfig({ ISN_DOMAIN: 'https://inspectionsupport.com/', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'isn-access-7Qm2xKd', ISN_SECRET_KEY: 'isn-secret-9Zp4vLc' })).toEqual(cfg);
     });
 });
 

@@ -159,6 +159,12 @@ const SEEDERS: Record<string, Seeder> = {
              values (?, ?, 'i1', 'report', ?, ?, 1, 'ready')`,
         ).run(id, t, t === HELD ? 'pdf-held' : 'pdf-free', LONG_AGO),
     },
+    field_log_events: {
+        seed: (s, t, id) => s.prepare(
+            `insert into field_log_events (id, tenant_id, user_id, inspection_id, occurred_at, kind, name)
+             values (?, ?, 'u-1', 'i-1', ?, 'action', 'rating')`,
+        ).run(id, t, LONG_AGO),
+    },
     tenant_slug_history: {
         seed: (s, t, id) => s.prepare(
             `insert into tenant_slug_history (old_slug, tenant_id, changed_at, retired_until)

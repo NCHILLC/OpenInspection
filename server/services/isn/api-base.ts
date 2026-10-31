@@ -33,13 +33,49 @@ type IsnEnv = Partial<Record<'ISN_DOMAIN' | 'ISN_COMPANY_KEY' | 'ISN_ACCESS_KEY'
  * default domain: ISN is white-labelled (4isn.com, goisn.net, ...), and a
  * guessed host fails looking exactly like a bad access key.
  */
-export function isnConfig(env: IsnEnv): IsnConfig | null {
+export function isnConfig(env: IsnIntakeEnv): IsnConfig | null {
     const domain = env.ISN_DOMAIN?.trim().replace(/\/+$/, '');
     const companyKey = env.ISN_COMPANY_KEY?.trim();
     const accessKey = env.ISN_ACCESS_KEY?.trim();
     const secretKey = env.ISN_SECRET_KEY?.trim();
     if (!domain || !companyKey || !accessKey || !secretKey) return null;
-    return { domain, companyKey, accessKey, secretKey };
+    const cfg = { domain, companyKey, accessKey, secretKey };
+    const webhook = env.ISN_WEBHOOK_SECRET?.trim();
+    if (webhook) webhookSecrets.set(cfg, webhook);
+    return cfg;
+}
+
+type IsnIntakeEnv = IsnEnv & { ISN_WEBHOOK_SECRET?: string };
+
+/**
+ * The webhook secret rides along with the config WITHOUT being a field of it, so
+ * nothing that logs or returns a config can start carrying it. Only redaction reads it.
+ */
+const webhookSecrets = new WeakMap<IsnConfig, string>();
+
+/**
+ * Whether ISN intake (cron, "Pull now") will run: all four REST keys AND the
+ * webhook secret. The one definition the cron, the pull route, the test route
+ * and the settings panel all read, so none can disagree about what is on.
+ */
+export function isnIntakeState(env: IsnIntakeEnv): { keysSet: boolean; secretSet: boolean; intakeOn: boolean } {
+    const keysSet = isnConfig(env) !== null;
+    const secretSet = !!env.ISN_WEBHOOK_SECRET?.trim();
+    return { keysSet, secretSet, intakeOn: keysSet && secretSet };
+}
+
+/**
+ * Text that may carry an ISN credential, safe to return, store or log: the
+ * access key, secret key and webhook secret are replaced (the domain and company
+ * key are in every URL and are not secrets), and callers do this BEFORE any truncation so
+ * a cut can never leave a partial secret behind. Longest values first so one
+ * that contains another is not half-replaced.
+ */
+export function redactIsnSecrets(text: string, cfg: IsnConfig): string {
+    const values = [cfg.accessKey, cfg.secretKey, webhookSecrets.get(cfg)]
+        .filter((v): v is string => !!v)
+        .sort((a, b) => b.length - a.length);
+    return values.reduce((out, v) => out.split(v).join('[redacted]'), text);
 }
 
 /**
@@ -96,7 +132,11 @@ export async function isnCall(
     let body: IsnBody | null = null;
     try { body = JSON.parse(text) as IsnBody; } catch { /* not JSON — reported below */ }
     if (body?.status !== 'ok') {
-        const message = body?.message || (body ? 'no status in response' : `non-JSON response: ${text.slice(0, 200)}`);
+        // The ONE redaction point: before any truncation and before IsnError exists, so its
+        // message, its stack and every log or response it reaches are already clean.
+        const message = body?.message
+            ? redactIsnSecrets(body.message, cfg)
+            : body ? 'no status in response' : `non-JSON response: ${redactIsnSecrets(text, cfg).slice(0, 200)}`;
         throw new IsnError(`${method} ${path}`, message, res.status);
     }
     return body;

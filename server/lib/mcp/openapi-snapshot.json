@@ -7738,6 +7738,51 @@
     "description": "Returns the tenant-scoped audit_logs entries for a single entity id, newest first, with the actor name resolved."
   },
   {
+    "operationId": "getFieldLogSetting",
+    "method": "GET",
+    "pathTemplate": "/api/field-log/setting",
+    "scopes": [
+      "read"
+    ],
+    "tag": "inspections",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": null
+    },
+    "summary": "Read my field log setting",
+    "description": "Whether the field log records the signed-in user. Off unless that user turned it on."
+  },
+  {
+    "operationId": "getFieldLogTimeline",
+    "method": "GET",
+    "pathTemplate": "/api/field-log/inspections/{id}",
+    "scopes": [
+      "read"
+    ],
+    "tag": "inspections",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "The inspection id",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "The inspection id"
+          }
+        }
+      ],
+      "body": null
+    },
+    "summary": "Read the field log of one inspection",
+    "description": "Every recorded event for the inspection, oldest first, plus each Mark issue marker with the ids of the events from the five minutes before it."
+  },
+  {
     "operationId": "getImportRun",
     "method": "GET",
     "pathTemplate": "/api/imports/{batchId}",
@@ -8403,6 +8448,22 @@
     },
     "summary": "Resolve a team-invite token for the accept page",
     "description": "Public, no-login resolution of a team-invite token into the invited email + workspace name for the /join accept page. Returns 404 for unknown/expired/used invites so the page renders its recovery state."
+  },
+  {
+    "operationId": "getIsnStatus",
+    "method": "GET",
+    "pathTemplate": "/api/integrations/isn/status",
+    "scopes": [
+      "admin"
+    ],
+    "tag": "integrations",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": null
+    },
+    "summary": "Whether ISN intake is on, from the keys and secret in effect",
+    "description": "Reports, from the same merged deployment and stored values the cron and Pull now use, whether the four ISN keys are set, whether ISN_WEBHOOK_SECRET is set, and whether intake is therefore on (both). Never returns a secret value."
   },
   {
     "operationId": "getMarketplaceLibraryReplacePreview",
@@ -18751,6 +18812,33 @@
     "description": "Streams an inspection item/pool photo from R2, scoped to the caller's tenant + inspection via the key prefix. Sets Content-Disposition from the stored original filename; ?download=1 forces an attachment."
   },
   {
+    "operationId": "setFieldLogSetting",
+    "method": "PUT",
+    "pathTemplate": "/api/field-log/setting",
+    "scopes": [
+      "write"
+    ],
+    "tag": "inspections",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the field log records this user"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      }
+    },
+    "summary": "Turn my field log on or off",
+    "description": "Sets the signed-in user's own field log switch. It applies to no one else in the company."
+  },
+  {
     "operationId": "setInspectionCompliancePsqStatus",
     "method": "POST",
     "pathTemplate": "/api/inspections/{id}/compliance/psq/status",
@@ -19429,6 +19517,22 @@
     },
     "summary": "Probe a submitted AI endpoint, model and key",
     "description": "Sends a one-token chat completion to the SUBMITTED base URL, model and key — not to a stored credential and not to a deployment default. That is the whole point: after the destination became something a workspace chooses, a probe of anything else would go green while every real call failed. Always 200; the outcome is in the body, with `field` naming which input to blame. The provider's own response body is never returned or logged."
+  },
+  {
+    "operationId": "testIsnConnection",
+    "method": "POST",
+    "pathTemplate": "/api/integrations/isn/test",
+    "scopes": [
+      "admin"
+    ],
+    "tag": "integrations",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": null
+    },
+    "summary": "Verify the stored ISN keys against ISN",
+    "description": "Makes one read-only call to ISN (the order list for today) with the tenant's STORED ISN keys, the diagnostic behind the settings-page Test connection button. On failure the error message is the one ISN returned."
   },
   {
     "operationId": "testResendConnection",
@@ -23139,6 +23243,99 @@
     },
     "summary": "Upgrade inspection template snapshot to current master version",
     "description": "Auto-generated placeholder for upgradeInspection (POST /{id}/template/upgrade, inspections domain). TODO: replace with a real description sourced from the handler."
+  },
+  {
+    "operationId": "uploadFieldLogEvents",
+    "method": "POST",
+    "pathTemplate": "/api/field-log/events",
+    "scopes": [
+      "write"
+    ],
+    "tag": "inspections",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "Device-minted event id"
+                },
+                "inspectionId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "description": "The inspection this happened in"
+                },
+                "occurredAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "exclusiveMinimum": true,
+                  "description": "Device time in epoch milliseconds"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "screen",
+                    "action",
+                    "request_failed",
+                    "crash",
+                    "network",
+                    "issue"
+                  ],
+                  "description": "What sort of event this is"
+                },
+                "name": {
+                  "type": "string",
+                  "pattern": "^[\\w.:-]{1,64}$",
+                  "description": "An action or screen name, never prose"
+                },
+                "route": {
+                  "type": "string",
+                  "pattern": "^\\/[\\w\\-./:]{0,199}$",
+                  "description": "A path with no query string"
+                },
+                "status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599,
+                  "description": "HTTP status of a failed request"
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "description": "What the inspector typed on a Mark issue marker"
+                }
+              },
+              "required": [
+                "id",
+                "inspectionId",
+                "occurredAt",
+                "kind",
+                "name"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 100,
+            "description": "Oldest buffered events from the device"
+          }
+        },
+        "required": [
+          "events"
+        ]
+      }
+    },
+    "summary": "Upload buffered field log events",
+    "description": "Stores a batch from the device buffer for a user whose field log is on. Refused with 403 otherwise."
   },
   {
     "operationId": "uploadInspection",

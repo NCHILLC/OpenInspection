@@ -24,6 +24,7 @@ import {
 import { isPublicPage, shouldSyncOnNavigation, syncServiceWorkerUser } from "~/lib/sw-user-cache";
 import { ErrorState } from "~/components/ErrorState";
 import { NavProgress } from "~/components/NavProgress";
+import { FieldLogRecorder } from "~/components/FieldLogRecorder";
 import { ToastPortal } from "~/components/Toast";
 // i18n Phase C — active UI locale for <html lang>. Resolved ONCE in the root
 // loader (server-side, inside the request's paraglide ALS scope) and threaded to
@@ -206,6 +207,7 @@ export default function Root() {
       <NavProgress />
       <Outlet />
       <ToastPortal />
+      <FieldLogRecorder />
     </>
   );
 }

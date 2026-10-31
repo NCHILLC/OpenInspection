@@ -211,7 +211,7 @@ export interface RetentionPolicyHeader {
  * every production store is covered.
  */
 export const RETENTION_POLICY: RetentionPolicyHeader = {
-    version: '2026-09-11.8',
+    version: '2026-10-31.1',
     status: 'approved_with_conditions',
     effectiveAt: '2026-08-08',
     // The document named below remains what approved the seventeen rules it
@@ -247,5 +247,5 @@ export const RETENTION_POLICY: RetentionPolicyHeader = {
     // document is kept. A reader here should be able to tell that a review
     // happened and on what date, and no more than that.
     supersedes: '2026-08-19.7',
-    rulesDigest: '0d782dbd0e8afe1790a6d53b4d07819f5dfa83884e6ba1837c4b652bb737f892',
+    rulesDigest: '3ef208ae00290ef758159bd935f5ddd296ef7f347717c4c56e2a6b6a9f5859de',
 };
