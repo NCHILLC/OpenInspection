@@ -6,6 +6,7 @@ import { Errors } from '../../lib/errors';
 import { logger } from '../../lib/logger';
 import { findingKey, parseFindingKey, DEFAULT_UNIT } from '../../lib/finding-key';
 import { stripExifOnIngest, type ImagesBinding } from '../../lib/media/strip-exif';
+import { checkPhotoUpload } from '../../lib/media/sniff';
 import { collectAttachedPhotos } from '../../lib/media/collect-attached';
 import { applyReorder, applyDetach, applyRevert, moveEntry } from '../../lib/media/photo-ops';
 import type { PhotoEntry } from '../../lib/media/collect-attached';
@@ -16,8 +17,6 @@ import type { InspectionService } from '../inspection.service';
 import { r2Keys } from '../../lib/r2-keys';
 
 const extFromName = (n: string) => (n.split('.').pop() || 'bin').toLowerCase();
-
-const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 
 /** D1's JSON column comes back as a string (D1) or a parsed object (driver
  *  cache). Normalize either into a record; an empty object when absent. */
@@ -85,10 +84,9 @@ export class InspectionPhotoService extends InspectionSubService {
     }
 
     private async putPhoto(r2: R2Bucket, key: string, file: File): Promise<void> {
-        if (file.size > MAX_PHOTO_BYTES) {
-            throw Errors.BadRequest(`Photo exceeds ${MAX_PHOTO_BYTES} bytes (got ${file.size})`);
-        }
-        const { bytes, contentType } = await stripExifOnIngest(this.images, await file.arrayBuffer(), file.type || 'image/jpeg');
+        // The declared type is client controlled: decide from the bytes, and store that.
+        const sniffed = await checkPhotoUpload(file);
+        const { bytes, contentType } = await stripExifOnIngest(this.images, await file.arrayBuffer(), sniffed);
         await r2.put(key, bytes, {
             httpMetadata: { contentType },
             customMetadata: { originalName: file.name || 'photo' },
