@@ -431,7 +431,7 @@ export async function diMiddleware(c: Context<HonoConfig>, next: Next) {
                     target.unitSwitch = new UnitSwitchService(c.env.DB);
                     break;
                 case 'reportVersion':
-                    target.reportVersion = new ReportVersionService(c.env.DB, c.env.KEY_ENCRYPTION_SECRET || c.env.JWT_SECRET);
+                    target.reportVersion = new ReportVersionService(c.env.DB, c.env.KEY_ENCRYPTION_SECRET || c.env.JWT_SECRET, c.env);
                     break;
                 case 'integrations':
                     target.integrations = new IntegrationsService(c.env.DB, c.env);

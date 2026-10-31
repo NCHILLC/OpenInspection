@@ -610,9 +610,7 @@ export class InspectionService {
      * constructed from individual bindings, so without this the request scope
      * never reaches the service tree and `listPeople` cannot memoise.
      */
-    setRequestEnv(env: unknown): void {
-        this.core.setRequestEnv(env);
-    }
+    setRequestEnv(env: unknown): void { this.core.setRequestEnv(env); this.publish.requestEnv = env; }
 
     async getPeopleCard(
         inspectionId: string,

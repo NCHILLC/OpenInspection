@@ -5,6 +5,7 @@ import { primaryLicenseOf } from '../../lib/credentials/primary';
 import { pinnedLead } from '../../lib/version-diff';
 import { loadPinnedSnapshot } from '../../lib/report-snapshot';
 import { buildUnitConditionMatrix, defectCountsByUnit } from '../../lib/unit-scope';
+import { readResultsDataOrEmpty } from '../../lib/inspection/report-results';
 import { Errors } from '../../lib/errors';
 import { resolveTenantTimeZone } from '../../lib/tz';
 import { parseReinspectionStatuses } from '../../lib/reinspection-status';
@@ -228,9 +229,7 @@ export class InspectionReportService extends InspectionSubService {
         if (levels.length === 0) {
             levels = schemaData.ratingSystem?.levels ?? [];
         }
-        const resultData: ResultsProjection = resultsRow?.data
-            ? (typeof resultsRow.data === 'string' ? JSON.parse(resultsRow.data) : resultsRow.data) as ResultsProjection
-            : {};
+        const resultData = readResultsDataOrEmpty(resultsRow?.data, { tenantId, inspectionId }) as ResultsProjection;
 
         const stats = computeReportStats(schemaData.sections, resultData, levels);
 
@@ -708,8 +707,7 @@ export class InspectionReportService extends InspectionSubService {
 
         // Extract _inspector_signature from the already-loaded results row.
         type InspectorSig = { signatureBase64?: string | null; signedAt?: number | null; userId?: string | null; auto?: boolean };
-        const resultsData = resultsRow?.data as Record<string, unknown> | null | undefined;
-        const rawSig = resultsData?._inspector_signature as InspectorSig | undefined;
+        const rawSig = resultData._inspector_signature as InspectorSig | undefined;
 
         // `method` is a DOMAIN state, decided
         // here where the record is, and not inferrable downstream. It used to be
