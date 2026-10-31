@@ -19,7 +19,7 @@ const { applyIsnOrder } = await import('../../../server/services/isn/order-apply
 const { isnReadyChecks } = await import('../../../server/services/isn/ready-check');
 
 const TENANT = 't-isn';
-const CFG = { domain: 'https://isn.test', companyKey: 'co', accessKey: 'a', secretKey: 's' };
+const CFG = { domain: 'https://isn.test', companyKey: 'co', accessKey: 'isn-access-7Qm2xKd', secretKey: 'isn-secret-9Zp4vLc' };
 const ORDER = {
     id: '69dcc50c-a0ef-5239-9599-e5ba936e76c2', oid: 146, canceled: 'no',
     datetime: '2026-10-27 10:00:00', address1: '2419 Rhyneland Street', address2: '', city: 'Gastonia',

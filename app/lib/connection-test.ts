@@ -7,7 +7,7 @@
  * shape + parser here means no route re-implements the fetch plumbing.
  */
 export interface ConnectionTestResult {
-  target: "sms" | "email" | "stripe" | "gemini";
+  target: "sms" | "email" | "stripe" | "gemini" | "isn";
   provider: string | null;
   ok: boolean;
   detail: string | null;
@@ -15,7 +15,7 @@ export interface ConnectionTestResult {
   testedAt: number; // epoch ms
 }
 
-const TARGETS = new Set(["sms", "email", "stripe", "gemini"]);
+const TARGETS = new Set(["sms", "email", "stripe", "gemini", "isn"]);
 
 /**
  * Tolerant parse of the test-results response. Never throws — a failed fetch,

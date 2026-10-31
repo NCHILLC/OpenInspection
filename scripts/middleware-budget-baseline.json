@@ -7,7 +7,7 @@
   "globalMiddlewareUse": 12,
   "fanOutTotals": {
     "files": 140,
-    "dollarMethods": 550,
+    "dollarMethods": 552,
     "apiWorker": 9
   },
   "fanOut": {
@@ -444,7 +444,7 @@
       "apiWorker": 0
     },
     "app/routes/settings-advanced.tsx": {
-      "dollarMethods": 11,
+      "dollarMethods": 13,
       "apiWorker": 0
     },
     "app/routes/settings-automations.tsx": {

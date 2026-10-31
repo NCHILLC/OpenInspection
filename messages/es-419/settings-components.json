@@ -702,5 +702,11 @@
   "settings_isn_pull_done": "Se trajeron {count} órdenes. Todas las órdenes están al día.",
   "settings_isn_pull_more": "Se trajeron {count} órdenes. Faltan más: presiona de nuevo.",
   "settings_isn_pull_error": "No se pudieron traer las órdenes de ISN. La entrada de ISN necesita las claves de ISN y el secreto del webhook.",
-  "settings_isn_save_error": "No se pudo guardar la configuración de ISN."
+  "settings_isn_save_error": "No se pudo guardar la configuración de ISN.",
+  "settings_isn_intake_on": "La entrada de ISN está activa: las órdenes llegan solas desde ISN.",
+  "settings_isn_test_ok": "Conectado a ISN.",
+  "settings_isn_pull_failed": "Se trajeron {count} órdenes; {failed} no se pudieron traer y se reintentarán. Presione de nuevo para reintentar.",
+  "settings_isn_intake_keys_only": "La recepción de ISN está desactivada: las claves de ISN están configuradas pero el secreto de webhook de ISN no. Las claves solas solo envían enlaces de informes.",
+  "settings_isn_intake_secret_only": "La recepción de ISN está desactivada: el secreto de webhook de ISN está configurado pero las cuatro claves de ISN no están completas, así que no se pueden obtener pedidos.",
+  "settings_isn_intake_unset": "La recepción de ISN está desactivada: ni las claves de ISN ni el secreto de webhook de ISN están configurados."
 }

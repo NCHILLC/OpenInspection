@@ -14,7 +14,7 @@ vi.mock('../../../server/lib/secrets-cache', () => ({ loadTenantSecrets: async (
 const { default: isnWebhookRoutes } = await import('../../../server/api/isn-webhook');
 
 const SECRET = 'a'.repeat(64);
-const ISN_KEYS = { ISN_DOMAIN: 'https://inspectionsupport.com', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'a', ISN_SECRET_KEY: 's' };
+const ISN_KEYS = { ISN_DOMAIN: 'https://inspectionsupport.com', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'isn-access-7Qm2xKd', ISN_SECRET_KEY: 'isn-secret-9Zp4vLc' };
 
 function sign(body: string, t = Math.floor(Date.now() / 1000), secret = SECRET) {
     return `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}`;

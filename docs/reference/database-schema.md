@@ -1462,7 +1462,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 |---|---|---|---|---|---|
 | `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
 | `tenant_id` | text | NN IX |  |  | *Tenant isolation key. Every read and write must filter on it.* |
-| `target` | text | NN IX |  | `sms, email, stripe, gemini` | Which integration was probed. Schema Rules: state/category column declares its enum. |
+| `target` | text | NN IX |  | `sms, email, stripe, gemini, isn` | Which integration was probed. Schema Rules: state/category column declares its enum. |
 | `provider` | text |  |  |  | Optional provider variant within a target (e.g. twilio/telnyx, resend/sendgrid/ postmark/mailgun). |
 | `is_ok` | integer | NN |  |  | *Boolean flag, stored as integer 0/1.* |
 | `detail` | text |  |  |  | Non-sensitive outcome summary (success blurb or provider error message). |
