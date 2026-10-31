@@ -51,7 +51,7 @@ import { applyFollowupPatch, resolveCarriedFindingKey } from '../lib/collab/foll
 import { findingKeysFromTemplateSnapshot } from '../lib/finding-key';
 import { inspectionResults, inspections } from '../lib/db/schema';
 import { logger } from '../lib/logger';
-import { selectReportResultsRow } from '../lib/inspection/report-results';
+import { adoptUnassignedResultsRow, selectReportResultsRow } from '../lib/inspection/report-results';
 import { purgePathMatches } from './purge-path';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -652,6 +652,8 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         // editor showed ratings, the socket said Connected, and D1 stayed empty.
         // Insert on the way through instead of dropping the document.
         if ((updated.meta?.changes ?? 0) === 0) {
+            // A row with no report id belongs to the primary report: adopt it in place.
+            if (this.reportId && await adoptUnassignedResultsRow(db, tenantId, inspectionId, this.reportId, { ydocState: stateUpdate, data: projection })) return;
             await db.insert(inspectionResults).values({
                 id:           crypto.randomUUID(),
                 tenantId,

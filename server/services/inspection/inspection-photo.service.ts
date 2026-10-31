@@ -73,7 +73,7 @@ export class InspectionPhotoService extends InspectionSubService {
         if (existingId) {
             await db.update(inspectionResults)
                 .set({ data: data as unknown as object, lastSyncedAt: new Date() })
-                .where(eq(inspectionResults.id, existingId));
+                .where(and(eq(inspectionResults.id, existingId), eq(inspectionResults.tenantId, tenantId)));
         } else {
             await db.insert(inspectionResults).values({
                 id:           crypto.randomUUID(),

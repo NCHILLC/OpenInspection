@@ -13,7 +13,8 @@ import * as Y from 'yjs';
 import * as schema from '../../server/lib/db/schema';
 import { ReportVersionService } from '../../server/services/report-version.service';
 import { InspectionPhotoService } from '../../server/services/inspection/inspection-photo.service';
-import { projectResults } from '../../server/lib/collab/results-doc';
+import { projectResults, seedResultsDoc, applyItemPatch } from '../../server/lib/collab/results-doc';
+import { resolveResultsRow } from '../../server/services/inspection/report-grain';
 import type { InspectionDocDO } from '../../server/durable-objects/inspection-doc';
 import { applyMigrations as replayMigrations } from './migration-replay';
 
@@ -182,17 +183,142 @@ describe('results are read and written for one report', () => {
         });
     });
 
-    describe('a row with no report id', () => {
-        it('is used when it is the only row of the inspection', async () => {
+    describe('a row with no report id belongs to the primary report', () => {
+        interface DOInternals {
+            doc: Y.Doc; tenantId: string | null; inspectionId: string | null; reportId: string | null;
+            hadStoredState: boolean; hydrateFromD1Once(): Promise<void>; persist(): Promise<void>;
+        }
+        const withDO = <T,>(name: string, reportId: string | null, fn: (o: DOInternals) => Promise<T>) => {
+            const stub = b.INSPECTION_DOC.get(b.INSPECTION_DOC.idFromName(name));
+            return runInDurableObject(stub, async (inst) => {
+                const o = inst as unknown as DOInternals;
+                o.tenantId = TENANT; o.inspectionId = INSPECTION; o.reportId = reportId;
+                return fn(o);
+            });
+        };
+        const ratingOf = (doc: Y.Doc) => (projectResults(doc) as Record<string, { rating?: string }>)[KEY]?.rating;
+        const rows = async () => (await b.DB.prepare('SELECT id, report_id FROM inspection_results ORDER BY id').all<{ id: string; report_id: string | null }>()).results;
+        const addAncillary = () => db().insert(schema.reports).values(
+            { id: SECONDARY, tenantId: TENANT, inspectionId: INSPECTION, kind: 'ancillary', title: 'Radon', createdAt: new Date() });
+        const addNullRow = (id: string, data: unknown) => db().insert(schema.inspectionResults).values(
+            { id, tenantId: TENANT, inspectionId: INSPECTION, reportId: null, data: data as object, lastSyncedAt: new Date() });
+
+        it('is used by the primary report, with no sibling row', async () => {
             await seed({ legacyNullRow: true });
             await photoService().detachItemPhoto(INSPECTION, TENANT, KEY, 0);
             const stored = JSON.parse(await rawData('row-primary'));
             expect(stored[KEY].photos.map((p: { key: string }) => p.key)).toEqual(['p2']);
         });
 
-        it('is not guessed at when another row exists', async () => {
+        it('lifecycle: ancillary opens first, then primary; every reader sees the same data and one row remains per report', async () => {
+            await seed({ legacyNullRow: true });
+            await addAncillary();
+
+            // The ancillary document opens first. It never imports the NULL row, and its persist inserts its own row.
+            const anc = await withDO('doc-anc', SECONDARY, async (o) => { await o.hydrateFromD1Once(); const r = ratingOf(o.doc); await o.persist(); return r; });
+            expect(anc).toBeUndefined();
+            expect((await rows()).map((r) => r.report_id ?? '').sort()).toEqual(['', SECONDARY]);
+
+            // Then the primary: it imports the NULL row's data and adopts the row on persist.
+            const prim = await withDO('doc-prim', PRIMARY, async (o) => { await o.hydrateFromD1Once(); const r = ratingOf(o.doc); await o.persist(); return r; });
+            expect(prim).toBe('satisfactory');
+            const after = await rows();
+            expect(after.map((r) => r.report_id).sort()).toEqual([PRIMARY, SECONDARY]);
+            expect(after.find((r) => r.report_id === PRIMARY)?.id).toBe('row-primary');
+
+            // Photo route, snapshot and render all land on that same row.
+            await photoService().reorderItemPhotos(INSPECTION, TENANT, KEY, ['p2', 'p1']);
+            const stored = JSON.parse(await rawData('row-primary'));
+            expect(stored[KEY].photos.map((p: { key: string }) => p.key)).toEqual(['p2', 'p1']);
+            const svc = new ReportVersionService(b.DB, 'test-key-encryption-secret-0123456789');
+            await svc.snapshotOnPublish(TENANT, INSPECTION, 'u1', undefined, PRIMARY);
+            const v = await db().select().from(schema.reportVersions).where(eq(schema.reportVersions.reportId, PRIMARY)).get();
+            expect(JSON.parse(v!.snapshotJson).data[KEY].photos.map((p: { key: string }) => p.key)).toEqual(['p2', 'p1']);
+            expect((await resolveResultsRow(db(), TENANT, INSPECTION, PRIMARY))?.id).toBe('row-primary');
+            expect(await rows()).toHaveLength(2);
+        });
+
+        it('an ancillary report never reads a NULL row, in any reader', async () => {
+            await seed({ legacyNullRow: true });
+            await addAncillary();
+            expect(await resolveResultsRow(db(), TENANT, INSPECTION, SECONDARY)).toBeNull();
+            const svc = new ReportVersionService(b.DB, 'test-key-encryption-secret-0123456789');
+            await svc.snapshotOnPublish(TENANT, INSPECTION, 'u1', undefined, SECONDARY);
+            const v = await db().select().from(schema.reportVersions).where(eq(schema.reportVersions.reportId, SECONDARY)).get();
+            expect(JSON.parse(v!.snapshotJson).data).toEqual({});
+        });
+
+        it('primary adoption updates the NULL row in place instead of inserting a second', async () => {
+            await seed({ legacyNullRow: true });
+            await withDO('doc-adopt', PRIMARY, async (o) => { await o.hydrateFromD1Once(); await o.persist(); });
+            expect(await rows()).toEqual([{ id: 'row-primary', report_id: PRIMARY }]);
+        });
+
+        it('two NULL rows are ambiguous: the photo routes answer a coded 409 and hydrate imports nothing', async () => {
+            await seed({ legacyNullRow: true });
+            await addNullRow('row-null-2', PRIMARY_DATA);
+            await expect(photoService().detachItemPhoto(INSPECTION, TENANT, KEY, 0)).rejects.toMatchObject({
+                status: 409, details: { reason: 'ambiguous_results_rows' },
+            });
+            const imported = await withDO('doc-ambig', PRIMARY, async (o) => { await o.hydrateFromD1Once(); return ratingOf(o.doc); });
+            expect(imported).toBeUndefined();
+        });
+
+        it('attach with no primary report and no row inserts a NULL row instead of refusing', async () => {
+            await db().insert(schema.tenants).values({
+                id: TENANT, slug: 'acme-c1', status: 'active', deploymentMode: 'shared', tier: 'free', maxUsers: 5, createdAt: new Date(),
+            });
+            await db().insert(schema.inspections).values({
+                id: INSPECTION, tenantId: TENANT, propertyAddress: '1 Birch Ln', date: '2026-06-01',
+                status: 'requested', paymentStatus: 'unpaid', price: 0, paymentRequired: false, agreementRequired: false, createdAt: new Date(),
+            });
+            await db().insert(schema.inspectionMediaPool).values({
+                id: 'pool1', inspectionId: INSPECTION, tenantId: TENANT, r2Key: 'pool-key', url: '/x', uploadedAt: new Date(),
+            });
+            await photoService().attachPoolPhoto(INSPECTION, TENANT, 'pool1', KEY);
+            const all = await rows();
+            expect(all).toHaveLength(1);
+            expect(all[0].report_id).toBeNull();
+            // The primary report, created later, owns that row.
+            await db().insert(schema.reports).values(
+                { id: PRIMARY, tenantId: TENANT, inspectionId: INSPECTION, kind: 'primary', title: 'Inspection Report', createdAt: new Date() });
+            expect((await resolveResultsRow(db(), TENANT, INSPECTION, PRIMARY))?.id).toBe(all[0].id);
+        });
+
+        it('a named report that has only a sibling row starts empty', async () => {
             await seed();
-            await b.DB.prepare('UPDATE inspection_results SET report_id = NULL WHERE id = ?').bind('row-primary').run();
+            const out = await withDO('doc-sibling', SECONDARY, async (o) => { await o.hydrateFromD1Once(); return ratingOf(o.doc); });
+            expect(out).toBe('defect'); // its own row
+            await b.DB.prepare('DELETE FROM inspection_results WHERE id = ?').bind('row-secondary').run();
+            const empty = await withDO('doc-sibling-2', SECONDARY, async (o) => { await o.hydrateFromD1Once(); return ratingOf(o.doc); });
+            expect(empty).toBeUndefined();
+        });
+
+        it('a document with stored state is not reset by a hydrate that finds no row', async () => {
+            await seed();
+            await b.DB.prepare('DELETE FROM inspection_results WHERE id = ?').bind('row-secondary').run();
+            const live = await withDO('doc-live', SECONDARY, async (o) => {
+                seedResultsDoc(o.doc, [{ findingKey: KEY }]);
+                applyItemPatch(o.doc, KEY, 'rating', 'LIVE');
+                o.hadStoredState = true;
+                await o.hydrateFromD1Once();
+                return ratingOf(o.doc);
+            });
+            expect(live).toBe('LIVE');
+        });
+
+        it('revert acts on the primary row and leaves the sibling byte-identical', async () => {
+            await seed({ primaryData: { [KEY]: { photos: [{ key: 'p1', annotatedKey: 'p1-annot', annotationsJson: '{}' }] } } });
+            const before = await rawData('row-secondary');
+            await photoService().revertPhotoEdits(INSPECTION, TENANT, KEY, 0);
+            expect(await rawData('row-secondary')).toBe(before);
+            const stored = JSON.parse(await rawData('row-primary'));
+            expect(stored[KEY].photos[0].annotatedKey).toBeUndefined();
+        });
+
+        it('a primary row stays 404 for detach when the inspection has no row at all', async () => {
+            await seed();
+            await b.DB.prepare('DELETE FROM inspection_results WHERE id = ?').bind('row-primary').run();
             await expect(photoService().detachItemPhoto(INSPECTION, TENANT, KEY, 0)).rejects.toMatchObject({ status: 404 });
         });
     });
