@@ -9,7 +9,7 @@ import * as schema from '../../../server/lib/db/schema';
 import { seedRoleProfiles } from '../../../server/services/seed/seed-role-profiles';
 import { createTestDb, setupSchema } from '../db';
 import { asD1Db } from '../helpers/test-db';
-import { foundationFromIsn, isnCardFields, isnReadyCheck, orderFacts } from '../../../server/services/isn/order-payload';
+import { decodeIsnText, foundationFromIsn, personFromIsn, isnCardFields, isnReadyCheck, orderFacts } from '../../../server/services/isn/order-payload';
 
 vi.mock('drizzle-orm/d1', () => ({ drizzle: vi.fn() }));
 const fireAutomation = vi.fn(async () => {});
@@ -85,6 +85,35 @@ describe('orderFacts', () => {
         expect(orderFacts({ ...ORDER, latitude: '35.29', longitude: '-81.15', squarefeet: '2,400' }))
             .toMatchObject({ sqft: 2400, address: { addressLat: 35.29, addressLng: -81.15 } });
         expect(orderFacts({ ...ORDER, latitude: '' }).address.addressLat).toBeNull();
+    });
+});
+
+describe('ISN entity decoding', () => {
+    it('decodes numeric and named entities in one pass', () => {
+        expect(decodeIsnText('Builder&#39;s &amp; Co &#x27;x&#x27; &quot;q&quot; &lt;b&gt;')).toBe('Builder\'s & Co \'x\' "q" <b>');
+    });
+    it('does not decode twice', () => {
+        expect(decodeIsnText('&amp;#39;')).toBe('&#39;');
+        expect(decodeIsnText('&amp;amp;')).toBe('&amp;');
+    });
+    it('leaves unknown or malformed entities alone', () => {
+        expect(decodeIsnText('a &foo; b &#; c &#0; d & e')).toBe('a &foo; b &#; c &#0; d & e');
+    });
+    it('decodes service and fee names, address and people', () => {
+        const f = orderFacts({
+            address1: '1 O&#39;Neil St', city: 'Fort &amp; Mill',
+            services: [{ name: '11th Month/Builder&#39;s Warranty' }],
+            fees: [{ name: 'Rush &amp; Late', amount: '10.00' }],
+        });
+        expect(f.serviceNames).toEqual(["11th Month/Builder's Warranty"]);
+        expect(f.fees).toEqual([{ name: 'Rush & Late', cents: 1000 }]);
+        expect(f.address.addressStreet).toBe("1 O'Neil St");
+        expect(f.propertyAddress).toBe("1 O'Neil St, Fort & Mill");
+        expect(personFromIsn({ first: 'D&#39;Arcy', last: 'Lee' })?.name).toBe("D'Arcy Lee");
+    });
+    it('ready check matches an entity-encoded service name against the OI line', () => {
+        const r = isnReadyCheck({ services: [{ name: 'Builder&#39;s Warranty' }] }, ["Builder's Warranty"], 0);
+        expect(r.unmatchedServices).toEqual([]);
     });
 });
 

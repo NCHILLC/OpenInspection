@@ -8,6 +8,24 @@
 type Order = Record<string, unknown>;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null);
+
+const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+/**
+ * ISN HTML-encodes display text (`Builder&#39;s`). One pass over the string, so
+ * `&amp;#39;` decodes to the literal text `&#39;`, not to an apostrophe.
+ */
+export function decodeIsnText(s: string): string {
+    return s.replace(/&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|([a-zA-Z]+));/g, (m, dec, hex, name) => {
+        if (name) return NAMED[name.toLowerCase()] ?? m;
+        const cp = dec ? Number(dec) : parseInt(hex, 16);
+        return cp > 0 && cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : m;
+    });
+}
+/** `str` for text OI stores or shows (names, address, notes), entity-decoded. */
+const text = (v: unknown): string | null => {
+    const s = str(v);
+    return s === null ? null : decodeIsnText(s).trim() || null;
+};
 const int = (v: unknown): number | null => {
     const n = typeof v === 'number' ? v : Number(str(v)?.replace(/,/g, ''));
     return Number.isInteger(n) && n > 0 ? n : null;
@@ -57,8 +75,8 @@ export interface IsnOrderFacts {
 }
 
 export function orderFacts(o: Order): IsnOrderFacts {
-    const street = [str(o.address1), str(o.address2)].filter(Boolean).join(' ') || null;
-    const city = str(o.city);
+    const street = [text(o.address1), text(o.address2)].filter(Boolean).join(' ') || null;
+    const city = text(o.city);
     const state = str(o.stateabbreviation);
     const zip = str(o.zip);
     const line2 = [city, [state, zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
@@ -71,19 +89,19 @@ export function orderFacts(o: Order): IsnOrderFacts {
         propertyAddress: street ? [street, line2].filter(Boolean).join(', ') : null,
         address: {
             addressStreet: street, addressCity: city, addressState: state, addressZip: zip,
-            addressCounty: str(o.county), addressLat: num(o.latitude), addressLng: num(o.longitude),
+            addressCounty: text(o.county), addressLat: num(o.latitude), addressLng: num(o.longitude),
         },
         yearBuilt: int(o.yearbuilt),
         sqft: int(o.squarefeet),
         foundationType: foundationFromIsn(o.foundationtype),
         inspectorIds: Array.from({ length: 10 }, (_, i) => str(o[`inspector${i + 1}`])).filter((v): v is string => !!v),
         serviceNames: Array.isArray(o.services)
-            ? o.services.map((s) => str((s as Order)?.name)).filter((v): v is string => !!v)
+            ? o.services.map((s) => text((s as Order)?.name)).filter((v): v is string => !!v)
             : [],
         totalCents: cents(o.totalfee),
         fees: Array.isArray(o.fees)
             ? o.fees.flatMap((x) => {
-                const name = str((x as Order)?.name);
+                const name = text((x as Order)?.name);
                 const c = cents((x as Order)?.amount);
                 return name && c ? [{ name, cents: c }] : [];
             })
@@ -97,8 +115,8 @@ export function orderFacts(o: Order): IsnOrderFacts {
 /** Name, email, phone of an ISN client or agent record (the two use different keys). */
 export function personFromIsn(p: Order | undefined): { name: string; email?: string; phone?: string } | null {
     if (!p) return null;
-    const name = str(p.display) ?? str(p.displayname)
-        ?? ([str(p.first) ?? str(p.firstname), str(p.last) ?? str(p.lastname)].filter(Boolean).join(' ') || null);
+    const name = text(p.display) ?? text(p.displayname)
+        ?? ([text(p.first) ?? text(p.firstname), text(p.last) ?? text(p.lastname)].filter(Boolean).join(' ') || null);
     if (!name) return null;
     const email = str(p.email);
     const phone = str(p.mobilephone) ?? str(p.workphone) ?? str(p.homephone);
@@ -143,12 +161,12 @@ export function isnCardFields(o: Order) {
         orderNumber: f.referenceNumber,
         reportNumber: str(o.reportnumber),
         canceled: f.canceled,
-        accessCode: str(o.gatecode),
+        accessCode: text(o.gatecode),
         occupied: yesNo(o.propertyoccupied),
         utilitiesOn: yesNo(o.utilitieson),
-        crossStreets: str(o.majorcrossstreets),
-        policyHolder: str(o.policyholder),
-        policyNumber: str(o.policynumber),
+        crossStreets: text(o.majorcrossstreets),
+        policyHolder: text(o.policyholder),
+        policyNumber: text(o.policynumber),
         paid: yesNo(o.paid),
         signed: yesNo(o.signature),
         // ISN's own map link when it is https, else a maps search on the address.
