@@ -1,6 +1,6 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import type { Context } from 'hono';
-import { cors } from 'hono/cors';
+import { apiCors } from './lib/middleware/api-cors';
 import { serveStatic } from 'hono/cloudflare-workers';
 import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
@@ -148,13 +148,7 @@ const app = new OpenAPIHono<HonoConfig>({
 // CORS — allows React Router v7 frontend (separate origin in dev) to call API endpoints.
 // In production both share the same origin; this is primarily for local dev
 // where Vite runs on :5173 and the API Worker runs on :8787.
-app.use('/api/*', cors({
-    origin: (origin) => origin,
-    credentials: true,
-    allowHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Token-Relay'],
-    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    exposeHeaders: ['Set-Cookie'],
-}));
+app.use('/api/*', apiCors);
 
 // Global request logger
 app.use('*', async (c, next) => {
