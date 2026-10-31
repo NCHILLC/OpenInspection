@@ -159,7 +159,7 @@ DB design policies (2026-06-04 DBA review). These apply to ALL new tables/column
 
 ## Quality gates
 
-CI is a strict superset of pre-commit, not the same set (what each runs: [`docs/reference/dev-workflow.md`](docs/reference/dev-workflow.md#quality-gates-mechanism)). `verify` is the authoritative gate (wire it up as a required status check). The pre-commit hook is a fast local guard — bypass only with `--no-verify` (discouraged). 
+CI is a strict superset of pre-commit, not the same set (what each runs: [`docs/reference/dev-workflow.md`](docs/reference/dev-workflow.md#quality-gates-mechanism)). `verify` is the authoritative gate (a required status check). The pre-commit hook is a fast local guard — bypass only with `--no-verify` (discouraged). 
 
 **Run the gates BEFORE writing, not at commit.** `npm run lint:gates` is the
 20-gate pre-commit rung and takes seconds. Paying it up front tells you straight
@@ -177,10 +177,10 @@ the SERVED commit against HEAD.
 
 **`--no-verify` is blocked**, with `--dangerously-skip-permissions` and
 `HUSKY=0`, by a PreToolUse hook (`~/.Codex/hooks/block-verify-skip.mjs`).
-CI does run now — `verify` fires on pull requests and on pushes to `main`
-(2026-09-07) — but it **does not block a merge today**. The only ruleset, `verify`, targets `refs/heads/verify` rather than `main` and requires no status check (evidence: [`docs/reference/dev-workflow.md`](docs/reference/dev-workflow.md#rule-rationale-and-history)). So a red `verify` is a
-signal you have to choose to honour, and **pre-commit remains the only gate that
-actually stops anything** until that ruleset targets `main` with a required check.
+`verify` runs the whole suite on pull requests and on pushes to `main`, and it
+**blocks a merge**: the `verify` ruleset requires it on the default branch, with
+the branch up to date and no bypass (2026-10-31). The muster crew uses the same
+GitHub account as the owner, so a bypass would be a bypass for them too.
 If a gate fails, fix the cause.
 
 Hook mechanism, what pre-commit and CI each run, and the CI job list: [`docs/reference/dev-workflow.md`](docs/reference/dev-workflow.md#quality-gates-mechanism).
