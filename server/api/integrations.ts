@@ -7,14 +7,14 @@
  * `POST /api/integrations/stripe/test` — on-demand "Test connection" diagnostic.
  * `GET  /api/integrations/stripe/webhook-log` — recent delivery log (diagnostics).
  * `POST /api/integrations/email/validate` — validate stored BYO email provider creds.
- * `POST /api/integrations/isn/pull` — "Pull ISN orders now": one batch of the hourly ISN reconcile.
+ * `/api/integrations/isn/{test,status,pull}` — ISN Test connection, intake state, Pull now.
  */
 import { createRoute, z } from '@hono/zod-openapi';
 import { createApiRouter } from '../lib/openapi-router';
 import { Errors } from '../lib/errors';
 import { withMcpMetadata } from '../lib/route-metadata-standards';
 import { requireRole } from '../lib/middleware/rbac';
-import { EmailValidateBodySchema, EmailValidateOkSchema, IsnPullBodySchema } from '../lib/validations/integrations.schema';
+import { EmailValidateBodySchema, EmailValidateOkSchema, IsnPullBodySchema, IsnIntakeStatusSchema } from '../lib/validations/integrations.schema';
 import { resolveEmailProvider } from '../lib/email/resolve-provider';
 import { logger } from '../lib/logger';
 import { recordIntegrationTest, listIntegrationTestResults, type IntegrationTarget } from '../lib/integration-test-results';
@@ -142,7 +142,7 @@ const emailValidateRoute = createRoute(withMcpMetadata({
 // ─── GET /test-results ────────────────────────────────────────────────────────
 
 const TestResultSchema = z.object({
-    target: z.enum(['sms', 'email', 'stripe', 'gemini']).describe('Which integration was probed.'),
+    target: z.enum(['sms', 'email', 'stripe', 'gemini', 'isn']).describe('Which integration was probed.'),
     provider: z.string().nullable().describe('Provider variant within the target (e.g. twilio/resend); null for single-provider targets.'),
     ok: z.boolean().describe('Whether the probe succeeded.'),
     detail: z.string().nullable().describe('Non-sensitive outcome summary or provider error message.'),
@@ -175,6 +175,7 @@ const isnPullRoute = createRoute(withMcpMetadata({
     responses: {
         200: { content: { 'application/json': { schema: z.object({ success: z.literal(true), data: z.object({
             processed: z.number().describe('Orders pulled from ISN and applied in this batch.'),
+            failed: z.number().describe('Orders that were due in this batch but could not be pulled; the next pass tries them again.'),
             nextCursor: z.string().nullable().describe('Pass back to pull the next batch; null when every due order is done.'),
         }) }) } }, description: 'One batch pulled' },
         503: { description: 'ISN keys or ISN_WEBHOOK_SECRET not set: ISN intake is off' },
@@ -183,16 +184,73 @@ const isnPullRoute = createRoute(withMcpMetadata({
     description: "Runs one batch (5 orders) of the hourly ISN reconcile on demand: lists ISN's orders from yesterday forward and pulls every one OI is missing or holds an older copy of, creating or updating its inspection. Needs the ISN keys AND ISN_WEBHOOK_SECRET, the switch that turns ISN intake on (keys alone only send report links). Call again with `nextCursor` until it is null.",
 }, { scopes: ['admin'], tier: 'extended' }));
 
+// ─── POST /isn/test ───────────────────────────────────────────────────────────
+
+const isnTestRoute = createRoute(withMcpMetadata({
+    method: 'post',
+    path: '/isn/test',
+    tags: ['integrations'],
+    summary: 'Verify the stored ISN keys against ISN',
+    middleware: [requireRole('owner', 'manager')],
+    responses: {
+        200: { content: { 'application/json': { schema: z.object({ success: z.literal(true), data: z.object({
+            intakeOn: z.boolean().describe('True when ISN_WEBHOOK_SECRET is also set, which is what turns ISN intake on.'),
+        }) }) } }, description: 'ISN accepted the stored keys' },
+        502: { description: "ISN rejected the call; the error message is ISN's own" },
+        503: { description: 'The ISN keys are not all set' },
+    },
+    operationId: 'testIsnConnection',
+    description: "Makes one read-only call to ISN (the order list for today) with the tenant's STORED ISN keys, the diagnostic behind the settings-page Test connection button. On failure the error message is the one ISN returned.",
+}, { scopes: ['admin'], tier: 'extended' }));
+
+const isnStatusRoute = createRoute(withMcpMetadata({
+    method: 'get',
+    path: '/isn/status',
+    tags: ['integrations'],
+    summary: 'Whether ISN intake is on, from the keys and secret in effect',
+    middleware: [requireRole('owner', 'manager')],
+    responses: { 200: { content: { 'application/json': { schema: z.object({ success: z.literal(true), data: IsnIntakeStatusSchema }) } }, description: 'ISN intake status' } },
+    operationId: 'getIsnStatus',
+    description: 'Reports, from the same merged deployment and stored values the cron and Pull now use, whether the four ISN keys are set, whether ISN_WEBHOOK_SECRET is set, and whether intake is therefore on (both). Never returns a secret value.',
+}, { scopes: ['admin'], tier: 'extended' }));
+
 // ─── Router ───────────────────────────────────────────────────────────────────
 
 const integrationsRoutes = createApiRouter()
+    .openapi(isnStatusRoute, async (c) => {
+        const { isnIntakeState } = await import('../services/isn/api-base');
+        return c.json({ success: true as const, data: isnIntakeState(c.env) }, 200);
+    })
+    .openapi(isnTestRoute, async (c) => {
+        const tenantId = c.get('tenantId');
+        if (!tenantId) throw Errors.Unauthorized('Missing tenant scope');
+        const uid = c.get('user')?.sub ?? null;
+        const { isnConfig, isnCall, IsnError, isnIntakeState, redactIsnSecrets } = await import('../services/isn/api-base');
+        const cfg = isnConfig(c.env);
+        if (!cfg) {
+            const message = 'The ISN keys are not all set.';
+            await logTest(c.env, tenantId, uid, 'isn', false, message);
+            return c.json({ success: false as const, error: { code: 'ISN_NOT_CONFIGURED', message } }, 503);
+        }
+        try {
+            await isnCall(cfg, 'GET', '/orders', { datetimeafter: new Date().toISOString().slice(0, 10) });
+        } catch (e) {
+            // ISN answers 200 to errors; its own message is the signal, minus any credential it echoes.
+            const message = redactIsnSecrets(e instanceof IsnError ? e.isnMessage : 'Could not reach ISN.', c.env).slice(0, 300);
+            await logTest(c.env, tenantId, uid, 'isn', false, message);
+            return c.json({ success: false as const, error: { code: 'ISN_REJECTED', message } }, 502);
+        }
+        const { intakeOn } = isnIntakeState(c.env);
+        await logTest(c.env, tenantId, uid, 'isn', true, intakeOn ? 'Connected to ISN. ISN intake is on.' : 'Connected to ISN. ISN intake is off: ISN_WEBHOOK_SECRET is not set.');
+        return c.json({ success: true as const, data: { intakeOn } }, 200);
+    })
     .openapi(isnPullRoute, async (c) => {
         const tenantId = c.get('tenantId');
         if (!tenantId) throw Errors.Unauthorized('Missing tenant scope');
-        const { isnConfig } = await import('../services/isn/api-base');
+        const { isnConfig, isnIntakeState } = await import('../services/isn/api-base');
         const cfg = isnConfig(c.env);
         // Same switch as the cron (cron/jobs/integrations.ts): keys alone must not create inspections.
-        if (!cfg || !c.env.ISN_WEBHOOK_SECRET?.trim()) throw Errors.ServiceUnavailable('ISN intake is off: set the ISN keys and ISN_WEBHOOK_SECRET first');
+        if (!cfg || !isnIntakeState(c.env).intakeOn) throw Errors.ServiceUnavailable('ISN intake is off: set the ISN keys and ISN_WEBHOOK_SECRET first');
         const { reconcileIsnOrders } = await import('../services/isn/order-reconcile');
         const data = await reconcileIsnOrders(c.env.DB, tenantId, cfg, c.req.valid('json').cursor ?? null, 5);
         return c.json({ success: true as const, data }, 200);

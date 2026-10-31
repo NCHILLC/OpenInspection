@@ -190,14 +190,14 @@ export const isnOrderReconcileJob: CronJob = {
         return (await isIntervalDue(env, 'isn-order-reconcile', ISN_RECONCILE_INTERVAL_MS, Date.now())) ? 1 : 0;
     },
     run: async (env, cursor) => {
-        const { isnConfig, isnTenantEnv } = await import('../../services/isn/api-base');
+        const { isnConfig, isnTenantEnv, isnIntakeState } = await import('../../services/isn/api-base');
         const tenantId = getDeploymentProfile(env).fixedTenantId;
         const tenantEnv = tenantId ? await isnTenantEnv(env, tenantId) : {};
         const cfg = isnConfig(tenantEnv);
         // The webhook secret is the "orders come from ISN" switch: keys alone
         // also serve the report-link sync, and must not start creating inspections.
         let result = { processed: 0, nextCursor: null as string | null };
-        if (tenantId && cfg && tenantEnv.ISN_WEBHOOK_SECRET?.trim()) {
+        if (tenantId && cfg && isnIntakeState(tenantEnv).intakeOn) {
             const { reconcileIsnOrders } = await import('../../services/isn/order-reconcile');
             result = await reconcileIsnOrders(env.DB, tenantId, cfg, cursor, ISN_RECONCILE_BATCH);
         }

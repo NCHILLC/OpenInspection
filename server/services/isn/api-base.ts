@@ -42,6 +42,33 @@ export function isnConfig(env: IsnEnv): IsnConfig | null {
     return { domain, companyKey, accessKey, secretKey };
 }
 
+type IsnIntakeEnv = IsnEnv & { ISN_WEBHOOK_SECRET?: string };
+
+/**
+ * Whether ISN intake (cron, "Pull now") will run: all four REST keys AND the
+ * webhook secret. The one definition the cron, the pull route, the test route
+ * and the settings panel all read, so none can disagree about what is on.
+ */
+export function isnIntakeState(env: IsnIntakeEnv): { keysSet: boolean; secretSet: boolean; intakeOn: boolean } {
+    const keysSet = isnConfig(env) !== null;
+    const secretSet = !!env.ISN_WEBHOOK_SECRET?.trim();
+    return { keysSet, secretSet, intakeOn: keysSet && secretSet };
+}
+
+/**
+ * Text that may carry an ISN credential, safe to return or store: every
+ * configured ISN value is replaced BEFORE any truncation, so a cut can never
+ * leave a partial secret behind. Longest values first so one that contains
+ * another is not half-replaced.
+ */
+export function redactIsnSecrets(text: string, env: IsnIntakeEnv & { ISN_DOMAIN?: string }): string {
+    const values = [env.ISN_DOMAIN, env.ISN_COMPANY_KEY, env.ISN_ACCESS_KEY, env.ISN_SECRET_KEY, env.ISN_WEBHOOK_SECRET]
+        .map((v) => v?.trim())
+        .filter((v): v is string => !!v)
+        .sort((a, b) => b.length - a.length);
+    return values.reduce((out, v) => out.split(v).join('[redacted]'), text);
+}
+
 /**
  * The Worker env with this tenant's stored secrets merged in (ISN keys are
  * tenant-owned, so the stored value wins). A copy: the Worker env is shared
