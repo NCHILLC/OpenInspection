@@ -9,16 +9,16 @@
  *
  * ── 1. Dangling soft references ─────────────────────────────────────────────
  *
- * Three fields on `UpdateInspection` name a row in another table —
- * `coverPhotoId`, `inspectorId`, `referredByContactId` — and Schema Rules
+ * Four fields on `UpdateInspection` name a row in another table —
+ * `coverPhotoId`, `inspectorId`, `referredByContactId`, `templateId` — and Schema Rules
  * forbid new foreign keys, so nothing in the database objects to a value that
  * points nowhere. A format check is not a substitute either: a UUID from
  * another tenant is still a UUID. Each one has to be resolved INSIDE the
  * caller's tenant, and that is what this does.
  *
  * They are one unit because they fail the same way and are forgotten the same
- * way: whoever adds the fourth such field will find three neighbours here
- * rather than three look-alike blocks strung through a route handler.
+ * way: whoever adds the fifth such field will find four neighbours here
+ * rather than four look-alike blocks strung through a route handler.
  *
  * Returns the refusal (code + message) or null. Deliberately does not build the
  * Response — the route owns its own status codes and envelope shape.
@@ -39,6 +39,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { users } from '../../lib/db/schema';
+import { templateSnapshotValues } from '../../lib/inspection/template-snapshot';
 import {
     refuseCancelViaStatusWrite,
     refuseLeaveCancelledViaStatusWrite,
@@ -46,7 +47,7 @@ import {
 } from './cancel-write-path';
 
 export type PatchRefusal = CancelWritePathRefusal | {
-    code: 'INVALID_COVER_PHOTO' | 'INVALID_INSPECTOR' | 'INVALID_REFERRER';
+    code: 'INVALID_COVER_PHOTO' | 'INVALID_INSPECTOR' | 'INVALID_REFERRER' | 'INVALID_TEMPLATE';
     message: string;
 };
 
@@ -56,6 +57,15 @@ interface GuardedPatch {
     inspectorId?: string | null | undefined;
     referredByContactId?: string | null | undefined;
     status?: string | null | undefined;
+    templateId?: string | null | undefined;
+}
+
+/**
+ * A picked template brings its structure when the inspection has none. One it
+ * already has stays: it may carry the inspector's own edits.
+ */
+export async function templatePickValues(db: DrizzleD1Database, tenantId: string, templateId: string | null | undefined, currentSnapshot: unknown) {
+    return templateId && !currentSnapshot ? templateSnapshotValues(db, tenantId, templateId) : null;
 }
 
 export async function findPatchRefusal(
@@ -121,6 +131,10 @@ export async function findPatchRefusal(
         if (!owner) {
             return { code: 'INVALID_REFERRER', message: 'referredByContactId is not a contact in this tenant' };
         }
+    }
+
+    if (body.templateId && !(await templateSnapshotValues(db, tenantId, body.templateId))) {
+        return { code: 'INVALID_TEMPLATE', message: 'templateId is not a template in this tenant' };
     }
 
     return null;

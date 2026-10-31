@@ -9,6 +9,7 @@ import { drizzle as mockDrizzle } from 'drizzle-orm/d1';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { inspectionsRoutes } from '../../../server/api/inspections';
 import { InspectionService } from '../../../server/services/inspection.service';
+import { requireTemplateSnapshot } from '../../../server/services/inspection/shared';
 import type { HonoConfig } from '../../../server/types/hono';
 
 /**
@@ -34,6 +35,7 @@ const INSP_ID = '550e8400-e29b-41d4-a716-446655440000';
 const TPL_ID = 'tpl-e2e-trackA'; // template ids are free-text, not UUIDs
 
 let db: BetterSQLite3Database<typeof schema>;
+let currentSnapshot: unknown = null;
 
 function buildApp(role: string) {
     const app = new OpenAPIHono<HonoConfig>();
@@ -48,7 +50,7 @@ function buildApp(role: string) {
         c.set(
             'services',
             { inspection: {
-                getInspection: vi.fn().mockResolvedValue({ inspection: { status: 'requested' } }),
+                getInspection: vi.fn().mockResolvedValue({ inspection: { status: 'requested', templateSnapshot: currentSnapshot } }),
                 isInspectionPhotoKey: (iid: string, tid: string, key: string) => realSvc.isInspectionPhotoKey(iid, tid, key),
             } } as never,
         );
@@ -69,6 +71,7 @@ async function patch(role: string, body: unknown): Promise<number> {
 
 describe('PATCH /api/inspections/:id — settings save (B-22 follow-up)', () => {
     beforeEach(async () => {
+        currentSnapshot = null;
         const fixture = createTestDb();
         db = fixture.db;
         await setupSchema(fixture.sqlite);
@@ -77,8 +80,8 @@ describe('PATCH /api/inspections/:id — settings save (B-22 follow-up)', () => 
             deploymentMode: 'shared', tier: 'free', createdAt: new Date(),
         });
         await db.insert(schema.templates).values({
-            id: TPL_ID, tenantId: TENANT, name: 'Track A', slug: 'track-a',
-            schema: '{}', createdAt: new Date(),
+            id: TPL_ID, tenantId: TENANT, name: 'Track A', slug: 'track-a', version: 3,
+            schema: { schemaVersion: 2, sections: [{ id: 's1', title: 'Roof', items: [] }] }, createdAt: new Date(),
         } as never);
         await db.insert(schema.inspections).values({
             id: INSP_ID, tenantId: TENANT,
@@ -93,6 +96,26 @@ describe('PATCH /api/inspections/:id — settings save (B-22 follow-up)', () => 
         expect(await patch('manager', { templateId: TPL_ID })).toBe(200);
         const row = await db.select().from(schema.inspections).where(eq(schema.inspections.id, INSP_ID)).get();
         expect((row as { templateId?: string | null }).templateId).toBe(TPL_ID);
+    });
+
+    it('a picked template brings its structure, so the hub and report can read the inspection', async () => {
+        expect(await patch('manager', { templateId: TPL_ID })).toBe(200);
+        const row = (await db.select().from(schema.inspections).where(eq(schema.inspections.id, INSP_ID)).get())!;
+        expect(row.templateSnapshotVersion).toBe(3);
+        expect(requireTemplateSnapshot(row, TENANT).sections.map((s) => s.title)).toEqual(['Roof']);
+    });
+
+    it('a template pick leaves a structure the inspection already has', async () => {
+        currentSnapshot = { schemaVersion: 2, sections: [] };
+        expect(await patch('manager', { templateId: TPL_ID })).toBe(200);
+        const row = await db.select().from(schema.inspections).where(eq(schema.inspections.id, INSP_ID)).get();
+        expect(row?.templateSnapshot).toBeNull(); // nothing written; the stub stands in for the stored copy
+    });
+
+    it('refuses a template this tenant does not have (400)', async () => {
+        expect(await patch('manager', { templateId: 'tpl-other-tenant' })).toBe(400);
+        const row = await db.select().from(schema.inspections).where(eq(schema.inspections.id, INSP_ID)).get();
+        expect(row?.templateId).toBeNull();
     });
 
     it('a payload that reduces to no recognised fields is a 200 no-op (not a 500)', async () => {

@@ -10,18 +10,24 @@
  * its order straight away and then goes through the same update as every later
  * delivery, so a failure past that point (the webhook answers 500, ISN retries)
  * is finished by the retry instead of creating a second inspection.
+ *
+ * The client, agents, services and template are OI's once set: a later delivery
+ * only fills the ones the inspection has none of (`fillBlanksFromOrder`).
  */
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1';
-import { inspections, inspectionResults, inspectionServices, isnOrders, services, users } from '../../lib/db/schema';
+import { contactRoleProfiles, inspectionPeople, inspections, inspectionResults, inspectionServices, isnOrders, services, users } from '../../lib/db/schema';
 import { createScopedDb, type DrizzleDB } from '../../lib/db/scoped';
 import { syncInspectionAssignments } from '../../lib/db/assignment-links';
+import { writeInspectionServiceSnapshots } from '../../lib/inspection/service-snapshot';
+import { templateSnapshotValues } from '../../lib/inspection/template-snapshot';
 import { logger } from '../../lib/logger';
 import { INSPECTION_STATUS } from '../../lib/status/inspection-status';
 import { ContactService } from '../contact.service';
 import { InspectionCoreService } from '../inspection/inspection-core.service';
+import { PeopleService } from '../people.service';
 import { isnCall, type IsnConfig } from './api-base';
-import { orderFacts, personFromIsn } from './order-payload';
+import { orderFacts, personFromIsn, type IsnOrderFacts } from './order-payload';
 
 type Rec = Record<string, unknown>;
 type Db = DrizzleD1Database;
@@ -48,6 +54,18 @@ async function fetchPerson(cfg: IsnConfig, kind: 'client' | 'agent', id: string 
     return personFromIsn((await isnCall(cfg, 'GET', `/${kind}/${encodeURIComponent(id)}`))[kind] as Rec | undefined);
 }
 
+/** The order's services OI has, by name. An ISN service OI lacks is logged and left off. */
+async function matchServices(db: Db, tenantId: string, rowId: string, f: IsnOrderFacts) {
+    const catalog = await db.select({ id: services.id, name: services.name, templateId: services.templateId })
+        .from(services).where(eq(services.tenantId, tenantId));
+    const byName = new Map(catalog.map((s) => [s.name.trim().toLowerCase(), s]));
+    const matched = f.serviceNames.map((n) => byName.get(n.toLowerCase())).filter((s): s is NonNullable<typeof s> => !!s);
+    if (matched.length < f.serviceNames.length) {
+        logger.warn('ISN order: services with no OI service of the same name', { isnOrderRowId: rowId, unmatched: f.serviceNames.length - matched.length });
+    }
+    return matched;
+}
+
 export async function applyIsnOrder(
     d1: D1Database, tenantId: string, cfg: IsnConfig,
     row: { id: string; inspectionId: string | null; payload: Rec },
@@ -56,13 +74,13 @@ export async function applyIsnOrder(
     // Another delivery is creating this order's inspection right now; it applies
     // the newest stored payload once it is done (below), this one included.
     if (row.inspectionId?.startsWith('pending:')) return null;
-    if (row.inspectionId) return updateFromOrder(db, cfg, tenantId, row.id, row.inspectionId, row.payload);
+    if (row.inspectionId) return updateFromOrder(d1, db, cfg, tenantId, row.id, row.inspectionId, row.payload);
 
     const created = await createFromOrder(d1, db, cfg, tenantId, row);
     if (!created) return null;
     const latest = await db.select({ payload: isnOrders.payload }).from(isnOrders)
         .where(and(eq(isnOrders.id, row.id), eq(isnOrders.tenantId, tenantId))).get();
-    return updateFromOrder(db, cfg, tenantId, row.id, created, (latest?.payload as Rec | undefined) ?? row.payload);
+    return updateFromOrder(d1, db, cfg, tenantId, row.id, created, (latest?.payload as Rec | undefined) ?? row.payload);
 }
 
 /** Creates the bare inspection and links it to the order; facts, team and status come from `updateFromOrder`. */
@@ -94,13 +112,7 @@ async function createFromOrder(
     try {
         const contactsSvc = new ContactService(d1);
         const agentId = async (p: typeof buyersAgent) => (p ? (await contactsSvc.upsertClientContact(tenantId, { ...p, type: 'agent' })).id : null);
-        const catalog = await db.select({ id: services.id, name: services.name, templateId: services.templateId })
-            .from(services).where(eq(services.tenantId, tenantId));
-        const byName = new Map(catalog.map((s) => [s.name.trim().toLowerCase(), s]));
-        const matched = f.serviceNames.map((n) => byName.get(n.toLowerCase())).filter((s): s is NonNullable<typeof s> => !!s);
-        if (matched.length < f.serviceNames.length) {
-            logger.warn('ISN order: services with no OI service of the same name', { isnOrderRowId: row.id, unmatched: f.serviceNames.length - matched.length });
-        }
+        const matched = await matchServices(db, tenantId, row.id, f);
 
         const core = new InspectionCoreService(d1, undefined, createScopedDb(db as unknown as DrizzleDB, tenantId));
         createdId = (await core.createInspection(tenantId, {
@@ -131,7 +143,48 @@ async function createFromOrder(
     return createdId;
 }
 
-async function updateFromOrder(db: Db, cfg: IsnConfig, tenantId: string, rowId: string, inspectionId: string, payload: Rec): Promise<string> {
+/**
+ * An online booking reaches OI as soon as ISN saves its draft, before the client
+ * has picked services or given a name, so the create can find none of them.
+ * Every later delivery fills what the inspection still has none of. Nothing here
+ * replaces a value: OI staff may have chosen differently since.
+ */
+async function fillBlanksFromOrder(d1: D1Database, db: Db, cfg: IsnConfig, tenantId: string, rowId: string, inspectionId: string, f: IsnOrderFacts): Promise<void> {
+    const onInspection = and(eq(inspectionPeople.tenantId, tenantId), eq(inspectionPeople.inspectionId, inspectionId));
+    const seated = new Set((await db.select({ key: contactRoleProfiles.key }).from(inspectionPeople)
+        .innerJoin(contactRoleProfiles, eq(contactRoleProfiles.id, inspectionPeople.roleProfileId))
+        .where(onInspection).all()).map((p) => p.key));
+    const seats = ([
+        ['client', 'client', f.clientId], ['buyer_agent', 'agent', f.buyersAgentId], ['listing_agent', 'agent', f.sellersAgentId],
+    ] as const).filter(([key, , isnId]) => isnId && !seated.has(key));
+    if (seats.length > 0) {
+        const roles = new Map((await db.select({ id: contactRoleProfiles.id, key: contactRoleProfiles.key }).from(contactRoleProfiles)
+            .where(and(eq(contactRoleProfiles.tenantId, tenantId), eq(contactRoleProfiles.active, true))).all()).map((r) => [r.key, r.id]));
+        const contactsSvc = new ContactService(d1);
+        const people = new PeopleService({ DB: d1 });
+        for (const [key, kind, isnId] of seats) {
+            const person = await fetchPerson(cfg, kind, isnId);
+            const role = roles.get(key);
+            if (person && role) await people.addPerson(tenantId, inspectionId, (await contactsSvc.upsertClientContact(tenantId, { ...person, type: kind })).id, role);
+        }
+    }
+
+    // A line kept but switched off counts: someone took that service off on purpose.
+    const hasLine = await db.select({ id: inspectionServices.id }).from(inspectionServices)
+        .where(and(eq(inspectionServices.tenantId, tenantId), eq(inspectionServices.inspectionId, inspectionId))).get();
+    if (hasLine || f.serviceNames.length === 0) return;
+    const matched = await matchServices(db, tenantId, rowId, f);
+    // Template first: lines existing is what stops the next delivery from retrying this.
+    const templateId = matched.find((s) => s.templateId)?.templateId;
+    const snapshot = templateId ? await templateSnapshotValues(db, tenantId, templateId) : null;
+    if (snapshot) {
+        await db.update(inspections).set({ templateId, ...snapshot })
+            .where(and(eq(inspections.id, inspectionId), eq(inspections.tenantId, tenantId), isNull(inspections.templateId)));
+    }
+    await writeInspectionServiceSnapshots(db, tenantId, inspectionId, { serviceIds: matched.map((s) => s.id) });
+}
+
+async function updateFromOrder(d1: D1Database, db: Db, cfg: IsnConfig, tenantId: string, rowId: string, inspectionId: string, payload: Rec): Promise<string> {
     const f = orderFacts(payload);
     const inspectorIds = await matchInspectors(db, cfg, tenantId, f.inspectorIds);
     await db.update(isnOrders).set({ unmatchedInspectors: f.inspectorIds.length - inspectorIds.length })
@@ -154,6 +207,7 @@ async function updateFromOrder(db: Db, cfg: IsnConfig, tenantId: string, rowId: 
 
     if (Object.keys(facts).length > 0) await db.update(inspections).set(facts).where(where);
     if (team) await syncInspectionAssignments(db, tenantId, inspectionId, team);
+    await fillBlanksFromOrder(d1, db, cfg, tenantId, rowId, inspectionId, f);
     if (f.totalCents !== null) await priceLinesFromIsn(db, tenantId, inspectionId, f.fees, f.totalCents);
     if (f.canceled) await cancelIfUntouched(db, tenantId, inspectionId);
     // New (still Requested) or reinstated in ISN: the order is on the calendar.
