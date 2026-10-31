@@ -38,6 +38,7 @@ import {
     tenantLegalVersions,
     tenantMarketplaceImportHistory,
     tenantSlugHistory,
+    fieldLogEvents,
 } from '../db/schema';
 import { DESTRUCTION_STATUS } from '../status/destruction-status';
 import { ANONYMIZE_AUDIT_PII } from './anonymize-pii';
@@ -282,6 +283,15 @@ export const EXECUTORS: Record<string, Executor> = {
     },
 
     report_pdfs: reportPdfsExecutor,
+
+    field_log_events: async (rawDb, cutoff, ctx) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const db = rawDb as any;
+        const res = await db.delete(fieldLogEvents)
+            .where(and(lt(fieldLogEvents.occurredAt, cutoff), notHeld(fieldLogEvents.tenantId, ctx)))
+            .run();
+        return changeCount(res);
+    },
 
     tenant_marketplace_import_history: async (rawDb, cutoff, ctx) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

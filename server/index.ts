@@ -46,6 +46,7 @@ import { registerPortalIntegration } from './portal/integration.module';
 import { inspectionsRoutes } from './api/inspections';
 import tenantPresenceRoutes from './api/tenant-presence';
 import inspectionPrefsRoutes from './api/inspection-prefs';
+import fieldLogRoutes from './api/field-log';
 import aiRoutes from './api/ai';
 import { bookingsRoutes } from './api/bookings';
 import { smsPublicRoutes, smsWebhookRoutes, smsAdminRoutes } from './api/sms';
@@ -349,6 +350,7 @@ const routes = app
   // auto-advance delay, pinned tag ids). GET returns merged defaults; PATCH
   // validates and persists.
   .route('/api/tenant/inspection-prefs', inspectionPrefsRoutes)
+  .route('/api/field-log', fieldLogRoutes)
   .route('/api/inspections', inspectionSyncRoutes)
   // Sprint 3 S3-3 — tag link/unlink endpoints share the /api/inspections root
   // so the URL carries inspection id + item id directly. Mounted before the

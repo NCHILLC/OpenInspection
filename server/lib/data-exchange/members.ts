@@ -134,6 +134,10 @@ export const MEMBER_EXCHANGE: ExchangeVocabulary = {
             reason: 'a display preference this member sets for themselves — the same class as `timezone` above',
         },
         {
+            column: 'is_field_log_enabled',
+            reason: 'a diagnostic opt-in each member turns on for themselves, off for every new account; a file must not switch on activity logging for somebody else',
+        },
+        {
             column: 'service_origin_address',
             reason: 'where this inspector starts their day, possibly their home address. It reaches the staff member\'s OWN account export; a team roster handed around a workspace is a different audience',
         },

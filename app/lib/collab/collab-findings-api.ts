@@ -13,6 +13,7 @@
  * NO React import.
  */
 
+import { logFieldEvent } from "~/lib/field-log";
 import type * as Y from 'yjs';
 import { cloneByScope } from '../../hooks/findings/shared';
 import type {
@@ -173,6 +174,7 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
 
     const setRating = (sectionId: string, itemId: string, rating: string | null): void => {
         bindingSetRating(doc, sectionId, itemId, rating, unit);
+        logFieldEvent('action', 'rating');
         setDirty(true);
     };
 

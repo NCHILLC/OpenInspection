@@ -33,6 +33,7 @@ export type { EventsApi }             from '../../server/api/events';
 export type { EvidenceApi }           from '../../server/api/evidence';
 export type { IdentityApi }           from '../../server/api/identity';
 export type { InspectionPrefsApi }    from '../../server/api/inspection-prefs';
+export type { FieldLogApi }           from '../../server/api/field-log';
 export type { InspectionRequestsApi } from '../../server/api/inspection-requests';
 export type { InspectionsApi }        from '../../server/api/inspections';
 export type { InspectionTypesApi }    from '../../server/api/inspection-types';

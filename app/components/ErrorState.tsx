@@ -10,7 +10,9 @@
  * no-login report links). Pass `action` only where there is a sensible place to
  * send the user; public report errors omit it.
  */
+import { useEffect } from "react";
 import { ContactChannels } from "./ContactChannels";
+import { logFieldEvent } from "~/lib/field-log";
 
 interface ErrorStateAction {
   label: string;
@@ -33,6 +35,7 @@ export interface ErrorStateProps {
 }
 
 export function ErrorState({ code, title, message, action, contacts }: ErrorStateProps) {
+  useEffect(() => logFieldEvent("crash", "error_screen", typeof code === "number" ? { status: code } : {}), [code]);
   const email = contacts?.email?.trim() || null;
   const phone = contacts?.phone?.trim() || null;
   const hasContacts = Boolean(email || phone);

@@ -129,6 +129,8 @@ export type { StatutoryFormVersionRow, NewStatutoryFormVersionRow } from './stat
 // What the scheduled watcher SAW on an authority's page — the other half of
 // detect-but-never-adopt, and a different table on purpose: a sighting records
 // bytes, never a decision that this deployment offers them.
+export { fieldLogEvents } from './field-log';
+
 export { statutoryFormSightings } from './statutory-form-sightings';
 export type {
     StatutoryFormSightingRow, NewStatutoryFormSightingRow,
