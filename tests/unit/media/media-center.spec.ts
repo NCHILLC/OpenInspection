@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { InspectionService } from '../../../server/services/inspection.service';
 import { ScopedDB, type DrizzleDB } from '../../../server/lib/db/scoped';
 import { createTestDb, setupSchema } from '../db';
+import { JPEG_BYTES } from '../helpers/media-bytes';
 import * as schema from '../../../server/lib/db/schema';
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
@@ -141,8 +142,8 @@ describe('InspectionService — Media Center (Round-2 backlog #9)', () => {
     });
 
     it('uploadPoolPhoto persists a row + getMediaCenter returns it (newest first)', async () => {
-        const file1 = new File([new Uint8Array([1, 2, 3])], 'a.jpg', { type: 'image/jpeg' });
-        const file2 = new File([new Uint8Array([4, 5, 6])], 'b.jpg', { type: 'image/jpeg' });
+        const file1 = new File([JPEG_BYTES], 'a.jpg', { type: 'image/jpeg' });
+        const file2 = new File([JPEG_BYTES], 'b.jpg', { type: 'image/jpeg' });
 
         const a = await svc.uploadPoolPhoto(INSPECTION_ID, TENANT, file1, { takenAt: 1700000000000 });
         // Stagger so uploadedAt orders deterministically.
@@ -159,7 +160,7 @@ describe('InspectionService — Media Center (Round-2 backlog #9)', () => {
     });
 
     it('attachPoolPhoto moves a pool row into results.data and removes the pool entry', async () => {
-        const file = new File([new Uint8Array([1])], 'p.jpg', { type: 'image/jpeg' });
+        const file = new File([JPEG_BYTES], 'p.jpg', { type: 'image/jpeg' });
         const pool = await svc.uploadPoolPhoto(INSPECTION_ID, TENANT, file);
 
         const result = await svc.attachPoolPhoto(INSPECTION_ID, TENANT, pool.id, 'item-flash');
@@ -184,7 +185,7 @@ describe('InspectionService — Media Center (Round-2 backlog #9)', () => {
             data:          { 'item-cover': { photos: [{ key: 'pre-existing' }] } } as any,
             lastSyncedAt:  new Date(),
         });
-        const pool = await svc.uploadPoolPhoto(INSPECTION_ID, TENANT, new File([new Uint8Array([2])], 'q.jpg', { type: 'image/jpeg' }));
+        const pool = await svc.uploadPoolPhoto(INSPECTION_ID, TENANT, new File([JPEG_BYTES], 'q.jpg', { type: 'image/jpeg' }));
 
         const out = await svc.attachPoolPhoto(INSPECTION_ID, TENANT, pool.id, 'item-cover');
         expect(out.photoIndex).toBe(1);
@@ -260,7 +261,7 @@ describe('InspectionService — Media Center (Round-2 backlog #9)', () => {
     });
 
     it('deletePoolPhoto removes the row and calls r2.delete', async () => {
-        const pool = await svc.uploadPoolPhoto(INSPECTION_ID, TENANT, new File([new Uint8Array([3])], 'r.jpg', { type: 'image/jpeg' }));
+        const pool = await svc.uploadPoolPhoto(INSPECTION_ID, TENANT, new File([JPEG_BYTES], 'r.jpg', { type: 'image/jpeg' }));
         await svc.deletePoolPhoto(INSPECTION_ID, TENANT, pool.id);
         const after = await svc.getMediaCenter(INSPECTION_ID, TENANT);
         expect(after.pool).toHaveLength(0);

@@ -10,6 +10,7 @@
  */
 import { contentDisposition } from '../content-disposition';
 import { logger } from '../logger';
+import { PHOTO_TYPES } from './sniff';
 
 interface ImagesBinding {
     input(s: ReadableStream): {
@@ -32,8 +33,12 @@ function parseWidth(w: string | undefined): number {
 
 function originalResponse(obj: R2ObjectBody, download: boolean): Response {
     const headers = new Headers();
-    headers.set('Content-Type', obj.httpMetadata?.contentType || 'application/octet-stream');
-    headers.set('Content-Disposition', contentDisposition(obj.customMetadata?.originalName, download));
+    const type = obj.httpMetadata?.contentType || 'application/octet-stream';
+    headers.set('Content-Type', type);
+    // Inline only a stored raster type; anything else (including objects stored before types were sniffed) downloads.
+    const inline = (PHOTO_TYPES as readonly string[]).includes(type);
+    headers.set('Content-Disposition', contentDisposition(obj.customMetadata?.originalName, download || !inline));
+    headers.set('X-Content-Type-Options', 'nosniff');
     headers.set('Cache-Control', 'private, max-age=300');
     if (obj.httpEtag) headers.set('etag', obj.httpEtag);
     return new Response(obj.body, { status: 200, headers });
@@ -63,6 +68,7 @@ export async function servePhotoObject(
             const r = out.response();
             const h = new Headers(r.headers);
             h.set('Cache-Control', 'private, max-age=300');
+            h.set('X-Content-Type-Options', 'nosniff');
             return new Response(r.body, { status: 200, headers: h });
         } catch (err) {
             logger.warn('[photo] thumbnail transform failed — serving original', { key, width, error: String(err) });
