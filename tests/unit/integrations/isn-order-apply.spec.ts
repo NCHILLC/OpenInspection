@@ -96,6 +96,10 @@ describe('ISN entity decoding', () => {
         expect(decodeIsnText('&amp;#39;')).toBe('&#39;');
         expect(decodeIsnText('&amp;amp;')).toBe('&amp;');
     });
+    it('leaves inherited-property names literal', () => {
+        const t = '&constructor; &toString; &__proto__; &hasOwnProperty; &valueOf;';
+        expect(decodeIsnText(t)).toBe(t);
+    });
     it('leaves unknown or malformed entities alone', () => {
         expect(decodeIsnText('a &foo; b &#; c &#0; d & e')).toBe('a &foo; b &#; c &#0; d & e');
     });

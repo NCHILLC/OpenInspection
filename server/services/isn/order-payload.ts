@@ -9,14 +9,15 @@ type Order = Record<string, unknown>;
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null);
 
-const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+// A Map, not an object: `&constructor;` must not resolve to an inherited property.
+const NAMED = new Map<string, string>([['amp', '&'], ['lt', '<'], ['gt', '>'], ['quot', '"'], ['apos', "'"], ['nbsp', ' ']]);
 /**
  * ISN HTML-encodes display text (`Builder&#39;s`). One pass over the string, so
  * `&amp;#39;` decodes to the literal text `&#39;`, not to an apostrophe.
  */
 export function decodeIsnText(s: string): string {
     return s.replace(/&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|([a-zA-Z]+));/g, (m, dec, hex, name) => {
-        if (name) return NAMED[name.toLowerCase()] ?? m;
+        if (name) return NAMED.get(name.toLowerCase()) ?? m;
         const cp = dec ? Number(dec) : parseInt(hex, 16);
         return cp > 0 && cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : m;
     });
