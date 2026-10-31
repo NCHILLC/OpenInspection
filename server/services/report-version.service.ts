@@ -11,7 +11,8 @@
  */
 import { drizzle } from 'drizzle-orm/d1';
 import { and, eq, desc, or, isNull } from 'drizzle-orm';
-import { reports, reportVersions, inspections, inspectionResults, inspectionUnits, users, inspectionInspectors, templates, tenantConfigs } from '../lib/db/schema';
+import { reports, reportVersions, inspections, inspectionUnits, users, inspectionInspectors, templates, tenantConfigs } from '../lib/db/schema';
+import { selectReportResultsRow } from '../lib/inspection/report-results';
 import { computeDiff, SNAPSHOT_SCHEMA_VERSION, type Snapshot, type SnapshotInspector, type DiffPayload } from '../lib/version-diff';
 import { CredentialService } from './credential.service';
 import { resolveProfile } from '../lib/report-style/resolve';
@@ -97,9 +98,8 @@ export class ReportVersionService {
             .get();
         if (!ins) throw new Error('Inspection not found');
 
-        const results = await db.select().from(inspectionResults)
-            .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)))
-            .get();
+        // This report's document only, never a sibling's.
+        const results = await selectReportResultsRow(db, tenantId, inspectionId, targetReportId);
         const data = parseResultsData(results?.data);
 
         const units = await db.select().from(inspectionUnits)

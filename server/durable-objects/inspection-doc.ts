@@ -51,6 +51,7 @@ import { applyFollowupPatch, resolveCarriedFindingKey } from '../lib/collab/foll
 import { findingKeysFromTemplateSnapshot } from '../lib/finding-key';
 import { inspectionResults, inspections } from '../lib/db/schema';
 import { logger } from '../lib/logger';
+import { selectReportResultsRow } from '../lib/inspection/report-results';
 import { purgePathMatches } from './purge-path';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -937,6 +938,9 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         const db: DrizzleD1Database = drizzle(this.env.DB);
 
         // ── Load the template snapshot + the existing results blob (tenant-scoped).
+        // Results: this document's report only; no reportId, no import (as in
+        // alarm()). The template snapshot is inspection-level.
+        const { reportId } = this;
         const [inspectionRow, resultsRow] = await Promise.all([
             db
                 .select({ templateSnapshot: inspections.templateSnapshot })
@@ -948,17 +952,11 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
                     ),
                 )
                 .get(),
-            db
-                .select({ data: inspectionResults.data })
-                .from(inspectionResults)
-                .where(
-                    and(
-                        eq(inspectionResults.tenantId,     tenantId),
-                        eq(inspectionResults.inspectionId, inspectionId),
-                    ),
-                )
-                .get(),
+            reportId
+                ? selectReportResultsRow(db, tenantId, inspectionId, reportId)
+                : Promise.resolve(null),
         ]);
+        if (!reportId) logger.warn('collab hydrate: no report id, results not imported', { inspectionId });
 
         // ── Condition A: ALWAYS seed every template item's findingKey structure
         // (idempotent — seedResultsDoc skips keys that already exist), so two
