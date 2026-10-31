@@ -36,6 +36,11 @@ SENDER_EMAIL=Your Business <reports@yourdomain.com>
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
 STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret_here
 
+# Marks this as a local build. On a saas profile, bot protection and the rate
+# limiter are only relaxed when this is exactly `development`; any other value
+# or none means production. .dev.vars is never uploaded by a deploy.
+ENVIRONMENT=development
+
 # Optional: Cloudflare Turnstile bot protection on the public booking form
 # Get your keys at dash.cloudflare.com → Turnstile
 # The values below are Cloudflare's official test keys (always pass in local dev)

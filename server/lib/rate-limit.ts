@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import type { HonoConfig } from '../types/hono';
 import { Errors } from './errors';
 import { getDeploymentProfile } from './deployment-profile';
-import { isLocalRequestUrl } from './local-request';
+import { isDevEnvironment } from './dev-environment';
 import { logger } from './logger';
 
 /**
@@ -27,11 +27,11 @@ export async function checkRateLimit(
     const binding = limiter === 'QBO_WEBHOOK_RATE_LIMITER' ? c.env.QBO_WEBHOOK_RATE_LIMITER
         : limiter === 'STRIPE_WEBHOOK_RATE_LIMITER' ? c.env.STRIPE_WEBHOOK_RATE_LIMITER
         : c.env.RATE_LIMITER;
-    // Where protection is mandatory (saas) a deployment off a developer's
-    // machine must have its limiter: an absent binding is a misconfiguration
+    // Where protection is mandatory (saas) a deployment that is not a
+    // developer's local build must have its limiter: an absent binding is a misconfiguration
     // that would otherwise leave every limited route unlimited without a sign.
-    // Standalone keeps the no-op, as does any loopback request.
-    const guarded = getDeploymentProfile(c.env).botProtectionMandatory && !isLocalRequestUrl(c.req.url);
+    // Standalone keeps the no-op, as does a local build (`ENVIRONMENT=development`).
+    const guarded = getDeploymentProfile(c.env).botProtectionMandatory && !isDevEnvironment(c.env);
     if (!binding) {
         if (!guarded) return;
         logger.error('rate_limit.binding_missing', { limiter });
@@ -41,7 +41,7 @@ export async function checkRateLimit(
     // ~140 specs' logins from a single runner IP, which blows past the 10/60s
     // login limiter and 429s beforeAll hooks flakily. Only the ephemeral E2E
     // .dev.vars sets this. Where protection is mandatory it is honoured on a
-    // loopback request only; a production request ignores it and says so.
+    // local build only; production ignores it and says so.
     if (c.env.DISABLE_RATE_LIMIT === '1') {
         if (!guarded) return;
         logger.warn('rate_limit.disable_flag_ignored', { limiter });

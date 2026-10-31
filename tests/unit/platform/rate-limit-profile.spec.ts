@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { Context } from 'hono';
 import { checkRateLimit } from '../../../server/lib/rate-limit';
-import { isLocalRequestUrl } from '../../../server/lib/local-request';
+import { isDevEnvironment } from '../../../server/lib/dev-environment';
 
 type Limiter = { limit: ReturnType<typeof vi.fn> };
 const limiter = (success: boolean): Limiter => ({ limit: vi.fn(async () => ({ success })) });
@@ -18,7 +18,9 @@ function ctx(url: string, env: Record<string, unknown>): Context<never> {
 }
 
 const PROD = 'https://app.example.com/api/x';
-const DEV = 'http://localhost:8787/api/x';
+// The in-process BFF calls the API on a loopback URL for real visitors.
+const BFF = 'http://localhost:8788/api/x';
+const DEV_ENV = { ENVIRONMENT: 'development' };
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -39,14 +41,14 @@ describe('saas production', () => {
     });
 });
 
-describe('saas on a developer machine', () => {
+describe('saas local build (ENVIRONMENT=development)', () => {
     it('tolerates a missing binding', async () => {
-        await expect(checkRateLimit(ctx(DEV, { APP_MODE: 'saas' }) as never, 'login')).resolves.toBeUndefined();
+        await expect(checkRateLimit(ctx(BFF, { APP_MODE: 'saas', ...DEV_ENV }) as never, 'login')).resolves.toBeUndefined();
     });
 
     it('honours DISABLE_RATE_LIMIT', async () => {
         const l = limiter(false);
-        const c = ctx(DEV, { APP_MODE: 'saas', RATE_LIMITER: l, DISABLE_RATE_LIMIT: '1' });
+        const c = ctx(BFF, { APP_MODE: 'saas', ...DEV_ENV, RATE_LIMITER: l, DISABLE_RATE_LIMIT: '1' });
         await expect(checkRateLimit(c as never, 'login')).resolves.toBeUndefined();
         expect(l.limit).not.toHaveBeenCalled();
     });
@@ -70,13 +72,29 @@ describe('standalone is unchanged', () => {
     });
 });
 
-describe('what counts as a developer machine', () => {
-    it('is loopback names only', () => {
-        expect(isLocalRequestUrl('http://localhost:5173/')).toBe(true);
-        expect(isLocalRequestUrl('http://127.0.0.1/')).toBe(true);
-        expect(isLocalRequestUrl('http://[::1]:8787/')).toBe(true);
-        expect(isLocalRequestUrl('https://localhost.evil.example/')).toBe(false);
-        expect(isLocalRequestUrl('https://app.example.com/')).toBe(false);
-        expect(isLocalRequestUrl('not a url')).toBe(false);
+describe('saas production behind the in-process BFF', () => {
+    // A loopback URL says nothing: every public request reaches the API this way.
+    it('still refuses a missing limiter on a loopback URL', async () => {
+        vi.spyOn(console, 'info').mockImplementation(() => undefined);
+        await expect(checkRateLimit(ctx(BFF, { APP_MODE: 'saas', ENVIRONMENT: 'production' }) as never, 'login')).rejects.toMatchObject({ status: 503 });
+        await expect(checkRateLimit(ctx(BFF, { APP_MODE: 'saas' }) as never, 'login')).rejects.toMatchObject({ status: 503 });
+    });
+
+    it('still ignores DISABLE_RATE_LIMIT on a loopback URL', async () => {
+        vi.spyOn(console, 'info').mockImplementation(() => undefined);
+        const l = limiter(false);
+        const c = ctx(BFF, { APP_MODE: 'saas', RATE_LIMITER: l, DISABLE_RATE_LIMIT: '1' });
+        await expect(checkRateLimit(c as never, 'login')).rejects.toMatchObject({ status: 429 });
+        expect(l.limit).toHaveBeenCalled();
+    });
+});
+
+describe('what counts as a local build', () => {
+    it('is ENVIRONMENT=development and nothing else', () => {
+        expect(isDevEnvironment({ ENVIRONMENT: 'development' })).toBe(true);
+        expect(isDevEnvironment({ ENVIRONMENT: 'production' })).toBe(false);
+        expect(isDevEnvironment({ ENVIRONMENT: 'dev' })).toBe(false);
+        expect(isDevEnvironment({ ENVIRONMENT: 'Development' })).toBe(false);
+        expect(isDevEnvironment({})).toBe(false);
     });
 });

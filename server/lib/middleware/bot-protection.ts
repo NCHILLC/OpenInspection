@@ -8,6 +8,7 @@
  * the two places drift. `resolveTurnstile` answers "is a challenge required,
  * and with which secret" once, and both callers obey the answer.
  */
+import { isDevEnvironment } from '../dev-environment';
 import { getDeploymentProfile, type ProfileEnv } from '../deployment-profile';
 import { Errors } from '../errors';
 import { logger } from '../logger';
@@ -28,6 +29,17 @@ import { logger } from '../logger';
  */
 export const TURNSTILE_TEST_SITE_KEY = '1x00000000000000000000AA';
 export const TURNSTILE_TEST_SECRET_KEY = '1x0000000000000000000000000000000AA';
+
+/**
+ * Every secret Cloudflare publishes for testing: always passes (1x), always
+ * fails (2x), token already spent (3x). None is a real secret, so none may stand
+ * in for one in production.
+ */
+const TURNSTILE_PUBLISHED_TEST_SECRETS: ReadonlySet<string> = new Set([
+    TURNSTILE_TEST_SECRET_KEY,
+    '2x0000000000000000000000000000000AA',
+    '3x0000000000000000000000000000000AA',
+]);
 
 /**
  * What a caller logs when `usingTestKey` is set.
@@ -57,15 +69,16 @@ export interface TurnstilePolicy {
     unavailable: boolean;
 }
 
-type TurnstileEnv = ProfileEnv & { TURNSTILE_SECRET_KEY?: string };
+type TurnstileEnv = ProfileEnv & { TURNSTILE_SECRET_KEY?: string; ENVIRONMENT?: string };
 
 /**
  * Whether this deployment challenges anonymous submissions, and with what.
  *
  * - **saas** — always enforced. A configured secret is used; without one the
  *   published test key is, so the mechanism is never off, only permissive.
- * - **saas, off a developer's machine** — the always-pass test key is REFUSED,
- *   whether it is the fallback for a missing secret or configured by hand:
+ * - **saas, not a local build** — any of Cloudflare's published test secrets is
+ *   REFUSED, whether the always-pass key is the fallback for a missing secret or
+ *   one is configured by hand:
  *   `unavailable` is set and the caller fails the request closed. A test key
  *   that admits everything is the same as no protection, and a log line nobody
  *   reads is not a control.
@@ -75,13 +88,13 @@ type TurnstileEnv = ProfileEnv & { TURNSTILE_SECRET_KEY?: string };
  *
  * Reads the capability, never `APP_MODE` — see `deployment-profile.ts`.
  */
-export function resolveTurnstile(env: TurnstileEnv, local: boolean): TurnstilePolicy {
+export function resolveTurnstile(env: TurnstileEnv): TurnstilePolicy {
     const configured = env.TURNSTILE_SECRET_KEY?.trim() ?? '';
     const mandatory = getDeploymentProfile(env).botProtectionMandatory;
 
-    // `local` is passed by the caller (see `isLocalRequestUrl`) and has no
-    // default: forgetting it must not be able to turn the refusal off.
-    if (mandatory && !local && (!configured || configured === TURNSTILE_TEST_SECRET_KEY)) {
+    // Only an explicit local build (`isDevEnvironment`) is exempt; everything
+    // else is production.
+    if (mandatory && !isDevEnvironment(env) && (!configured || TURNSTILE_PUBLISHED_TEST_SECRETS.has(configured))) {
         return { enforced: true, secret: '', usingTestKey: false, unavailable: true };
     }
     if (configured) return { enforced: true, secret: configured, usingTestKey: false, unavailable: false };
@@ -105,9 +118,8 @@ export function refuseIfUnavailable(policy: TurnstilePolicy, event: string, data
 /** The site key the browser needs, matched to whatever `resolveTurnstile` will verify against. */
 export function resolveTurnstileSiteKey(
     env: TurnstileEnv & { TURNSTILE_SITE_KEY?: string },
-    local: boolean,
 ): string | null {
-    const policy = resolveTurnstile(env, local);
+    const policy = resolveTurnstile(env);
     // The submit is refused server-side, so no widget is offered either.
     if (policy.unavailable) return null;
     const configured = env.TURNSTILE_SITE_KEY?.trim() ?? '';
