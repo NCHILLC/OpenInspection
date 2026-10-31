@@ -70,7 +70,7 @@ Text removed from rule sections. The rule itself stays in `CLAUDE.md` / `AGENTS.
 ### Quality gates
 
 - Anecdote removed from the "Run the gates BEFORE writing" paragraph: Not hypothetical: that is how a duplicate of an existing module got written on 2026-09-06. The size cap that would have forced the split — and so surfaced the module already there — was not consulted until the commit failed.
-- Ruleset detail removed from the `--no-verify` paragraph: The repository is public, so GitHub Free does enforce rulesets on it; the one that exists does not guard `main`. The `verify` ruleset is `active` but targets `refs/heads/verify` (a branch of that name), and carries only deletion and non-fast-forward rules — no required status check (verified 2026-09-13 via `gh api repos/NCHILLC/OpenInspection/rulesets/22446814`).
+- Ruleset detail removed from the `--no-verify` paragraph: The repository is public, so GitHub Free does enforce rulesets on it; the one that exists does not guard `main`. The `verify` ruleset is `active` but targets `refs/heads/verify` (a branch of that name), and carries only deletion and non-fast-forward rules — no required status check (verified 2026-09-13 via `gh api repos/NCHILLC/OpenInspection/rulesets/22446814`). OUTDATED 2026-10-31: the ruleset now targets the default branch and requires `verify`.
 - Worktree rationale, as it was: A worktree inside the repo makes the preview launcher resolve the project root to it and serve ITS build on the expected port — `/status` reports the wrong commit and every observation is about other source. An absolute path in `launch.json` does not save you; the launcher rebases it.
 
 ### Comment rules

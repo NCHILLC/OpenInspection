@@ -29,6 +29,11 @@ name: CI
 # emit phantom failures. Separate CI jobs are separate runners, so this is safe
 # here and is not a licence to background them side by side in a terminal.
 #
+# Every job runs on pull requests, because `verify` is what a merge waits on: the
+# crew merges without a person watching, so a PR that skipped unit and e2e would
+# land unproven. This repo is public, so standard runners cost nothing; if it
+# goes private a run is ~66 billed minutes against a 2,000 monthly allowance.
+#
 # This workflow runs on pull_request, and on demand. Re-running the full suite
 # on every merge commit is redundant: branch protection requires "branches up
 # to date before merging" (strict), so a PR's tested tree equals the resulting
@@ -254,13 +259,6 @@ jobs:
   test-unit:
     name: API unit tests (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    # Push to main only. The eight unit shards plus the two e2e legs are ~54 of
-    # the ~66 runner-minutes a full run costs, and most runs are a PR being
-    # revised — 32 runs on 2026-09-07 exhausted a month of the 2,000 free
-    # private-repo minutes in a day. They still gate what SHIPS, because the
-    # merge commit is a push to main. `verify` allows these three to skip; it
-    # names the always-run jobs explicitly instead.
-    if: github.event_name != 'pull_request'
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -319,8 +317,6 @@ jobs:
   test-web:
     name: web unit tests (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    # Push to main only — see the note on test-unit.
-    if: github.event_name != 'pull_request'
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -410,23 +406,15 @@ jobs:
       # workflow file issue" — which looks nothing like a syntax error. Local
       # `yaml.safe_load` does not catch it either: that validates YAML, not
       # Actions expressions. This is how the first version of this file broke.
-      # `skipped` is no longer a blanket failure, because three jobs are now
-      # SUPPOSED to skip on a pull request — test-unit, test-web and e2e run on
-      # push to main only (see their `if:`). The original blanket test was right
-      # for its time and its reason still holds: a job that skips silently must
-      # not read as green. So the always-run jobs are named explicitly and must
-      # be `success`; only failure and cancellation are caught wholesale.
+      # A job that skips silently must not read as green, so `skipped` fails
+      # the same as failure and cancellation. No job here has a reason to skip.
       #
-      # Add a job to this workflow ⇒ add it here too, or it can vanish unnoticed.
+      # Add a job to this workflow ⇒ add it to `needs` too, or it can vanish unnoticed.
       - name: Fail if any check did not succeed
         if: >-
           contains(needs.*.result, 'failure')
           || contains(needs.*.result, 'cancelled')
-          || needs.lint-eslint.result != 'success'
-          || needs.lint-gates.result != 'success'
-          || needs.test-contract.result != 'success'
-          || needs.test-workers.result != 'success'
-          || needs.build.result != 'success'
+          || contains(needs.*.result, 'skipped')
         run: |
           echo "::error::One or more checks did not succeed."
           exit 1
@@ -461,9 +449,6 @@ jobs:
     name: e2e (${{ matrix.suite.label }})
     # Pinned: `ubuntu-latest` is 26.04, where Playwright 1.60 cannot install chromium.
     runs-on: ubuntu-24.04
-    # Push to main only — see the note on test-unit. This is the suite that
-    # caught the revalidation bug, so it gates the merge commit, not the PR.
-    if: github.event_name != 'pull_request'
     timeout-minutes: 25
     strategy:
       fail-fast: false

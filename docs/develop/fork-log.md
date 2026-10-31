@@ -20,6 +20,10 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Merge gate — 2026-10-31
+
+The fork's `verify` is a real merge gate, which upstream's setup is not obliged to match. `ci.yml` drops the three PR skips on `test-unit`, `test-web` and `e2e`: they existed to save private-repo minutes, the repo is now public, and unattended crew merges need the proof before the merge rather than after it. `verify` treats `skipped` as a failure again. Ruleset 22446814 moved from `refs/heads/verify` to the default branch: required `verify`, up-to-date branches, no bypass. Expect `ci.yml` conflicts on upstream merges; keep this side.
+
 ## Upstream fixes, second pass — 2026-10-31
 
 Ported by hand from the Oct 27 TAKE list (hashes are upstream's):
