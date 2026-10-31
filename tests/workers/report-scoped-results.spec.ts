@@ -16,7 +16,10 @@ import { InspectionService } from '../../server/services/inspection.service';
 import { InspectionPhotoService } from '../../server/services/inspection/inspection-photo.service';
 import { projectResults, seedResultsDoc, applyItemPatch } from '../../server/lib/collab/results-doc';
 import { resolveResultsRow } from '../../server/services/inspection/report-grain';
-import type { InspectionDocDO } from '../../server/durable-objects/inspection-doc';
+import { WS_CLOSE_NO_REPORT, type InspectionDocDO } from '../../server/durable-objects/inspection-doc';
+import { InspectionPublishService } from '../../server/services/inspection/inspection-publish.service';
+import * as encoding from 'lib0/encoding';
+import * as syncProtocol from 'y-protocols/sync';
 import { applyMigrations as replayMigrations } from './migration-replay';
 
 const b = env as unknown as { DB: D1Database; INSPECTION_DOC: DurableObjectNamespace<InspectionDocDO> };
@@ -84,7 +87,7 @@ function photoService() {
 describe('results are read and written for one report', () => {
     beforeAll(() => replayMigrations(b.DB, migrationSql));
     beforeEach(async () => {
-        for (const t of ['inspection_media_pool', 'report_versions', 'signing_keys', 'inspection_results', 'reports', 'inspection_units', 'inspections', 'rating_systems', 'users', 'tenants']) {
+        for (const t of ['automation_logs', 'automations', 'message_templates', 'sms_disclosure_versions', 'notifications', 'inspection_media_pool', 'report_versions', 'signing_keys', 'inspection_results', 'reports', 'inspection_units', 'inspections', 'rating_systems', 'users', 'tenants']) {
             await b.DB.exec(`DELETE FROM ${t};`);
         }
     });
@@ -458,16 +461,15 @@ describe('results are read and written for one report', () => {
         const setRaw = (id: string, text: string) => b.DB.prepare('UPDATE inspection_results SET data = ? WHERE id = ?').bind(text, id).run();
 
         for (const [label, text] of [['malformed JSON', '{not json'], ['an array', '[1,2]'], ['a scalar', '5']] as const) {
-            it(`render and snapshot treat ${label} as no results`, async () => {
+            it(`render treats ${label} as no results and snapshot refuses it`, async () => {
                 await seed();
                 await setRaw('row-primary', text);
                 await db().update(schema.inspections).set({ templateSnapshot: SNAP as never }).where(eq(schema.inspections.id, INSPECTION));
                 const before = await rawData('row-primary');
                 await expect(new InspectionService(b.DB).getReportData(INSPECTION, TENANT)).resolves.toBeTruthy();
                 const svc = new ReportVersionService(b.DB, 'test-key-encryption-secret-0123456789');
-                await svc.snapshotOnPublish(TENANT, INSPECTION, 'u1');
-                const r = await db().select().from(schema.reportVersions).get();
-                expect(JSON.parse(r!.snapshotJson).data).toEqual({});
+                await expect(svc.snapshotOnPublish(TENANT, INSPECTION, 'u1')).rejects.toMatchObject({ status: 409 });
+                expect(await db().select().from(schema.reportVersions).all()).toEqual([]);
                 expect(await rawData('row-primary')).toBe(before);
             });
         }
@@ -502,6 +504,77 @@ describe('results are read and written for one report', () => {
             await expect(new InspectionService(b.DB).switchRatingSystem(INSPECTION, TENANT, 'rs-new', 'remap'))
                 .rejects.toMatchObject({ status: 409, details: { reason: 'ambiguous_results_rows' } });
             expect(await inspectionSnapshot()).toBe(snapBefore);
+            expect((await b.DB.prepare('SELECT * FROM inspection_results ORDER BY id').all()).results).toEqual(rowsBefore);
+        });
+    });
+    describe('publish refuses a results row it cannot read, before anything changes', () => {
+        const SNAP = JSON.stringify({ ratingSystem: { name: 'r', levels: [{ id: 'A', label: 'A', severity: 'good' }] }, sections: [] });
+        const publisher = () => new InspectionPublishService(b.DB, undefined, undefined, undefined, undefined, new InspectionService(b.DB));
+        const opts = (reportId?: string) => ({ theme: 'modern', requireSignature: false, requirePayment: false, reportId });
+        const rowsOf = async (sql: string) => (await b.DB.prepare(sql).all()).results;
+        const state = async () => ({
+            insp: await rowsOf('SELECT report_status FROM inspections'),
+            reports: await rowsOf('SELECT * FROM reports ORDER BY id'),
+            versions: await rowsOf('SELECT id FROM report_versions'),
+            logs: await rowsOf('SELECT id FROM automation_logs'),
+            notifications: await rowsOf('SELECT id FROM notifications'),
+        });
+
+        for (const [label, text] of [['malformed JSON', '{not json'], ['a scalar', '5']] as const) {
+            it(`${label}: 409, nothing changes`, async () => {
+                await seed();
+                await b.DB.prepare('UPDATE inspection_results SET data = ? WHERE id = ?').bind(text, 'row-primary').run();
+                const before = await state();
+                await expect(publisher().publishInspection(INSPECTION, TENANT, opts(PRIMARY))).rejects.toMatchObject({ status: 409 });
+                expect(await state()).toEqual(before);
+            });
+        }
+
+        it('two NULL rows: 409, nothing changes', async () => {
+            await seed({ legacyNullRow: true });
+            await b.DB.prepare('INSERT INTO inspection_results (id, tenant_id, inspection_id, report_id, data, last_synced_at) VALUES (?, ?, ?, NULL, ?, ?)')
+                .bind('row-null-2', TENANT, INSPECTION, '{}', Date.now()).run();
+            const before = await state();
+            await expect(publisher().publishInspection(INSPECTION, TENANT, opts())).rejects.toMatchObject({ status: 409 });
+            expect(await state()).toEqual(before);
+        });
+
+        it('a normal row publishes', async () => {
+            await seed();
+            await db().update(schema.inspections).set({ templateSnapshot: SNAP as never }).where(eq(schema.inspections.id, INSPECTION));
+            await publisher().publishInspection(INSPECTION, TENANT, opts(PRIMARY));
+            expect((await state()).insp).toEqual([{ report_status: 'published' }]);
+        });
+
+        it('a sole NULL row publishes', async () => {
+            await seed({ legacyNullRow: true });
+            await publisher().publishInspection(INSPECTION, TENANT, opts());
+            expect((await state()).insp).toEqual([{ report_status: 'published' }]);
+        });
+    });
+
+    describe('a collaboration socket on a document with no report id', () => {
+        it('is closed with the dedicated code and nothing is applied or written', async () => {
+            await seed();
+            const stub = b.INSPECTION_DOC.get(b.INSPECTION_DOC.idFromName('doc-socket-no-report'));
+            const rowsBefore = (await b.DB.prepare('SELECT * FROM inspection_results ORDER BY id').all()).results;
+            const out = await runInDurableObject(stub, async (inst, state) => {
+                const o = inst as unknown as { tenantId: string | null; inspectionId: string | null; reportId: string | null; doc: Y.Doc };
+                o.tenantId = TENANT; o.inspectionId = INSPECTION; o.reportId = null;
+                const client = new Y.Doc();
+                client.getMap('probe').set('k', 'v');
+                const frame = encoding.createEncoder();
+                encoding.writeVarUint(frame, 0);
+                syncProtocol.writeUpdate(frame, Y.encodeStateAsUpdate(client));
+                const closed: Array<{ code?: number; reason?: string }> = [];
+                const ws = { send: () => undefined, close: (code?: number, reason?: string) => { closed.push({ code, reason }); } };
+                const buf = encoding.toUint8Array(frame);
+                await (inst as unknown as InspectionDocDO).webSocketMessage(ws as never, buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer);
+                if (o.doc.share.has('probe')) throw new Error('update was applied');
+                return { closed, stored: await state.storage.list() };
+            });
+            expect(out.closed).toEqual([{ code: WS_CLOSE_NO_REPORT, reason: expect.any(String) }]);
+            expect(out.stored.size).toBe(0);
             expect((await b.DB.prepare('SELECT * FROM inspection_results ORDER BY id').all()).results).toEqual(rowsBefore);
         });
     });

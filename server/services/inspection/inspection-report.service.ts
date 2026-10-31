@@ -707,8 +707,7 @@ export class InspectionReportService extends InspectionSubService {
 
         // Extract _inspector_signature from the already-loaded results row.
         type InspectorSig = { signatureBase64?: string | null; signedAt?: number | null; userId?: string | null; auto?: boolean };
-        const resultsData = resultsRow?.data as Record<string, unknown> | null | undefined;
-        const rawSig = resultsData?._inspector_signature as InspectorSig | undefined;
+        const rawSig = resultData._inspector_signature as InspectorSig | undefined;
 
         // `method` is a DOMAIN state, decided
         // here where the record is, and not inferrable downstream. It used to be

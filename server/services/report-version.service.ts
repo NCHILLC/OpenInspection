@@ -12,7 +12,7 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { and, eq, desc, or, isNull } from 'drizzle-orm';
 import { reports, reportVersions, inspections, inspectionUnits, users, inspectionInspectors, templates, tenantConfigs } from '../lib/db/schema';
-import { selectReportResultsRow, readResultsDataOrEmpty } from '../lib/inspection/report-results';
+import { selectReportResultsRow, requireResultsData } from '../lib/inspection/report-results';
 import { computeDiff, SNAPSHOT_SCHEMA_VERSION, type Snapshot, type SnapshotInspector, type DiffPayload } from '../lib/version-diff';
 import { CredentialService } from './credential.service';
 import { resolveProfile } from '../lib/report-style/resolve';
@@ -92,9 +92,8 @@ export class ReportVersionService {
 
         // This report's document only, never a sibling's.
         const results = await selectReportResultsRow(db, tenantId, inspectionId, targetReportId);
-        // Same validated reader as every other path: an unreadable row snapshots as
-        // no results (logged, ids only) instead of throwing or casting a scalar.
-        const data = readResultsDataOrEmpty(results?.data, { tenantId, inspectionId, reportId: targetReportId }) as ResultsData;
+        // An unreadable row is never frozen as {}: the snapshot is a permanent record.
+        const data = (results ? requireResultsData(results.data) : {}) as ResultsData;
 
         const units = await db.select().from(inspectionUnits)
             .where(and(eq(inspectionUnits.tenantId, tenantId), eq(inspectionUnits.inspectionId, inspectionId)))

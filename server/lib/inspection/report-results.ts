@@ -151,6 +151,25 @@ export function requireResultsData(value: unknown): Record<string, unknown> {
     return read.data;
 }
 
+/**
+ * The publish gate: the target report's document as an object, or a coded 409
+ * (ambiguous or unreadable) before the caller changes anything. No row at all is
+ * an empty document, as it always was.
+ */
+export async function requireReportResultsForPublish(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    db: DrizzleD1Database<any>,
+    tenantId: string,
+    inspectionId: string,
+    reportId: string | null,
+): Promise<{ row: ReportResultsRow | null; data: Record<string, unknown> }> {
+    const { row, ambiguous } = await resolveReportResults(db, tenantId, inspectionId, reportId);
+    if (ambiguous) {
+        throw new AppError(409, ErrorCode.CONFLICT, 'This inspection holds more than one unassigned results row', { reason: AMBIGUOUS_RESULTS_REASON });
+    }
+    return { row, data: row ? requireResultsData(row.data) : {} };
+}
+
 /** For read-only paths: an unreadable row reads as no row, and the reason is logged (ids only). */
 export function readResultsDataOrEmpty(value: unknown, ids: Record<string, unknown>): Record<string, unknown> {
     const read = readResultsData(value);

@@ -211,6 +211,9 @@ function isNonEmptyProjection(value: unknown): value is ResultsProjection {
 
 // ─── InspectionDocDO ─────────────────────────────────────────────────────────
 
+/** Close code for a socket on a document with no report id: the client reconnects. */
+export const WS_CLOSE_NO_REPORT = 4409;
+
 export class InspectionDocDO extends DurableObject<AppEnv> {
     /**
      * The live authoritative Y.Doc. NOT `readonly` — restore swaps in a fresh
@@ -530,6 +533,14 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
     // ── WebSocket hibernation handlers ────────────────────────────────────────
 
     async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
+        // A document that was never given a report id cannot say whose it is, so
+        // it applies nothing. Closing (rather than ignoring) makes the client
+        // reconnect through fetch to the report-named document, where its Yjs
+        // state merges. The close code is not an auth failure and wipes nothing.
+        if (!this.reportId) {
+            try { ws.close(WS_CLOSE_NO_REPORT, 'no report id; reconnect'); } catch { /* already closed */ }
+            return;
+        }
         // Only binary frames carry y-protocols messages.
         if (typeof raw === 'string') return;
 
@@ -629,9 +640,9 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
             return;
         }
         // No report id: this document cannot say whose row it is, so D1 is never
-        // written from it. DO storage above still saved it. Nothing repairs such an
-        // object: clients connect to the report-named document, so a DO that never
-        // received a report id simply stops receiving edits.
+        // written from it. DO storage above still saved it. Sockets on such an
+        // object are closed with WS_CLOSE_NO_REPORT on their first message, so
+        // clients move to the report-named document and merge their state there.
         logger.warn('collab persist: no report id, D1 not written', { tenantId, inspectionId });
     }
 
