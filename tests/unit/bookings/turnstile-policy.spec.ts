@@ -16,19 +16,24 @@
  * thing that used to be duplicated as an `if` at each call site. Two copies of
  * a security condition is how one of them ends up missing the next rule.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
-    resolveTurnstile, resolveTurnstileSiteKey,
+    resolveTurnstile, resolveTurnstileSiteKey, refuseIfUnavailable,
     TURNSTILE_TEST_SECRET_KEY, TURNSTILE_TEST_SITE_KEY,
 } from '../../../server/lib/middleware/bot-protection';
 
-const SAAS = { APP_MODE: 'saas' };
-const STANDALONE = { APP_MODE: 'standalone' };
+// A local build sets ENVIRONMENT=development in .dev.vars; everything else,
+// including an absent value, is production.
+const DEV = { ENVIRONMENT: 'development' };
+const PRODUCTION = { ENVIRONMENT: 'production' };
+const SAAS = { APP_MODE: 'saas', ...DEV };
+const SAAS_PROD = { APP_MODE: 'saas', ...PRODUCTION };
+const STANDALONE = { APP_MODE: 'standalone', ...PRODUCTION };
 
 describe('saas always challenges', () => {
     it('uses the configured secret when there is one', () => {
         const p = resolveTurnstile({ ...SAAS, TURNSTILE_SECRET_KEY: '0x-real-secret' });
-        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false });
+        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false, unavailable: false });
     });
 
     it('falls back to the published test key rather than skipping', () => {
@@ -50,14 +55,81 @@ describe('saas always challenges', () => {
     });
 });
 
+// Every spec above is a local build. The profile decides what is mandatory;
+// ENVIRONMENT decides whether it is production, and absent means production.
+describe('saas production refuses every published test secret', () => {
+    it('refuses to fall back to the test key when no secret is set', () => {
+        const p = resolveTurnstile(SAAS_PROD);
+        expect(p).toEqual({ enforced: true, secret: '', usingTestKey: false, unavailable: true });
+        expect(() => refuseIfUnavailable(p, 'x.unavailable')).toThrow(/not configured/);
+    });
+
+    it('refuses the test secret even when it is configured by hand', () => {
+        const p = resolveTurnstile({ ...SAAS_PROD, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRET_KEY });
+        expect(p.unavailable).toBe(true);
+        expect(p.secret).toBe('');
+    });
+
+    it('still uses a real secret', () => {
+        const p = resolveTurnstile({ ...SAAS_PROD, TURNSTILE_SECRET_KEY: '0x-real-secret' });
+        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false, unavailable: false });
+        expect(() => refuseIfUnavailable(p, 'x.unavailable')).not.toThrow();
+    });
+
+    it.each([
+        ['always-pass', '1x0000000000000000000000000000000AA'],
+        ['always-fail', '2x0000000000000000000000000000000AA'],
+        ['token-already-spent', '3x0000000000000000000000000000000AA'],
+    ])('refuses the %s test secret', (_name, secret) => {
+        const p = resolveTurnstile({ ...SAAS_PROD, TURNSTILE_SECRET_KEY: secret });
+        expect(p.unavailable).toBe(true);
+        expect(p.secret).toBe('');
+    });
+
+    it('treats an absent ENVIRONMENT as production', () => {
+        expect(resolveTurnstile({ APP_MODE: 'saas' }).unavailable).toBe(true);
+    });
+
+    it('does not read a mistyped dev value as development', () => {
+        expect(resolveTurnstile({ APP_MODE: 'saas', ENVIRONMENT: 'dev' }).unavailable).toBe(true);
+    });
+
+    it('offers no widget while the submit would be refused', () => {
+        expect(resolveTurnstileSiteKey(SAAS_PROD)).toBeNull();
+    });
+
+    it('logs the event without the key', () => {
+        const spy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+        try {
+            const env = { ...SAAS_PROD, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRET_KEY };
+            expect(() => refuseIfUnavailable(resolveTurnstile(env), 'x.unavailable')).toThrow();
+            const logged = spy.mock.calls.map((c) => String(c[0])).join('\n');
+            expect(logged).toContain('x.unavailable');
+            expect(logged).not.toContain(TURNSTILE_TEST_SECRET_KEY);
+        } finally { spy.mockRestore(); }
+    });
+});
+
+describe('standalone production is unchanged', () => {
+    it('may run without Turnstile', () => {
+        expect(resolveTurnstile(STANDALONE)).toEqual({ enforced: false, secret: '', usingTestKey: false, unavailable: false });
+        expect(resolveTurnstileSiteKey(STANDALONE)).toBeNull();
+    });
+
+    it('keeps whatever secret the operator set, test key included', () => {
+        const p = resolveTurnstile({ ...STANDALONE, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRET_KEY });
+        expect(p).toEqual({ enforced: true, secret: TURNSTILE_TEST_SECRET_KEY, usingTestKey: false, unavailable: false });
+    });
+});
+
 describe('standalone leaves it to the operator', () => {
     it('enforces when the operator configured a secret', () => {
         const p = resolveTurnstile({ ...STANDALONE, TURNSTILE_SECRET_KEY: '0x-real-secret' });
-        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false });
+        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false, unavailable: false });
     });
 
     it('does not challenge when they did not', () => {
-        expect(resolveTurnstile(STANDALONE)).toEqual({ enforced: false, secret: '', usingTestKey: false });
+        expect(resolveTurnstile(STANDALONE)).toEqual({ enforced: false, secret: '', usingTestKey: false, unavailable: false });
     });
 
     it('defaults to standalone when APP_MODE is absent', () => {

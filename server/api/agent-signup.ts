@@ -2,7 +2,7 @@ import { createRoute, z } from '@hono/zod-openapi';
 import { createApiRouter } from '../lib/openapi-router';
 import { setCookie } from 'hono/cookie';
 import { Errors } from '../lib/errors';
-import { verifyTurnstile, resolveTurnstile, TURNSTILE_TEST_KEY_WARNING } from '../lib/middleware/bot-protection';
+import { verifyTurnstile, resolveTurnstile, refuseIfUnavailable, TURNSTILE_TEST_KEY_WARNING } from '../lib/middleware/bot-protection';
 import { signJwt } from '../lib/jwt-keyring';
 import { logger } from '../lib/logger';
 import { withMcpMetadata } from "../lib/route-metadata-standards";
@@ -130,6 +130,7 @@ const agentSignupRoutes = createApiRouter()
         // published test key when unconfigured, so the path stays live),
         // standalone leaves it to the operator. See `resolveTurnstile`.
         const turnstile = resolveTurnstile(c.env);
+        refuseIfUnavailable(turnstile, 'agent.signup.turnstile.unavailable');
         if (turnstile.enforced) {
             if (turnstile.usingTestKey) {
                 logger.warn('agent.signup.turnstile.test_key', { detail: TURNSTILE_TEST_KEY_WARNING });

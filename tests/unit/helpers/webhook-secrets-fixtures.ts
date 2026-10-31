@@ -18,6 +18,9 @@ import { createHarness, TENANT_ID, type Harness, type HarnessMode } from './tena
  */
 export async function webhookHarness(mode: HarnessMode): Promise<Harness> {
     const h = await createHarness(mode);
+    // A local build: the saas profile tolerates the missing limiter binding and honours
+    // DISABLE_RATE_LIMIT only here. Production-profile behaviour has its own spec.
+    Object.assign(h.env, { ENVIRONMENT: 'development' });
     const kv = h.env.TENANT_CACHE as unknown as { get: Mock };
     const inner = kv.get.getMockImplementation()!;
     kv.get.mockImplementation(async (key: string, opts?: { type?: string }) => {

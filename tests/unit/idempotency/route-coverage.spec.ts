@@ -129,7 +129,10 @@ const mounted = new Set(
 );
 
 /** The env every row is issued with. See the docblock for why `saas`. */
-const SAAS_ENV = { APP_MODE: 'saas', DB: {}, JWT_SECRET: 'x' };
+// ENVIRONMENT=development is a local build: it has no rate-limit binding, and
+// on a production saas build that absence refuses webhook ingress before the
+// idempotency claim. This spec proves claims, not protection.
+const SAAS_ENV = { APP_MODE: 'saas', ENVIRONMENT: 'development', DB: {}, JWT_SECRET: 'x' };
 
 function request(row: Pick<Row, 'method' | 'concrete'>, key: string | null) {
     return app.request(

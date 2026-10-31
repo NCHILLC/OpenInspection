@@ -65,9 +65,10 @@ describe('the OpenAPI document cannot be used as a CPU lever', () => {
         expect(SRC).toMatch(/import \{[^}]*checkRateLimit[^}]*\} from '\.\/lib\/rate-limit'/);
     });
 
-    it('the shared limiter still fails OPEN without a binding, which is why the header matters', () => {
+    it('the shared limiter still fails OPEN without a binding off saas production, which is why the header matters', () => {
         // Read from the limiter itself, not restated. `checkRateLimit` no-ops
-        // when `RATE_LIMITER` is absent — correct for local dev, and the reason
+        // when `RATE_LIMITER` is absent unless protection is mandatory and the build
+        // is not local — correct for local dev and standalone, and the reason
         // the cache header is not redundant with it: on a deployment with no
         // binding provisioned, the header is the only mitigation in place.
         const limiter = readFileSync(
@@ -76,6 +77,6 @@ describe('the OpenAPI document cannot be used as a CPU lever', () => {
         );
         // The default limiter is the one `checkRateLimit` falls back to, and an
         // absent binding returns before anything is counted.
-        expect(limiter).toMatch(/:\s*c\.env\.RATE_LIMITER;\s*if \(!binding\)\s*return/);
+        expect(limiter).toMatch(/:\s*c\.env\.RATE_LIMITER;[\s\S]*?if \(!binding\) \{\s*if \(!guarded\) return;/);
     });
 });
