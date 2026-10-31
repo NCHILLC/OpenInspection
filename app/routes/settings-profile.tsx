@@ -17,6 +17,7 @@ import { SectionNav } from "~/components/settings/SectionNav";
 import { CredentialsEditor, type EditorCredential } from "~/components/settings/CredentialsEditor";
 import { NotificationPreferencesCard } from "~/components/settings/NotificationPreferencesCard";
 import { ProfilePhotoCard } from "~/components/settings/ProfilePhotoCard";
+import { FieldLogCard } from "~/components/settings/FieldLogCard";
 import { EmailSignatureCard, SavedSignatureCard } from "~/components/settings/SignatureCards";
 import { InspectorIdentityFields } from "~/components/settings/InspectorIdentityFields";
 import { useNotificationSaveToast } from "~/hooks/useNotificationSaveToast";
@@ -505,6 +506,8 @@ export default function SettingsProfilePage() {
           now lives in Settings → Booking ("Your links"). */}
 
       <ProfilePhotoCard photoUrl={profile.photoUrl ?? null} />
+
+      <FieldLogCard />
 
       {/* Email signature (business-card footer) — independent of Point of Contact */}
       <EmailSignatureCard

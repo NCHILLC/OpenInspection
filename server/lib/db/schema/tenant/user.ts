@@ -129,6 +129,8 @@ export const users = sqliteTable('users', {
     // Appended at END — users is FK-referenced, so a mid-table insert would
     // make drizzle rebuild the whole table.
     serviceOriginAddress: text('service_origin_address'),
+    // Field log opt-in (`field_log_events`). Off unless the user turns it on.
+    fieldLogEnabled: integer('is_field_log_enabled', { mode: 'boolean' }).notNull().default(false),
     // Geocoded from the address by PUT /api/admin/booking-routing/service-origin
     // — and NULL while the address itself is set, whenever that address did not
     // geocode. That pair is deliberate: the typed address is still stored so the

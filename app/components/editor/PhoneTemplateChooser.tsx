@@ -1,3 +1,4 @@
+import { logFieldEvent } from "~/lib/field-log";
 import { useEffect, useState } from "react";
 import { useFetcher } from "react-router";
 import { Button, Icon } from "@core/shared-ui";
@@ -77,6 +78,7 @@ function PhoneTemplateChooser({ inspection }: { inspection: Record<string, unkno
     const summary = orderSummary(inspection);
     const failed = apply.state === "idle" && apply.data?.ok === false;
     const start = () => {
+        if (picked) logFieldEvent("action", "template_pick");
         if (picked) submit({ intent: "save-settings", payload: JSON.stringify({ templateId: picked }) }, { method: "post" });
     };
 

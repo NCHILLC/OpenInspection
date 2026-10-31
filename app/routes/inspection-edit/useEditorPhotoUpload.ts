@@ -7,6 +7,7 @@ import { appendPendingPhotoToDefect } from "~/lib/collab/defect-photo-binding";
 import { enqueueMedia } from "~/lib/collab/media-upload-queue";
 import { preprocessImage } from "~/components/media-studio/preprocessImage";
 import { m } from "~/paraglide/messages";
+import { logFieldEvent } from "~/lib/field-log";
 import { originalQualityEnabled } from "./original-quality";
 import type { useInspectionState } from "~/hooks/useInspection";
 import type { useFindings } from "~/hooks/useFindings";
@@ -230,6 +231,7 @@ export function useEditorPhotoUpload({
             const all = Array.from(e.target.files ?? []);
             const itemId = pickerItemIdRef.current ?? state.activeItemId;
             if (all.length === 0 || !itemId) return;
+            logFieldEvent("action", "photo_add");
             // The cap is a Worker subrequest guard on the FETCHER path, where one
             // submission fans out one upstream call per file. Kept for the library
             // picker, which is the only way to hand over 20+ files at once.
