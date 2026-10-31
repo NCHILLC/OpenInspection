@@ -17,6 +17,7 @@ vi.mock('../../../server/services/inspection/automation-fire', () => ({ fireAuto
 import { drizzle as mockDrizzle } from 'drizzle-orm/d1';
 const { applyIsnOrder } = await import('../../../server/services/isn/order-apply');
 const { isnReadyChecks } = await import('../../../server/services/isn/ready-check');
+const { requireTemplateSnapshot } = await import('../../../server/services/inspection/shared');
 
 const TENANT = 't-isn';
 const CFG = { domain: 'https://isn.test', companyKey: 'co', accessKey: 'isn-access-7Qm2xKd', secretKey: 'isn-secret-9Zp4vLc' };
@@ -216,6 +217,56 @@ describe('applyIsnOrder', () => {
         await db.update(schema.inspections).set({ inspectorId: 'u-lead' }).where(eq(schema.inspections.id, id));
         await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: id, payload: { ...ORDER, squarefeet: '', county: '', inspector1: 'isn-user-unknown', inspector2: '' } });
         expect(inspectionRow(id)).toMatchObject({ sqft: 3121, addressCounty: 'Gaston', inspectorId: 'u-lead' });
+    });
+
+    describe('an order first seen as an online-booking draft', () => {
+        const DRAFT = { ...ORDER, client: '', buyersagent: '', services: [] };
+        const seedTemplate = async () => {
+            await db.insert(schema.templates).values({ id: 'tpl-ess', tenantId: TENANT, name: 'Essential', slug: 'ess', version: 4, schema: { schemaVersion: 2, sections: [{ id: 's1', title: 'Roof', items: [] }] }, createdAt: new Date() } as never);
+            await db.update(schema.services).set({ templateId: 'tpl-ess' }).where(eq(schema.services.id, 'svc-ess'));
+            await db.update(schema.isnOrders).set({ payload: DRAFT });
+        };
+        const peopleEmails = (id: string) => db.select({ email: schema.contacts.email }).from(schema.inspectionPeople)
+            .innerJoin(schema.contacts, eq(schema.contacts.id, schema.inspectionPeople.contactId))
+            .where(eq(schema.inspectionPeople.inspectionId, id)).all().map((p) => p.email).sort();
+        const serviceIds = (id: string) => db.select().from(schema.inspectionServices)
+            .where(eq(schema.inspectionServices.inspectionId, id)).all().map((s) => s.serviceId);
+
+        it('a later delivery fills in the client, agent, services and template, and prices the new line', async () => {
+            await seedTemplate();
+            const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: DRAFT }))!;
+            expect(peopleEmails(id)).toEqual([]);
+            expect(serviceIds(id)).toEqual([]);
+
+            await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: id, payload: { ...ORDER, totalfee: '425.00' } });
+
+            expect(peopleEmails(id)).toEqual(['ann@realty.test', 'pat@buyer.test']);
+            expect(serviceIds(id)).toEqual(['svc-ess']);
+            const row = inspectionRow(id)!;
+            expect(row).toMatchObject({ templateId: 'tpl-ess', templateSnapshotVersion: 4 });
+            expect(requireTemplateSnapshot(row, TENANT).sections.map((s) => s.title)).toEqual(['Roof']);
+            expect(db.select().from(schema.inspectionServices).where(eq(schema.inspectionServices.inspectionId, id)).get()?.priceOverride).toBe(42500);
+        });
+
+        it('a template picked in OI meanwhile stays, and the filled lines do not double on the next delivery', async () => {
+            await seedTemplate();
+            const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: DRAFT }))!;
+            await db.insert(schema.templates).values({ id: 'tpl-picked', tenantId: TENANT, name: 'Picked', slug: 'picked', schema: { sections: [] }, createdAt: new Date() } as never);
+            await db.update(schema.inspections).set({ templateId: 'tpl-picked' }).where(eq(schema.inspections.id, id));
+            await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: id, payload: ORDER });
+            await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: id, payload: ORDER });
+            expect(inspectionRow(id)?.templateId).toBe('tpl-picked');
+            expect(serviceIds(id)).toEqual(['svc-ess']);
+            expect(peopleEmails(id)).toHaveLength(2);
+        });
+    });
+
+    it('a later delivery never replaces the people or services an inspection already has', async () => {
+        await db.insert(schema.services).values({ id: 'svc-flex', tenantId: TENANT, name: 'FlexFund', price: 0, active: true, sortOrder: 1, createdAt: new Date() } as never);
+        const id = (await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: null, payload: { ...ORDER, services: [ORDER.services[0]] } }))!;
+        // 'isn-client-unknown' would throw if it were looked up.
+        await applyIsnOrder(D1, TENANT, CFG, { id: 'row1', inspectionId: id, payload: { ...ORDER, client: 'isn-client-unknown' } });
+        expect(db.select().from(schema.inspectionServices).where(eq(schema.inspectionServices.inspectionId, id)).all().map((s) => s.serviceId)).toEqual(['svc-ess']);
     });
 
     it('an order reinstated in ISN is scheduled again', async () => {
