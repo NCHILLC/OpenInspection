@@ -1,5 +1,7 @@
 import { Form, useFetcher } from "react-router";
 import { SecretField } from "~/components/SecretField";
+import { TestConnectionButton } from "~/components/settings/TestConnectionButton";
+import { ConnectionTestStatus, type ConnectionTestResult } from "~/components/settings/ConnectionTestStatus";
 import { m } from "~/paraglide/messages";
 
 export const ISN_SECRET_KEYS = ["ISN_DOMAIN", "ISN_COMPANY_KEY", "ISN_ACCESS_KEY", "ISN_SECRET_KEY"] as const;
@@ -7,14 +9,18 @@ export type IsnSecrets = Record<(typeof ISN_SECRET_KEYS)[number], string>;
 
 interface IsnPanelProps {
   secrets: IsnSecrets;
+  /** Intake state from the server's own check (deployment env merged with stored values); null when it could not be read. */
+  intake: { keysSet: boolean; secretSet: boolean; intakeOn: boolean } | null;
+  testResults?: ConnectionTestResult[];
   fieldError: (name: string) => string | undefined;
   saving: boolean;
 }
 
 /** ISN (Inspection Support Network): the company's credentials. */
-export function IsnPanel({ secrets, fieldError, saving }: IsnPanelProps) {
+export function IsnPanel({ secrets, intake, testResults = [], fieldError, saving }: IsnPanelProps) {
   // Its own fetcher: the result stays in this panel instead of the page's save flash.
-  const pull = useFetcher<{ success: boolean; error: string | null; pull?: { processed: number; nextCursor: string | null } }>();
+  const pull = useFetcher<{ success: boolean; error: string | null; pull?: { processed: number; failed: number; nextCursor: string | null } }>();
+  const test = useFetcher<{ intent: string; success: boolean; error: string | null; isnTest?: { intakeOn: boolean } }>();
   const pulled = pull.state === "idle" ? pull.data : undefined;
   return (
     <section className="bg-ih-bg-card rounded-lg border border-ih-border p-6 space-y-5">
@@ -37,6 +43,22 @@ export function IsnPanel({ secrets, fieldError, saving }: IsnPanelProps) {
           </button>
         </div>
       </Form>
+      {intake && (
+        <p className={`text-[13px] ${intake.intakeOn ? "text-ih-ok-fg" : "text-ih-fg-3"}`}>
+          {intake.intakeOn ? m.settings_isn_intake_on()
+            : intake.keysSet ? m.settings_isn_intake_keys_only()
+            : intake.secretSet ? m.settings_isn_intake_secret_only()
+            : m.settings_isn_intake_unset()}
+        </p>
+      )}
+      <TestConnectionButton fetcher={test} intent="test-isn">
+        {test.state === "idle" && test.data?.intent === "test-isn" && (
+          test.data.success
+            ? <span className="text-[12px] text-ih-ok-fg">{m.settings_isn_test_ok()}</span>
+            : <span className="text-[12px] text-ih-bad-fg">{test.data.error}</span>
+        )}
+      </TestConnectionButton>
+      <ConnectionTestStatus results={testResults} target="isn" />
       <pull.Form method="post" className="space-y-3 max-w-xl pt-4 border-t border-ih-border">
         <input type="hidden" name="intent" value="pull-isn" />
         <input type="hidden" name="cursor" value={pulled?.pull?.nextCursor ?? ""} />
@@ -46,11 +68,13 @@ export function IsnPanel({ secrets, fieldError, saving }: IsnPanelProps) {
           {pull.state !== "idle" ? m.settings_isn_pull_pulling() : m.settings_isn_pull_button()}
         </button>
         {pulled && (
-          <p role="status" className={`text-[13px] ${pulled.success ? "text-ih-fg-2" : "text-ih-bad-fg"}`}>
+          <p role="status" className={`text-[13px] ${pulled.success && !pulled.pull?.failed ? "text-ih-fg-2" : "text-ih-bad-fg"}`}>
             {pulled.pull
-              ? pulled.pull.nextCursor
-                ? m.settings_isn_pull_more({ count: pulled.pull.processed })
-                : m.settings_isn_pull_done({ count: pulled.pull.processed })
+              ? pulled.pull.failed
+                ? m.settings_isn_pull_failed({ count: pulled.pull.processed, failed: pulled.pull.failed })
+                : pulled.pull.nextCursor
+                  ? m.settings_isn_pull_more({ count: pulled.pull.processed })
+                  : m.settings_isn_pull_done({ count: pulled.pull.processed })
               : pulled.error}
           </p>
         )}

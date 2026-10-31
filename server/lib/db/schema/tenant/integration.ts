@@ -293,7 +293,7 @@ export const integrationTestResults = sqliteTable('integration_test_results', {
     id:             text('id').primaryKey(),
     tenantId:       text('tenant_id').notNull(),
     // Which integration was probed. Schema Rules: state/category column declares its enum.
-    target:         text('target', { enum: ['sms', 'email', 'stripe', 'gemini'] }).notNull(),
+    target:         text('target', { enum: ['sms', 'email', 'stripe', 'gemini', 'isn'] }).notNull(),
     // Optional provider variant within a target (e.g. twilio/telnyx, resend/sendgrid/
     // postmark/mailgun). NULL for single-provider targets (stripe, gemini).
     provider:       text('provider'),

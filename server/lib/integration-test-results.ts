@@ -16,7 +16,7 @@ import { integrationTestResults } from './db/schema';
 
 type Db = ReturnType<typeof drizzle>;
 
-export type IntegrationTarget = 'sms' | 'email' | 'stripe' | 'gemini';
+export type IntegrationTarget = 'sms' | 'email' | 'stripe' | 'gemini' | 'isn';
 
 /** How many recent results to retain per (tenant, target). */
 export const KEEP_PER_TARGET = 5;

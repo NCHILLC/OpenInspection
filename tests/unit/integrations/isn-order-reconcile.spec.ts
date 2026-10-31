@@ -15,10 +15,11 @@ let secrets: Record<string, string> | null = null;
 vi.mock('../../../server/lib/secrets-cache', () => ({ loadTenantSecrets: async () => secrets }));
 import { drizzle as mockDrizzle } from 'drizzle-orm/d1';
 const { reconcileIsnOrders, STALE_CLAIM_MS } = await import('../../../server/services/isn/order-reconcile');
+const { isnConfig, isnCall } = await import('../../../server/services/isn/api-base');
 const { isnOrderReconcileJob } = await import('../../../server/cron/jobs/integrations');
 
 const TENANT = 't-isn';
-const CFG = { domain: 'https://isn.test', companyKey: 'co', accessKey: 'a', secretKey: 's' };
+const CFG = { domain: 'https://isn.test', companyKey: 'co', accessKey: 'isn-access-7Qm2xKd', secretKey: 'isn-secret-9Zp4vLc' };
 const NOW = new Date('2026-10-25T12:00:00Z');
 const D1 = {} as D1Database;
 
@@ -52,12 +53,12 @@ describe('reconcileIsnOrders', () => {
         listed = [{ id: 'c', modified: '1' }, { id: 'a', modified: '1' }, { id: 'b', modified: '1' }];
         const first = await reconcileIsnOrders(D1, TENANT, CFG, null, 2, NOW);
         expect(pulled()).toEqual(['a', 'b']);
-        expect(first).toEqual({ processed: 2, nextCursor: 'b' });
+        expect(first).toEqual({ processed: 2, failed: 0, nextCursor: 'b' });
 
         pull.mockClear();
         const second = await reconcileIsnOrders(D1, TENANT, CFG, first.nextCursor, 2, NOW);
         expect(pulled()).toEqual(['c']);
-        expect(second).toEqual({ processed: 1, nextCursor: null });
+        expect(second).toEqual({ processed: 1, failed: 0, nextCursor: null });
     });
 
     it('pulls only orders that changed in ISN or never became an inspection', async () => {
@@ -76,12 +77,30 @@ describe('reconcileIsnOrders', () => {
         expect(pulled().sort()).toEqual(['changed', 'failed-create', 'new']);
     });
 
+    it('an ISN error logged for a failed pull carries no configured credential', async () => {
+        const SECRET = 'secret-Xw2-Rt8nBc4';
+        const cfg = isnConfig({ ISN_DOMAIN: 'https://isn.test', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'a-key-1', ISN_SECRET_KEY: SECRET, ISN_WEBHOOK_SECRET: 'whsec-Hj5' })!;
+        listed = [{ id: 'a', modified: '1' }];
+        let calls = 0;
+        fetchMock.mockImplementation(async () => (++calls === 1
+            ? new Response(JSON.stringify({ status: 'ok', orders: listed }))
+            : new Response(`${'x'.repeat(190)}${SECRET} and whsec-Hj5`, { status: 502 })));
+        pull.mockImplementationOnce(async () => { await isnCall(cfg, 'GET', '/orders/a'); return 'a'; });
+        const lines: string[] = [];
+        const spies = (['info', 'warn', 'error'] as const).map((m) => vi.spyOn(console, m).mockImplementation((...a: unknown[]) => { lines.push(JSON.stringify(a)); }));
+        try { await reconcileIsnOrders(D1, TENANT, cfg, null, 5, NOW); } finally { spies.forEach((s) => s.mockRestore()); }
+        const logged = lines.join('\n');
+        expect(logged).toContain('order pull failed');
+        expect(logged).not.toMatch(/secret-|whsec-/);
+        fetchMock.mockImplementation(async () => new Response(JSON.stringify({ status: 'ok', orders: listed })));
+    });
+
     it('keeps going past an order whose pull fails', async () => {
         listed = [{ id: 'a' }, { id: 'b' }];
         pull.mockRejectedValueOnce(new Error('ISN down'));
         const r = await reconcileIsnOrders(D1, TENANT, CFG, null, 5, NOW);
         expect(pulled()).toEqual(['a', 'b']);
-        expect(r).toEqual({ processed: 1, nextCursor: null });
+        expect(r).toEqual({ processed: 1, failed: 1, nextCursor: null });
     });
 
     it('frees a stale pending claim and leaves a fresh one alone', async () => {
@@ -95,7 +114,7 @@ describe('reconcileIsnOrders', () => {
 });
 
 describe('isnOrderReconcileJob', () => {
-    const KEYS = { ISN_DOMAIN: 'https://isn.test', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'a', ISN_SECRET_KEY: 's' };
+    const KEYS = { ISN_DOMAIN: 'https://isn.test', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'isn-access-7Qm2xKd', ISN_SECRET_KEY: 'isn-secret-9Zp4vLc' };
     const kv = new Map<string, string>();
     const env = () => ({
         DB: D1, JWT_SECRET: 'jwt',

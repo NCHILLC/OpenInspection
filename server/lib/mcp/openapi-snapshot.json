@@ -8405,6 +8405,22 @@
     "description": "Public, no-login resolution of a team-invite token into the invited email + workspace name for the /join accept page. Returns 404 for unknown/expired/used invites so the page renders its recovery state."
   },
   {
+    "operationId": "getIsnStatus",
+    "method": "GET",
+    "pathTemplate": "/api/integrations/isn/status",
+    "scopes": [
+      "admin"
+    ],
+    "tag": "integrations",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": null
+    },
+    "summary": "Whether ISN intake is on, from the keys and secret in effect",
+    "description": "Reports, from the same merged deployment and stored values the cron and Pull now use, whether the four ISN keys are set, whether ISN_WEBHOOK_SECRET is set, and whether intake is therefore on (both). Never returns a secret value."
+  },
+  {
     "operationId": "getMarketplaceLibraryReplacePreview",
     "method": "GET",
     "pathTemplate": "/api/templates/marketplace/libraries/{libraryId}/imports/replace/preview",
@@ -19429,6 +19445,22 @@
     },
     "summary": "Probe a submitted AI endpoint, model and key",
     "description": "Sends a one-token chat completion to the SUBMITTED base URL, model and key — not to a stored credential and not to a deployment default. That is the whole point: after the destination became something a workspace chooses, a probe of anything else would go green while every real call failed. Always 200; the outcome is in the body, with `field` naming which input to blame. The provider's own response body is never returned or logged."
+  },
+  {
+    "operationId": "testIsnConnection",
+    "method": "POST",
+    "pathTemplate": "/api/integrations/isn/test",
+    "scopes": [
+      "admin"
+    ],
+    "tag": "integrations",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": null
+    },
+    "summary": "Verify the stored ISN keys against ISN",
+    "description": "Makes one read-only call to ISN (the order list for today) with the tenant's STORED ISN keys, the diagnostic behind the settings-page Test connection button. On failure the error message is the one ISN returned."
   },
   {
     "operationId": "testResendConnection",
