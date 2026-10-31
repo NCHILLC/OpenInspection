@@ -40,6 +40,8 @@ import type { WorkerEnv } from "./env";
 import { cloudflareContext } from "../app/lib/load-context";
 // Imports nothing, like the three above: safe at the top level.
 import { sessionMarkerFromCookie } from "../server/lib/session-marker";
+// Imports a leaf that imports nothing: safe at the top level.
+import { securityHeadersForPage } from "../server/lib/page-response-headers";
 
 /** Hono context for this worker, so handlers need no `any`. */
 type Ctx = Context<{ Bindings: WorkerEnv }>;
@@ -104,7 +106,10 @@ const ssr = async (c: Ctx) => {
   const rendered = await paraglideMiddleware(withResolvedUiLocale(c.req.raw), ({ request }) =>
     requestHandler(request, context),
   );
-  return withSessionMarker(rendered, c.req.header("cookie"));
+  // Pages never pass through the API app's securityHeaders middleware, so they get
+  // their own set here, on the same Response: only for what is a page (not a
+  // redirect, 204/304 or an empty HTML answer).
+  return withSessionMarker(rendered, c.req.header("cookie"), securityHeadersForPage(rendered, new URL(c.req.url)));
 };
 
 /**
@@ -116,12 +121,18 @@ const ssr = async (c: Ctx) => {
  * with no session gets no header, which the worker reads as "not told", never as "signed out".
  * Only HTML documents are stamped; data responses and redirects pass through untouched.
  */
-async function withSessionMarker(response: Response, cookie: string | undefined): Promise<Response> {
+async function withSessionMarker(
+  response: Response,
+  cookie: string | undefined,
+  extraHeaders: Record<string, string> = {},
+): Promise<Response> {
   if (!(response.headers.get("content-type") ?? "").includes("text/html")) return response;
   const marker = await sessionMarkerFromCookie(cookie);
-  if (!marker) return response;
+  const headers = { ...extraHeaders, ...(marker ? { "x-oi-session": marker } : {}) };
+  if (Object.keys(headers).length === 0) return response;
+  // One new Response; the body stream is passed by reference, never read.
   const stamped = new Response(response.body, response);
-  stamped.headers.set("x-oi-session", marker);
+  for (const [name, value] of Object.entries(headers)) stamped.headers.set(name, value);
   return stamped;
 }
 

@@ -10,6 +10,7 @@
 
 import { createRoute } from '@hono/zod-openapi';
 import { createApiRouter } from '../lib/openapi-router';
+import cspReportRoutes from './csp-report';
 import { z } from '@hono/zod-openapi';
 import { eq, and } from 'drizzle-orm';
 import { inspections } from '../lib/db/schema';
@@ -85,7 +86,9 @@ const publicShareRoutes = createApiRouter()
         const url = `${baseUrl}/report/${tenantSlug}/${id}?view=agent&token=${shareToken}`;
         logger.info('Public share-token minted', { inspectionId: id, tenantId });
         return sendSuccess(c, { token: shareToken, url });
-    });
+    })
+    // The browser CSP report receiver is the other unauthenticated public POST.
+    .route('/', cspReportRoutes);
 
 export type PublicShareApi = typeof publicShareRoutes;
 
