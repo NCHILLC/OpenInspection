@@ -19,6 +19,7 @@ import { createApiRouter } from '../../lib/openapi-router';
 import { users, services as servicesTable, tenants, availability, tenantConfigs } from '../../lib/db/schema';
 import { tenantDisplayName } from '../../lib/tenant-display-name';
 import { checkRateLimit } from '../../lib/rate-limit';
+import { isLocalRequestUrl } from '../../lib/local-request';
 import { resolveTurnstileSiteKey } from '../../lib/middleware/bot-protection';
 import { getDrizzle } from '../../lib/route-helpers';
 import { hasDeclaredTenantTimeZone } from '../../lib/tz';
@@ -107,7 +108,7 @@ const bookingProfileRoutes = createApiRouter()
             success: true,
             data: {
                 company: tenantRow.name,
-                turnstileSiteKey: resolveTurnstileSiteKey(c.env),
+                turnstileSiteKey: resolveTurnstileSiteKey(c.env, isLocalRequestUrl(c.req.url)),
                 bookingOpen,
                 // Operator diagnostic, not visitor copy: the public page says
                 // only that booking is closed, and says it from `bookingOpen`.
@@ -175,7 +176,7 @@ const bookingProfileRoutes = createApiRouter()
                 name: inspector.name,
                 company: tenantRow.name,
                 avatar: inspector.photoUrl,
-                turnstileSiteKey: resolveTurnstileSiteKey(c.env),
+                turnstileSiteKey: resolveTurnstileSiteKey(c.env, isLocalRequestUrl(c.req.url)),
                 // Hours AND a declared company zone — the same two-part test the
                 // company page and the submit path apply. An hour nobody
                 // anchored is not an hour this page may offer.

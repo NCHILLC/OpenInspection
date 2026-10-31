@@ -16,9 +16,9 @@
  * thing that used to be duplicated as an `if` at each call site. Two copies of
  * a security condition is how one of them ends up missing the next rule.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
-    resolveTurnstile, resolveTurnstileSiteKey,
+    resolveTurnstile, resolveTurnstileSiteKey, refuseIfUnavailable,
     TURNSTILE_TEST_SECRET_KEY, TURNSTILE_TEST_SITE_KEY,
 } from '../../../server/lib/middleware/bot-protection';
 
@@ -27,14 +27,14 @@ const STANDALONE = { APP_MODE: 'standalone' };
 
 describe('saas always challenges', () => {
     it('uses the configured secret when there is one', () => {
-        const p = resolveTurnstile({ ...SAAS, TURNSTILE_SECRET_KEY: '0x-real-secret' });
-        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false });
+        const p = resolveTurnstile({ ...SAAS, TURNSTILE_SECRET_KEY: '0x-real-secret' }, true);
+        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false, unavailable: false });
     });
 
     it('falls back to the published test key rather than skipping', () => {
         // 🔴 The whole ruling. Before this, an unconfigured saas deployment left
         // the public booking form and agent signup open to anything.
-        const p = resolveTurnstile(SAAS);
+        const p = resolveTurnstile(SAAS, true);
         expect(p.enforced).toBe(true);
         expect(p.secret).toBe(TURNSTILE_TEST_SECRET_KEY);
         expect(p.usingTestKey).toBe(true);
@@ -44,26 +44,77 @@ describe('saas always challenges', () => {
         // An env var set to an empty string is a common deploy accident, and it
         // must not read as "a secret is present" — that would enforce against a
         // secret Cloudflare rejects, refusing every real visitor.
-        const p = resolveTurnstile({ ...SAAS, TURNSTILE_SECRET_KEY: '   ' });
+        const p = resolveTurnstile({ ...SAAS, TURNSTILE_SECRET_KEY: '   ' }, true);
         expect(p.secret).toBe(TURNSTILE_TEST_SECRET_KEY);
         expect(p.usingTestKey).toBe(true);
     });
 });
 
+// Every spec above is a developer's machine (`local = true`). The profile
+// decides what is mandatory; the request decides whether it is production.
+describe('saas off a developer machine refuses the test key', () => {
+    const PROD = false;
+
+    it('refuses to fall back to the test key when no secret is set', () => {
+        const p = resolveTurnstile(SAAS, PROD);
+        expect(p).toEqual({ enforced: true, secret: '', usingTestKey: false, unavailable: true });
+        expect(() => refuseIfUnavailable(p, 'x.unavailable')).toThrow(/not configured/);
+    });
+
+    it('refuses the test secret even when it is configured by hand', () => {
+        const p = resolveTurnstile({ ...SAAS, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRET_KEY }, PROD);
+        expect(p.unavailable).toBe(true);
+        expect(p.secret).toBe('');
+    });
+
+    it('still uses a real secret', () => {
+        const p = resolveTurnstile({ ...SAAS, TURNSTILE_SECRET_KEY: '0x-real-secret' }, PROD);
+        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false, unavailable: false });
+        expect(() => refuseIfUnavailable(p, 'x.unavailable')).not.toThrow();
+    });
+
+    it('offers no widget while the submit would be refused', () => {
+        expect(resolveTurnstileSiteKey(SAAS, PROD)).toBeNull();
+    });
+
+    it('logs the event without the key', () => {
+        const spy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+        try {
+            const env = { ...SAAS, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRET_KEY };
+            expect(() => refuseIfUnavailable(resolveTurnstile(env, PROD), 'x.unavailable')).toThrow();
+            const logged = spy.mock.calls.map((c) => String(c[0])).join('\n');
+            expect(logged).toContain('x.unavailable');
+            expect(logged).not.toContain(TURNSTILE_TEST_SECRET_KEY);
+        } finally { spy.mockRestore(); }
+    });
+});
+
+describe('standalone production is unchanged', () => {
+    it('may run without Turnstile', () => {
+        expect(resolveTurnstile(STANDALONE, false)).toEqual({ enforced: false, secret: '', usingTestKey: false, unavailable: false });
+        expect(resolveTurnstileSiteKey(STANDALONE, false)).toBeNull();
+    });
+
+    it('keeps whatever secret the operator set, test key included', () => {
+        const p = resolveTurnstile({ ...STANDALONE, TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRET_KEY }, false);
+        expect(p).toEqual({ enforced: true, secret: TURNSTILE_TEST_SECRET_KEY, usingTestKey: false, unavailable: false });
+    });
+});
+
 describe('standalone leaves it to the operator', () => {
     it('enforces when the operator configured a secret', () => {
-        const p = resolveTurnstile({ ...STANDALONE, TURNSTILE_SECRET_KEY: '0x-real-secret' });
-        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false });
+        const p = resolveTurnstile({ ...STANDALONE, TURNSTILE_SECRET_KEY: '0x-real-secret' }, true);
+        expect(p).toEqual({ enforced: true, secret: '0x-real-secret', usingTestKey: false, unavailable: false });
     });
 
     it('does not challenge when they did not', () => {
-        expect(resolveTurnstile(STANDALONE)).toEqual({ enforced: false, secret: '', usingTestKey: false });
+        expect(resolveTurnstile(STANDALONE, true)).toEqual({ enforced: false, secret: '', usingTestKey: false, unavailable: false });
     });
 
     it('defaults to standalone when APP_MODE is absent', () => {
         // The default has to be the permissive one: a bare `npm run dev` and a
         // fresh self-host both arrive here, and neither is the platform.
-        expect(resolveTurnstile({}).enforced).toBe(false);
+        expect(resolveTurnstile({}, true).enforced).toBe(false);
     });
 });
 
@@ -72,27 +123,27 @@ describe('the site key tracks the secret', () => {
         // These two must move together. A page that renders no widget against a
         // server demanding a token is a booking form nobody can submit — a
         // self-inflicted outage, and the failure mode of resolving them apart.
-        expect(resolveTurnstileSiteKey(SAAS)).toBe(TURNSTILE_TEST_SITE_KEY);
-        expect(resolveTurnstile(SAAS).secret).toBe(TURNSTILE_TEST_SECRET_KEY);
+        expect(resolveTurnstileSiteKey(SAAS, true)).toBe(TURNSTILE_TEST_SITE_KEY);
+        expect(resolveTurnstile(SAAS, true).secret).toBe(TURNSTILE_TEST_SECRET_KEY);
     });
 
     it('prefers the operator\'s own site key', () => {
-        expect(resolveTurnstileSiteKey({ ...SAAS, TURNSTILE_SITE_KEY: '0x-real-site' })).toBe('0x-real-site');
+        expect(resolveTurnstileSiteKey({ ...SAAS, TURNSTILE_SITE_KEY: '0x-real-site' }, true)).toBe('0x-real-site');
     });
 
     it('serves nothing when no challenge applies', () => {
         // null, not the test key: standalone-unconfigured renders no widget at
         // all, and handing the page a key would make it draw one whose token
         // the server will never ask for.
-        expect(resolveTurnstileSiteKey(STANDALONE)).toBeNull();
+        expect(resolveTurnstileSiteKey(STANDALONE, true)).toBeNull();
     });
 
     it('never returns a key while enforcement is off, or nothing while it is on', () => {
         // The invariant behind the three specs above, stated once so a future
         // fourth case cannot satisfy them individually and still break it.
         for (const env of [SAAS, STANDALONE, {}, { ...SAAS, TURNSTILE_SECRET_KEY: 'x' }]) {
-            const enforced = resolveTurnstile(env).enforced;
-            const siteKey = resolveTurnstileSiteKey(env);
+            const enforced = resolveTurnstile(env, true).enforced;
+            const siteKey = resolveTurnstileSiteKey(env, true);
             expect(enforced === (siteKey !== null), JSON.stringify(env)).toBe(true);
         }
     });

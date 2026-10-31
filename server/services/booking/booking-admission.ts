@@ -5,7 +5,8 @@ import { users, tenantConfigs } from '../../lib/db/schema';
 import { Errors } from '../../lib/errors';
 import { requireDeclaredTenantTimeZone } from '../../lib/tz';
 import { logger } from '../../lib/logger';
-import { resolveTurnstile, TURNSTILE_TEST_KEY_WARNING } from '../../lib/middleware/bot-protection';
+import { isLocalRequestUrl } from '../../lib/local-request';
+import { resolveTurnstile, refuseIfUnavailable, TURNSTILE_TEST_KEY_WARNING } from '../../lib/middleware/bot-protection';
 import { resolvePublicHolidayEffect } from '../../lib/holidays/load-tenant-holidays';
 import type { HonoConfig } from '../../types/hono';
 import type { PublicBookingSchema } from '../../lib/validations/booking.schema';
@@ -122,7 +123,8 @@ export async function admitBooking(
     // not a test on whether someone remembered to set a key: saas always
     // challenges (on the published test key when unconfigured), standalone
     // leaves it to the operator. See `resolveTurnstile`.
-    const turnstile = resolveTurnstile(c.env);
+    const turnstile = resolveTurnstile(c.env, isLocalRequestUrl(c.req.url));
+    refuseIfUnavailable(turnstile, 'booking.turnstile.unavailable', { tenantId });
     if (turnstile.enforced) {
         if (turnstile.usingTestKey) {
             logger.warn('booking.turnstile.test_key', {

@@ -2,7 +2,8 @@ import { createRoute, z } from '@hono/zod-openapi';
 import { createApiRouter } from '../lib/openapi-router';
 import { setCookie } from 'hono/cookie';
 import { Errors } from '../lib/errors';
-import { verifyTurnstile, resolveTurnstile, TURNSTILE_TEST_KEY_WARNING } from '../lib/middleware/bot-protection';
+import { isLocalRequestUrl } from '../lib/local-request';
+import { verifyTurnstile, resolveTurnstile, refuseIfUnavailable, TURNSTILE_TEST_KEY_WARNING } from '../lib/middleware/bot-protection';
 import { signJwt } from '../lib/jwt-keyring';
 import { logger } from '../lib/logger';
 import { withMcpMetadata } from "../lib/route-metadata-standards";
@@ -129,7 +130,8 @@ const agentSignupRoutes = createApiRouter()
         // remembered to set a key: saas always challenges (on Cloudflare's
         // published test key when unconfigured, so the path stays live),
         // standalone leaves it to the operator. See `resolveTurnstile`.
-        const turnstile = resolveTurnstile(c.env);
+        const turnstile = resolveTurnstile(c.env, isLocalRequestUrl(c.req.url));
+        refuseIfUnavailable(turnstile, 'agent.signup.turnstile.unavailable');
         if (turnstile.enforced) {
             if (turnstile.usingTestKey) {
                 logger.warn('agent.signup.turnstile.test_key', { detail: TURNSTILE_TEST_KEY_WARNING });

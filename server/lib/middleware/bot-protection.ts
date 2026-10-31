@@ -9,6 +9,8 @@
  * and with which secret" once, and both callers obey the answer.
  */
 import { getDeploymentProfile, type ProfileEnv } from '../deployment-profile';
+import { Errors } from '../errors';
+import { logger } from '../logger';
 
 /**
  * Cloudflare's PUBLISHED test keys, which always pass.
@@ -46,6 +48,13 @@ export interface TurnstilePolicy {
     secret: string;
     /** True when running on the always-pass test key — worth a log line, not a failure. */
     usingTestKey: boolean;
+    /**
+     * True when protection is mandatory but cannot run safely: a production
+     * deployment with no secret, or with Cloudflare's always-pass test secret.
+     * The caller MUST refuse the request (`refuseIfUnavailable`); `secret` is
+     * empty and `enforced` is true so nothing can mistake this for "off".
+     */
+    unavailable: boolean;
 }
 
 type TurnstileEnv = ProfileEnv & { TURNSTILE_SECRET_KEY?: string };
@@ -55,32 +64,58 @@ type TurnstileEnv = ProfileEnv & { TURNSTILE_SECRET_KEY?: string };
  *
  * - **saas** — always enforced. A configured secret is used; without one the
  *   published test key is, so the mechanism is never off, only permissive.
+ * - **saas, off a developer's machine** — the always-pass test key is REFUSED,
+ *   whether it is the fallback for a missing secret or configured by hand:
+ *   `unavailable` is set and the caller fails the request closed. A test key
+ *   that admits everything is the same as no protection, and a log line nobody
+ *   reads is not a control.
  * - **standalone** — enforced only when the operator configured a secret. They
  *   run their own deployment on their own domain; a single-company install
  *   behind a private URL has a legitimate reason not to challenge anyone.
  *
  * Reads the capability, never `APP_MODE` — see `deployment-profile.ts`.
  */
-export function resolveTurnstile(env: TurnstileEnv): TurnstilePolicy {
+export function resolveTurnstile(env: TurnstileEnv, local: boolean): TurnstilePolicy {
     const configured = env.TURNSTILE_SECRET_KEY?.trim() ?? '';
-    if (configured) return { enforced: true, secret: configured, usingTestKey: false };
+    const mandatory = getDeploymentProfile(env).botProtectionMandatory;
 
-    if (getDeploymentProfile(env).botProtectionMandatory) {
-        return { enforced: true, secret: TURNSTILE_TEST_SECRET_KEY, usingTestKey: true };
+    // `local` is passed by the caller (see `isLocalRequestUrl`) and has no
+    // default: forgetting it must not be able to turn the refusal off.
+    if (mandatory && !local && (!configured || configured === TURNSTILE_TEST_SECRET_KEY)) {
+        return { enforced: true, secret: '', usingTestKey: false, unavailable: true };
     }
-    return { enforced: false, secret: '', usingTestKey: false };
+    if (configured) return { enforced: true, secret: configured, usingTestKey: false, unavailable: false };
+
+    if (mandatory) {
+        return { enforced: true, secret: TURNSTILE_TEST_SECRET_KEY, usingTestKey: true, unavailable: false };
+    }
+    return { enforced: false, secret: '', usingTestKey: false, unavailable: false };
+}
+
+/**
+ * Fails the request closed when protection is mandatory and cannot run safely.
+ * Logs the event name only, never a key or its value.
+ */
+export function refuseIfUnavailable(policy: TurnstilePolicy, event: string, data: Record<string, unknown> = {}): void {
+    if (!policy.unavailable) return;
+    logger.error(event, { ...data, detail: 'Bot protection is mandatory on this deployment but no usable Turnstile secret is configured.' });
+    throw Errors.ServiceUnavailable('Bot protection is not configured.');
 }
 
 /** The site key the browser needs, matched to whatever `resolveTurnstile` will verify against. */
 export function resolveTurnstileSiteKey(
     env: TurnstileEnv & { TURNSTILE_SITE_KEY?: string },
+    local: boolean,
 ): string | null {
+    const policy = resolveTurnstile(env, local);
+    // The submit is refused server-side, so no widget is offered either.
+    if (policy.unavailable) return null;
     const configured = env.TURNSTILE_SITE_KEY?.trim() ?? '';
     if (configured) return configured;
     // Must track the secret side exactly. A page rendering no widget against a
     // server that demands a token is a booking form nobody can submit — the
     // failure mode of getting these two out of step.
-    return resolveTurnstile(env).enforced ? TURNSTILE_TEST_SITE_KEY : null;
+    return policy.enforced ? TURNSTILE_TEST_SITE_KEY : null;
 }
 
 /**
