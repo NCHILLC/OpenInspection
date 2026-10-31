@@ -1,4 +1,5 @@
 import { eq, and } from 'drizzle-orm';
+import { requireResultsData, resolveLegacyPhotoTarget } from '../../lib/inspection/report-results';
 import { inspections, inspectionResults, templates } from '../../lib/db/schema';
 import { Errors } from '../../lib/errors';
 import { sanitizeDefectStates, type PropertyFacts, type PropertyFactFoundation } from './shared';
@@ -191,11 +192,11 @@ export class InspectionResultsService extends InspectionSubService {
         // without rejecting the entire write on a single bad row.
         sanitizeDefectStates(data);
 
-        const existing = await db.select().from(inspectionResults).where(and(eq(inspectionResults.inspectionId, id), eq(inspectionResults.tenantId, tenantId))).get();
+        const { reportId: targetReportId, row: existing } = await resolveLegacyPhotoTarget(db, tenantId, id);
 
         if (existing) {
-            const mergedData = { ...(existing.data as Record<string, unknown>), ...data };
-            await db.update(inspectionResults).set({ data: mergedData, lastSyncedAt: new Date() }).where(eq(inspectionResults.id, existing.id));
+            const mergedData = { ...requireResultsData(existing.data), ...data };
+            await db.update(inspectionResults).set({ data: mergedData, lastSyncedAt: new Date() }).where(and(eq(inspectionResults.id, existing.id), eq(inspectionResults.tenantId, tenantId)));
         } else {
             // Sprint 2 S2-1 — when seeding an inspection_results row for the
             // first time, also freeze the active rating system onto the row
@@ -226,6 +227,7 @@ export class InspectionResultsService extends InspectionSubService {
                 id: crypto.randomUUID(),
                 inspectionId: id,
                 tenantId,
+                ...(targetReportId ? { reportId: targetReportId } : {}),
                 data,
                 lastSyncedAt: new Date(),
                 ratingSystemId,
@@ -330,12 +332,10 @@ export class InspectionResultsService extends InspectionSubService {
             .where(and(eq(inspections.id, id), eq(inspections.tenantId, tenantId)));
 
         // Rewrite per-item ratings on inspection_results
-        const existing = await db.select().from(inspectionResults)
-            .where(and(eq(inspectionResults.inspectionId, id), eq(inspectionResults.tenantId, tenantId)))
-            .get();
+        const { row: existing } = await resolveLegacyPhotoTarget(db, tenantId, id);
         let remapped = 0, cleared = 0, total = 0;
         if (existing) {
-            const data = { ...(existing.data as Record<string, Record<string, unknown>>) };
+            const data = { ...requireResultsData(existing.data) } as Record<string, Record<string, unknown>>;
             for (const itemId of Object.keys(data)) {
                 const it = data[itemId];
                 if (!it || !('rating' in it)) continue;
@@ -363,7 +363,7 @@ export class InspectionResultsService extends InspectionSubService {
                 ratingSystemId: null as never,
                 ratingSystemSnapshot: null as never,
                 lastSyncedAt: new Date(),
-            }).where(eq(inspectionResults.id, existing.id));
+            }).where(and(eq(inspectionResults.id, existing.id), eq(inspectionResults.tenantId, tenantId)));
         }
 
         return { remapped, cleared, total };
