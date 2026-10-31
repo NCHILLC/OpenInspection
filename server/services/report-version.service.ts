@@ -11,7 +11,8 @@
  */
 import { drizzle } from 'drizzle-orm/d1';
 import { and, eq, desc, or, isNull } from 'drizzle-orm';
-import { reports, reportVersions, inspections, inspectionResults, inspectionUnits, users, inspectionInspectors, templates, tenantConfigs } from '../lib/db/schema';
+import { reports, reportVersions, inspections, inspectionUnits, users, inspectionInspectors, templates, tenantConfigs } from '../lib/db/schema';
+import { requireReportResultsForPublish } from '../lib/inspection/report-results';
 import { computeDiff, SNAPSHOT_SCHEMA_VERSION, type Snapshot, type SnapshotInspector, type DiffPayload } from '../lib/version-diff';
 import { CredentialService } from './credential.service';
 import { resolveProfile } from '../lib/report-style/resolve';
@@ -26,14 +27,6 @@ export interface SnapshotResult {
 }
 
 type ResultsData = Record<string, Record<string, unknown>>;
-
-function parseResultsData(raw: unknown): ResultsData {
-    if (raw == null) return {};
-    if (typeof raw === 'string') {
-        try { return JSON.parse(raw) as ResultsData; } catch { return {}; }
-    }
-    return raw as ResultsData;
-}
 
 export class ReportVersionService {
     constructor(private db: D1Database, private encryptionSecret: string) {}
@@ -97,10 +90,10 @@ export class ReportVersionService {
             .get();
         if (!ins) throw new Error('Inspection not found');
 
-        const results = await db.select().from(inspectionResults)
-            .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)))
-            .get();
-        const data = parseResultsData(results?.data);
+        // This report's document only, never a sibling's.
+        const { data: resultsData } = await requireReportResultsForPublish(db, tenantId, inspectionId, targetReportId);
+        // An unreadable or ambiguous row is never frozen as {}; only a real no-row is: the snapshot is a permanent record.
+        const data = resultsData as ResultsData;
 
         const units = await db.select().from(inspectionUnits)
             .where(and(eq(inspectionUnits.tenantId, tenantId), eq(inspectionUnits.inspectionId, inspectionId)))

@@ -589,6 +589,35 @@ describe('connectResultsDoc — auto-reconnect on close', () => {
         destroy();
     });
 
+    it('reopens after the server closes a report-less socket (4409), keeping local state', async () => {
+        let constructions = 0;
+        class CountingStub extends StubWebSocket {
+            constructor(url: string) {
+                super(url);
+                constructions += 1;
+                stubSocket = this;
+            }
+        }
+        const { handle, destroy } = connectResultsDoc(`test-reportless-${Date.now()}`, {
+            WebSocketImpl: CountingStub as unknown as typeof WebSocket,
+            location: testLoc,
+        });
+        await flushAsync(10);
+        handle.doc.getMap('probe').set('k', 'v');
+        const first = stubSocket;
+
+        vi.useFakeTimers();
+        // What the server does: a close frame with the dedicated code.
+        first.readyState = StubWebSocket.CLOSED;
+        first.dispatchEvent(Object.assign(new Event('close'), { code: 4409, reason: 'no report id; reconnect' }));
+        vi.advanceTimersByTime(1000);
+
+        expect(constructions).toBe(2);
+        expect(handle.doc.getMap('probe').get('k')).toBe('v');
+        vi.useRealTimers();
+        destroy();
+    });
+
     it('does not reconnect after destroy()', async () => {
         let constructions = 0;
         class CountingStub extends StubWebSocket {

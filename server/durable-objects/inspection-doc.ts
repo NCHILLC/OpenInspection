@@ -49,8 +49,9 @@ import {
 import type { ResultsProjection } from '../lib/collab/results-doc.types';
 import { applyFollowupPatch, resolveCarriedFindingKey } from '../lib/collab/followup-patch';
 import { findingKeysFromTemplateSnapshot } from '../lib/finding-key';
-import { inspectionResults, inspections } from '../lib/db/schema';
+import { inspections } from '../lib/db/schema';
 import { logger } from '../lib/logger';
+import { persistReportResults, readResultsData, selectReportResultsRow } from '../lib/inspection/report-results';
 import { purgePathMatches } from './purge-path';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -209,6 +210,9 @@ function isNonEmptyProjection(value: unknown): value is ResultsProjection {
 }
 
 // ─── InspectionDocDO ─────────────────────────────────────────────────────────
+
+/** Close code for a socket on a document with no report id: the client reconnects. */
+export const WS_CLOSE_NO_REPORT = 4409;
 
 export class InspectionDocDO extends DurableObject<AppEnv> {
     /**
@@ -529,6 +533,14 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
     // ── WebSocket hibernation handlers ────────────────────────────────────────
 
     async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
+        // A document that was never given a report id cannot say whose it is, so
+        // it applies nothing. Closing (rather than ignoring) makes the client
+        // reconnect through fetch to the report-named document, where its Yjs
+        // state merges. The close code is not an auth failure and wipes nothing.
+        if (!this.reportId) {
+            try { ws.close(WS_CLOSE_NO_REPORT, 'no report id; reconnect'); } catch { /* already closed */ }
+            return;
+        }
         // Only binary frames carry y-protocols messages.
         if (typeof raw === 'string') return;
 
@@ -574,10 +586,7 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
      * hibernation before it could fire.
      */
     async alarm(): Promise<void> {
-        // An older DO may have identity without reportId. Do not fall back to
-        // an inspection-scoped D1 write from an alarm: that can target the
-        // wrong report or repeatedly collide with the report-grained index.
-        if (!this.reportId) return;
+        // Without a report id persist saves DO storage only and writes nothing to D1.
         await this.persist();
     }
 
@@ -626,41 +635,15 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         const db: DrizzleD1Database = drizzle(this.env.DB);
         const projection = projectResults(this.doc);
 
-        const updated = await db
-            .update(inspectionResults)
-            .set({
-                ydocState:    stateUpdate,
-                data:         projection,
-                lastSyncedAt: new Date(),
-            })
-            .where(
-                and(
-                    eq(inspectionResults.tenantId, tenantId),
-                    // Per REPORT when we know which one. An inspection can now
-                    // carry several results rows, and matching on inspection id
-                    // alone updates all of them with this document.
-                    this.reportId
-                        ? eq(inspectionResults.reportId, this.reportId)
-                        : eq(inspectionResults.inspectionId, inspectionId),
-                ),
-            );
-
-        // An UPDATE that matches no row is not an error — it quietly changes
-        // nothing. `createInspection` does not create this row, so for every
-        // inspection made through the wizard that silence WAS the bug: the
-        // editor showed ratings, the socket said Connected, and D1 stayed empty.
-        // Insert on the way through instead of dropping the document.
-        if ((updated.meta?.changes ?? 0) === 0) {
-            await db.insert(inspectionResults).values({
-                id:           crypto.randomUUID(),
-                tenantId,
-                inspectionId,
-                ...(this.reportId ? { reportId: this.reportId } : {}),
-                ydocState:    stateUpdate,
-                data:         projection,
-                lastSyncedAt: new Date(),
-            });
+        if (this.reportId) {
+            await persistReportResults(db, tenantId, inspectionId, this.reportId, { ydocState: stateUpdate, data: projection });
+            return;
         }
+        // No report id: this document cannot say whose row it is, so D1 is never
+        // written from it. DO storage above still saved it. Sockets on such an
+        // object are closed with WS_CLOSE_NO_REPORT on their first message, so
+        // clients move to the report-named document and merge their state there.
+        logger.warn('collab persist: no report id, D1 not written', { tenantId, inspectionId });
     }
 
     // ── Snapshot version history (#181 Phase 4) ───────────────────────────────
@@ -937,6 +920,9 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         const db: DrizzleD1Database = drizzle(this.env.DB);
 
         // ── Load the template snapshot + the existing results blob (tenant-scoped).
+        // Results: this document's report only; no reportId, no import (as in
+        // alarm()). The template snapshot is inspection-level.
+        const { reportId } = this;
         const [inspectionRow, resultsRow] = await Promise.all([
             db
                 .select({ templateSnapshot: inspections.templateSnapshot })
@@ -948,17 +934,11 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
                     ),
                 )
                 .get(),
-            db
-                .select({ data: inspectionResults.data })
-                .from(inspectionResults)
-                .where(
-                    and(
-                        eq(inspectionResults.tenantId,     tenantId),
-                        eq(inspectionResults.inspectionId, inspectionId),
-                    ),
-                )
-                .get(),
+            reportId
+                ? selectReportResultsRow(db, tenantId, inspectionId, reportId)
+                : Promise.resolve(null),
         ]);
+        if (!reportId) logger.warn('collab hydrate: no report id, results not imported', { inspectionId });
 
         // ── Condition A: ALWAYS seed every template item's findingKey structure
         // (idempotent — seedResultsDoc skips keys that already exist), so two
@@ -977,9 +957,12 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         // collab state existed (hadStoredState), the doc is authoritative and
         // ahead of D1 — importing the stale blob would clobber unflushed edits.
         if (!this.hadStoredState) {
-            const blob = resultsRow?.data;
-            if (isNonEmptyProjection(blob)) {
-                loadResultsProjection(this.doc, blob);
+            const read = readResultsData(resultsRow?.data);
+            if (!read.ok) {
+                // Nothing is imported, and persist (which re-reads the row) writes nothing to it.
+                logger.warn('collab hydrate: stored results could not be read, nothing imported', { tenantId, inspectionId, reportId });
+            } else if (isNonEmptyProjection(read.data)) {
+                loadResultsProjection(this.doc, read.data);
             }
         }
     }

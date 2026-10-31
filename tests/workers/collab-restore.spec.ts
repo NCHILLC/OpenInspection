@@ -51,9 +51,9 @@ async function clearResults(): Promise<void> {
 async function ensureResultsRow(tenantId: string, inspectionId: string): Promise<void> {
     await b.DB
         .prepare(
-            'INSERT OR IGNORE INTO inspection_results (id, tenant_id, inspection_id, data, last_synced_at) VALUES (?, ?, ?, ?, ?)',
+            'INSERT OR IGNORE INTO inspection_results (id, tenant_id, inspection_id, report_id, data, last_synced_at) VALUES (?, ?, ?, ?, ?, ?)',
         )
-        .bind(crypto.randomUUID(), tenantId, inspectionId, '{}', Date.now())
+        .bind(crypto.randomUUID(), tenantId, inspectionId, reportIdFor(inspectionId), '{}', Date.now())
         .run();
 }
 
@@ -85,6 +85,7 @@ interface SnapshotRecord extends SnapshotMeta {
 }
 
 interface DOInternals {
+    reportId: string | null;
     doc: Y.Doc;
     tenantId: string | null;
     inspectionId: string | null;
@@ -101,7 +102,11 @@ interface DOInternals {
     restoreSnapshot(seq: number, byUserId: string | null): Promise<{ ok: boolean }>;
 }
 
+/** The collab document is addressed by report; every row and identity here carries one. */
+const reportIdFor = (inspectionId: string): string => `rpt-${inspectionId}`;
+
 function setIdentity(io: DOInternals, tenantId: string, inspectionId: string): void {
+    io.reportId          = reportIdFor(inspectionId);
     io.tenantId          = tenantId;
     io.inspectionId      = inspectionId;
     io.identityPersisted = true;

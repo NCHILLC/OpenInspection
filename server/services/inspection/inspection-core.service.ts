@@ -1,4 +1,5 @@
 import { eq, and, inArray } from 'drizzle-orm';
+import { readResultsDataOrEmpty, resolveLegacyPhotoTarget } from '../../lib/inspection/report-results';
 import { inspections, inspectionResults, templates, tenantConfigs, agreementRequests, contactRoleProfiles } from '../../lib/db/schema';
 import { resolveAgentRepairAccess, type AgentRepairAccess } from '../../lib/people/agent-repair-access';
 import { contacts } from '../../lib/db/schema/contact';
@@ -122,17 +123,8 @@ export class InspectionCoreService extends InspectionSubService {
         const ins = await this.sdb.getById(inspections, inspectionId);
         if (!ins) throw Errors.NotFound('Inspection not found');
 
-        const resultsRow = await this.sdb.raw.select().from(inspectionResults)
-            .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)))
-            .get();
-        const items: Record<string, { rating?: unknown; value?: unknown }> = (() => {
-            const raw = resultsRow?.data;
-            if (!raw) return {};
-            try {
-                const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-                return (parsed && typeof parsed === 'object') ? parsed as Record<string, never> : {};
-            } catch { return {}; }
-        })();
+        const { row: resultsRow } = await resolveLegacyPhotoTarget(this.sdb.raw as never, tenantId, inspectionId);
+        const items = readResultsDataOrEmpty(resultsRow?.data, { inspectionId }) as Record<string, { rating?: unknown; value?: unknown }>;
 
         return computePreflightFromData(
             {
