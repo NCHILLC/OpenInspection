@@ -6,8 +6,8 @@
   ],
   "globalMiddlewareUse": 12,
   "fanOutTotals": {
-    "files": 140,
-    "dollarMethods": 552,
+    "files": 141,
+    "dollarMethods": 554,
     "apiWorker": 9
   },
   "fanOut": {
@@ -137,6 +137,10 @@
     },
     "app/routes/inspection-edit/action-isn.server.ts": {
       "dollarMethods": 1,
+      "apiWorker": 0
+    },
+    "app/routes/inspection-edit/action-publish.server.ts": {
+      "dollarMethods": 2,
       "apiWorker": 0
     },
     "app/routes/inspection-edit/action-statutory.server.ts": {

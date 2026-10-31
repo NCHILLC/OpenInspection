@@ -26,6 +26,7 @@ import {
     correctionRequiresValue,
     type CorrectReportInput,
 } from '../lib/validations/correction.schema';
+import { requireReportResultsForPublish } from '../lib/inspection/report-results';
 import { ReportVersionService } from './report-version.service';
 import { logger } from '../lib/logger';
 
@@ -64,6 +65,10 @@ export async function correctReport(
         ))
         .get();
     if (!row) throw new CorrectionRefusedError('Inspection not found');
+
+    // Same gate as publish, before the baseline snapshot or any field update:
+    // an unreadable or ambiguous results row is a coded 409 and nothing changes.
+    await requireReportResultsForPublish(db, parsed.tenantId, parsed.inspectionId, null);
 
     const versions = new ReportVersionService(d1, encryptionSecret);
 
