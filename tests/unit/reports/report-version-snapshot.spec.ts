@@ -236,3 +236,50 @@ describe('snapshot growth vs. already-signed versions', () => {
         expect(v!.signatureValid).toBe(false);
     });
 });
+
+describe('snapshot size limit is measured in UTF-8 bytes', () => {
+    const LIMIT = 1024 * 1024;
+    let svc: ReportVersionService;
+    let db: BetterSQLite3Database<typeof schema>;
+
+    const setNotes = async (notes: string) => {
+        await db.delete(schema.inspectionResults);
+        await db.insert(schema.inspectionResults).values({
+            id: 'res-1', tenantId: TENANT, inspectionId: INSPECTION,
+            data: { 'item-1': { notes } } as never, lastSyncedAt: new Date(),
+        });
+    };
+    const storedBytes = async (version: number) => {
+        const row = await db.select().from(schema.reportVersions)
+            .where(eq(schema.reportVersions.versionNumber, version)).get();
+        return new TextEncoder().encode(row!.snapshotJson).byteLength;
+    };
+
+    beforeEach(async () => {
+        const fix = createTestDb();
+        db = fix.db;
+        await setupSchema(fix.sqlite);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mockDrizzle as any).mockReturnValue(db);
+        await seed(db);
+        svc = new ReportVersionService({} as D1Database, 'test-encryption-secret-key');
+    });
+
+    it('refuses CJK text whose character count is under the limit but whose UTF-8 size is over it', async () => {
+        const text = String.fromCharCode(0x4e2d).repeat(400_000); // 400k CJK characters, 3 UTF-8 bytes each
+        expect(text.length).toBeLessThan(LIMIT);
+        await setNotes(text);
+        await expect(svc.snapshotOnPublish(TENANT, INSPECTION, 'user-a')).rejects.toThrow('Snapshot exceeds 1 MB limit');
+    });
+
+    it('accepts an ASCII snapshot just under the limit', async () => {
+        await setNotes('');
+        await svc.snapshotOnPublish(TENANT, INSPECTION, 'user-a');
+        const base = await storedBytes(1);
+        await setNotes('a'.repeat(LIMIT - base - 100));
+        await svc.snapshotOnPublish(TENANT, INSPECTION, 'user-a');
+        const size = await storedBytes(2);
+        expect(size).toBeLessThanOrEqual(LIMIT);
+        expect(size).toBeGreaterThan(LIMIT - 1000);
+    });
+});
