@@ -30,6 +30,7 @@ import type {
     EvidenceApi,
     IdentityApi,
     InspectionPrefsApi,
+    FieldLogApi,
     InspectionRequestsApi,
     InspectionsApi,
     InspectionTypesApi,
@@ -164,6 +165,7 @@ export interface Api {
     evidence:           ReturnType<typeof hc<EvidenceApi>>;
     identity:           ReturnType<typeof hc<IdentityApi>>;
     inspectionPrefs:    ReturnType<typeof hc<InspectionPrefsApi>>;
+    fieldLog:           ReturnType<typeof hc<FieldLogApi>>;
     inspectionRequests: ReturnType<typeof hc<InspectionRequestsApi>>;
     inspections:        ReturnType<typeof hc<InspectionsApi>>;
     inspectionSync:     ReturnType<typeof hc<InspectionSyncApi>>;
@@ -272,6 +274,7 @@ export function createApi(context: LoadContext, opts: CreateApiOptions = {}): Ap
         evidence:           mk<EvidenceApi>(MOUNT.evidence),
         identity:           mk<IdentityApi>(MOUNT.identity),
         inspectionPrefs:    mk<InspectionPrefsApi>(MOUNT.inspectionPrefs),
+        fieldLog:           mk<FieldLogApi>(MOUNT.fieldLog),
         inspectionRequests: mk<InspectionRequestsApi>(MOUNT.inspectionRequests),
         inspections:        mk<InspectionsApi>(MOUNT.inspections),
         inspectionSync:     mk<InspectionSyncApi>(MOUNT.inspectionSync),

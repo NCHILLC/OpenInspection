@@ -145,6 +145,14 @@ export const RETENTION_MANIFEST: RetentionRule[] = [
         legalHold: 'tenant_scoped',
     },
     {
+        table: 'field_log_events',
+        timestampColumn: 'occurred_at',
+        window: { unit: 'days', value: 30 },
+        action: 'delete',
+        purpose: 'What happened on an opted-in inspector phone during an inspection, kept so a problem can be diagnosed after the visit. Thirty days covers the time between an inspection and the report of a problem with it.',
+        legalHold: 'tenant_scoped',
+    },
+    {
         table: 'ai_content_reviews',
         timestampColumn: 'reviewed_at',
         window: { unit: 'months', value: AI_ASSURANCE_RETENTION_MONTHS },

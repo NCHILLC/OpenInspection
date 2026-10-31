@@ -30,6 +30,7 @@ import { SectionRail } from "~/components/editor-shared/SectionRail";
 import { InspectionProgressCard } from "~/components/editor/InspectionProgressCard";
 import { InspectionHero } from "~/components/editor/InspectionHero";
 import { EditorHeader } from "~/components/editor/EditorHeader";
+import { logFieldEvent } from "~/lib/field-log";
 import { FullscreenToggle } from "~/components/editor/FullscreenToggle";
 import { ItemList } from "~/components/editor-shared/ItemList";
 import { useStatutoryGroups, useStatutoryFormProgress, useStructuralEditingAllowed } from "~/hooks/useStatutoryGroups";
@@ -1574,6 +1575,7 @@ export default function InspectionEditPage() {
  // publish signed — the worst shape for a bug like this, because the
  // reader concludes they mis-clicked rather than that a report went out
  // unsigned.
+ logFieldEvent("action", "publish");
  submitPublish(
  {
  intent: "publish",

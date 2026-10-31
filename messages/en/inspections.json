@@ -351,5 +351,15 @@
   "inspections_isn_card_change_in_isn": "Change these in ISN.",
   "inspections_isn_card_open_in_isn": "Open in ISN",
   "inspections_isn_card_yes": "Yes",
-  "inspections_isn_card_no": "No"
+  "inspections_isn_card_no": "No",
+  "inspections_field_log_mark": "Mark issue",
+  "inspections_field_log_mark_placeholder": "What went wrong? (optional)",
+  "inspections_field_log_save": "Save issue",
+  "inspections_field_log_cancel": "Cancel",
+  "inspections_field_log_title": "Field log",
+  "inspections_field_log_meta_title": "Field log - OpenInspection",
+  "inspections_field_log_empty": "Nothing recorded for this inspection yet.",
+  "inspections_field_log_card_toggle": "Record my activity during inspections",
+  "inspections_field_log_card_help": "Keeps screens, actions, failed requests and crashes for 30 days, with no client details or note text.",
+  "inspections_field_log_issue": "Issue"
 }

@@ -42,6 +42,7 @@ export const MOUNT: Record<keyof Api, string> = {
     inspectionTypes:    "/api/admin",
     emailTemplates:     "/api/admin",
     evidence:           "/api/admin",
+    fieldLog:           "/api/field-log",
     identity:           "/api/identities",
     inspectionPrefs:    "/api/tenant/inspection-prefs",
     inspectionRequests: "/api/inspection-requests",
