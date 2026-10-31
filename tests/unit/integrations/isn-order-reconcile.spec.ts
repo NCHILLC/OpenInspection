@@ -52,12 +52,12 @@ describe('reconcileIsnOrders', () => {
         listed = [{ id: 'c', modified: '1' }, { id: 'a', modified: '1' }, { id: 'b', modified: '1' }];
         const first = await reconcileIsnOrders(D1, TENANT, CFG, null, 2, NOW);
         expect(pulled()).toEqual(['a', 'b']);
-        expect(first).toEqual({ processed: 2, nextCursor: 'b' });
+        expect(first).toEqual({ processed: 2, failed: 0, nextCursor: 'b' });
 
         pull.mockClear();
         const second = await reconcileIsnOrders(D1, TENANT, CFG, first.nextCursor, 2, NOW);
         expect(pulled()).toEqual(['c']);
-        expect(second).toEqual({ processed: 1, nextCursor: null });
+        expect(second).toEqual({ processed: 1, failed: 0, nextCursor: null });
     });
 
     it('pulls only orders that changed in ISN or never became an inspection', async () => {
@@ -81,7 +81,7 @@ describe('reconcileIsnOrders', () => {
         pull.mockRejectedValueOnce(new Error('ISN down'));
         const r = await reconcileIsnOrders(D1, TENANT, CFG, null, 5, NOW);
         expect(pulled()).toEqual(['a', 'b']);
-        expect(r).toEqual({ processed: 1, nextCursor: null });
+        expect(r).toEqual({ processed: 1, failed: 1, nextCursor: null });
     });
 
     it('frees a stale pending claim and leaves a fresh one alone', async () => {

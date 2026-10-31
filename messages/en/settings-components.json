@@ -702,5 +702,9 @@
   "settings_isn_pull_done": "Pulled {count} orders. Every order is up to date.",
   "settings_isn_pull_more": "Pulled {count} orders. More are waiting: press again.",
   "settings_isn_pull_error": "Could not pull ISN orders. ISN intake needs the ISN keys and the webhook secret.",
-  "settings_isn_save_error": "Could not save the ISN settings."
+  "settings_isn_save_error": "Could not save the ISN settings.",
+  "settings_isn_intake_on": "ISN intake is on: orders arrive from ISN on their own.",
+  "settings_isn_intake_off": "ISN intake is off. The ISN keys alone only send report links; intake also needs the ISN webhook secret.",
+  "settings_isn_test_ok": "Connected to ISN.",
+  "settings_isn_pull_failed": "Pulled {count} orders; {failed} could not be pulled and will be tried again. Press again to retry."
 }

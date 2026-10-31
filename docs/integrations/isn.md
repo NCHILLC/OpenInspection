@@ -31,6 +31,18 @@ It runs only when `ISN_WEBHOOK_SECRET` and the four ISN keys are set: the keys
 alone also serve the report link and must not start importing orders. It pulls
 at most 5 orders per invocation and continues on the queue. It also frees a
 creation claim left by a Worker that died mid-create (older than 15 minutes).
+Orders that fail to pull are counted as `failed` in the batch result and tried
+again on the next pass.
+
+**Settings → Advanced → ISN.** The panel shows whether intake is on (the webhook
+secret is set; the value itself is never shown), has a **Test connection**
+button, and **Pull ISN orders now** shows the API's own message when it is
+refused. Test connection (`POST /api/integrations/isn/test`, owner or manager)
+makes one read-only call, the order list for today, with the stored keys. On a
+failure it shows ISN's own message, because ISN answers HTTP 200 to errors and
+the message is the only signal. Results are kept in the same "last tested"
+history as the other integrations.
+
 Not covered: an order dated before yesterday, and an order ISN stops listing
 (not checked whether `GET /orders` lists cancelled or deleted orders).
 

@@ -13,7 +13,7 @@ import { StripeConnectPanel } from "~/components/settings/advanced/StripeConnect
 import { AiFeaturesPanel } from "~/components/settings/advanced/AiFeaturesPanel";
 import { IntegrationKeysPanel } from "~/components/settings/advanced/IntegrationKeysPanel";
 import { IsnPanel, ISN_SECRET_KEYS } from "~/components/settings/advanced/IsnPanel";
-import { loadIsnSettings } from "~/lib/isn-settings.server";
+import { loadIsnSettings, isnIntakeOn } from "~/lib/isn-settings.server";
 import { SectionNav } from "~/components/settings/SectionNav";
 import { parseTestResults } from "~/lib/connection-test";
 import { m } from "~/paraglide/messages";
@@ -88,6 +88,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     },
     testResults,
     isn: loadIsnSettings(secrets),
+    isnIntakeOn: isnIntakeOn(secrets),
   };
 }
 
@@ -222,10 +223,17 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (intent === "save-isn") return putSecrets(ISN_SECRET_KEYS, m.settings_isn_save_error());
 
+  if (intent === "test-isn") {
+    const res = await api.integrations.isn.test.$post();
+    const body = (await res.json().catch(() => null)) as { data?: { intakeOn: boolean }; error?: { message?: string } } | null;
+    if (!res.ok || !body?.data) return { intent, success: false, error: body?.error?.message ?? m.settings_connection_test_failed(), field: null, test: null };
+    return { intent, success: true, error: null, field: null, test: null, isnTest: body.data };
+  }
+
   if (intent === "pull-isn") {
     const res = await api.integrations.isn.pull.$post({ json: { cursor: String(fd.get("cursor") ?? "") || null } });
-    const body = (await res.json().catch(() => null)) as { data?: { processed: number; nextCursor: string | null } } | null;
-    if (!res.ok || !body?.data) return { intent, success: false, error: m.settings_isn_pull_error(), field: null, test: null };
+    const body = (await res.json().catch(() => null)) as { data?: { processed: number; failed: number; nextCursor: string | null }; error?: { message?: string } } | null;
+    if (!res.ok || !body?.data) return { intent, success: false, error: body?.error?.message ?? m.settings_isn_pull_error(), field: null, test: null };
     return { intent, success: true, error: null, field: null, test: null, pull: body.data };
   }
 
@@ -272,7 +280,7 @@ export default function SettingsAdvancedPage() {
   );
 
   if ("forbidden" in loaderResult) return <AccessDenied />;
-  const { config, secrets, testResults, ai, isn } = loaderResult;
+  const { config, secrets, testResults, ai, isn, isnIntakeOn: intakeOn } = loaderResult;
 
   // Map a server `field` error back onto the matching SecretField.
   const secretFieldError = (name: string): string | undefined => {
@@ -360,7 +368,7 @@ export default function SettingsAdvancedPage() {
       </div>
 
       <div id="isn" className="scroll-mt-12">
-        <IsnPanel secrets={isn} fieldError={secretFieldError} saving={nav.state !== "idle" && nav.formData?.get("intent") === "save-isn"} />
+        <IsnPanel secrets={isn} intakeOn={intakeOn} testResults={testResults} fieldError={secretFieldError} saving={nav.state !== "idle" && nav.formData?.get("intent") === "save-isn"} />
       </div>
 
       {/* Data import/export */}

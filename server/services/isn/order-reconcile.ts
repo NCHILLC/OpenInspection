@@ -23,7 +23,7 @@ type Rec = Record<string, unknown>;
 
 export async function reconcileIsnOrders(
     d1: D1Database, tenantId: string, cfg: IsnConfig, cursor: string | null, limit: number, now = new Date(),
-): Promise<{ processed: number; nextCursor: string | null }> {
+): Promise<{ processed: number; failed: number; nextCursor: string | null }> {
     const db = drizzle(d1);
     // Free the claim so the pull below (or the next webhook) can create the inspection.
     // ponytail: a Worker killed AFTER createInspection but before linking leaves an
@@ -52,16 +52,18 @@ export async function reconcileIsnOrders(
     });
 
     let processed = 0;
+    let failed = 0;
     for (const o of due.slice(0, limit)) {
         try {
             await pullIsnOrder(d1, tenantId, cfg, o.id as string, now);
             processed++;
         } catch (e) {
             // One bad order must not stall the rest; the next pass tries it again.
+            failed++;
             logger.error('ISN reconcile: order pull failed', { isnOrderId: o.id }, e instanceof Error ? e : undefined);
         }
     }
     const nextCursor = due.length > limit ? (due[limit - 1]!.id as string) : null;
-    if (due.length > 0) logger.info('ISN reconcile', { listed: listed.length, due: due.length, processed, more: nextCursor !== null });
-    return { processed, nextCursor };
+    if (due.length > 0) logger.info('ISN reconcile', { listed: listed.length, due: due.length, processed, failed, more: nextCursor !== null });
+    return { processed, failed, nextCursor };
 }

@@ -19431,6 +19431,22 @@
     "description": "Sends a one-token chat completion to the SUBMITTED base URL, model and key — not to a stored credential and not to a deployment default. That is the whole point: after the destination became something a workspace chooses, a probe of anything else would go green while every real call failed. Always 200; the outcome is in the body, with `field` naming which input to blame. The provider's own response body is never returned or logged."
   },
   {
+    "operationId": "testIsnConnection",
+    "method": "POST",
+    "pathTemplate": "/api/integrations/isn/test",
+    "scopes": [
+      "admin"
+    ],
+    "tag": "integrations",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": null
+    },
+    "summary": "Verify the stored ISN keys against ISN",
+    "description": "Makes one read-only call to ISN (the order list for today) with the tenant's STORED ISN keys, the diagnostic behind the settings-page Test connection button. On failure the error message is the one ISN returned."
+  },
+  {
     "operationId": "testResendConnection",
     "method": "POST",
     "pathTemplate": "/api/integrations/resend/test",
