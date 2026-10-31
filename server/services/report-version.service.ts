@@ -121,7 +121,7 @@ export class ReportVersionService {
             styleProfile: await this.resolveStyleProfile(tenantId, ins),
         };
         const snapshotJson = JSON.stringify(snapshot);
-        if (snapshotJson.length > MAX_SNAPSHOT_BYTES) {
+        if (new TextEncoder().encode(snapshotJson).byteLength > MAX_SNAPSHOT_BYTES) {
             throw new Error('Snapshot exceeds 1 MB limit');
         }
 
