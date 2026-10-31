@@ -65,13 +65,14 @@ export function isnIntakeState(env: IsnIntakeEnv): { keysSet: boolean; secretSet
 }
 
 /**
- * Text that may carry an ISN credential, safe to return, store or log: every
- * configured ISN value is replaced, and callers do this BEFORE any truncation so
+ * Text that may carry an ISN credential, safe to return, store or log: the
+ * access key, secret key and webhook secret are replaced (the domain and company
+ * key are in every URL and are not secrets), and callers do this BEFORE any truncation so
  * a cut can never leave a partial secret behind. Longest values first so one
  * that contains another is not half-replaced.
  */
 export function redactIsnSecrets(text: string, cfg: IsnConfig): string {
-    const values = [cfg.domain, cfg.companyKey, cfg.accessKey, cfg.secretKey, webhookSecrets.get(cfg)]
+    const values = [cfg.accessKey, cfg.secretKey, webhookSecrets.get(cfg)]
         .filter((v): v is string => !!v)
         .sort((a, b) => b.length - a.length);
     return values.reduce((out, v) => out.split(v).join('[redacted]'), text);

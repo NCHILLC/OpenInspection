@@ -129,10 +129,11 @@ describe('isn helpers', () => {
         expect(isnIntakeState({ ...KEYS, ISN_WEBHOOK_SECRET: '  ' }).intakeOn).toBe(false);
         expect(isnIntakeState({ ...KEYS, ISN_WEBHOOK_SECRET: WEBHOOK }).intakeOn).toBe(true);
     });
-    it('redactIsnSecrets replaces every configured value and ignores unset ones', () => {
+    it('redactIsnSecrets replaces the access key, secret key and webhook secret only', () => {
         const cfg = isnConfig({ ...KEYS, ISN_WEBHOOK_SECRET: WEBHOOK })!;
-        const out = redactIsnSecrets(`${KEYS.ISN_ACCESS_KEY}|${KEYS.ISN_SECRET_KEY}|${WEBHOOK}|${KEYS.ISN_DOMAIN}`, cfg);
-        expect(out).toBe('[redacted]|[redacted]|[redacted]|[redacted]');
+        const out = redactIsnSecrets(`${KEYS.ISN_ACCESS_KEY}|${KEYS.ISN_SECRET_KEY}|${WEBHOOK}|${KEYS.ISN_DOMAIN}|${KEYS.ISN_COMPANY_KEY}`, cfg);
+        // The domain and company key are in every URL: they stay readable.
+        expect(out).toBe(`[redacted]|[redacted]|[redacted]|${KEYS.ISN_DOMAIN}|${KEYS.ISN_COMPANY_KEY}`);
         expect(redactIsnSecrets('plain text', isnConfig(KEYS)!)).toBe('plain text');
     });
     it('the webhook secret is not a field of the config', () => {

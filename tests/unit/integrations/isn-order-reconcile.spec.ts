@@ -19,7 +19,7 @@ const { isnConfig, isnCall } = await import('../../../server/services/isn/api-ba
 const { isnOrderReconcileJob } = await import('../../../server/cron/jobs/integrations');
 
 const TENANT = 't-isn';
-const CFG = { domain: 'https://isn.test', companyKey: 'co', accessKey: 'a', secretKey: 's' };
+const CFG = { domain: 'https://isn.test', companyKey: 'co', accessKey: 'isn-access-7Qm2xKd', secretKey: 'isn-secret-9Zp4vLc' };
 const NOW = new Date('2026-10-25T12:00:00Z');
 const D1 = {} as D1Database;
 
@@ -114,7 +114,7 @@ describe('reconcileIsnOrders', () => {
 });
 
 describe('isnOrderReconcileJob', () => {
-    const KEYS = { ISN_DOMAIN: 'https://isn.test', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'a', ISN_SECRET_KEY: 's' };
+    const KEYS = { ISN_DOMAIN: 'https://isn.test', ISN_COMPANY_KEY: 'co', ISN_ACCESS_KEY: 'isn-access-7Qm2xKd', ISN_SECRET_KEY: 'isn-secret-9Zp4vLc' };
     const kv = new Map<string, string>();
     const env = () => ({
         DB: D1, JWT_SECRET: 'jwt',
