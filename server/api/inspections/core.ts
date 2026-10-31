@@ -19,7 +19,7 @@ import { CreateInspectionFromWizardSchema } from '../../lib/validations/wizard.s
 import { inspections as inspectionTable, inspectionResults } from '../../lib/db/schema';
 import { datePatchValues } from '../../services/inspection/reschedule-date';
 import { pushInspectionAfterResponse } from '../../lib/calendar/push-hooks';
-import { findPatchRefusal } from './patch-guards';
+import { findPatchRefusal, templatePickValues } from './patch-guards';
 import { deleteInspectionCascade } from '../../services/inspection/inspection-cascade';
 import { syncAssignmentsAndSplits } from '../../services/pay-split.service';
 import { eq, and } from 'drizzle-orm';
@@ -315,11 +315,11 @@ const coreRoutes = createApiRouter()
         );
         if (refusal) return c.json({ success: false as const, error: refusal }, 400);
 
-        // A date PATCH moves the scheduled instant with the civil day
-        // (§7.5 item 3) — see services/inspection/reschedule-date.ts.
+        // A date PATCH moves the scheduled instant with the civil day (§7.5 item 3): services/inspection/reschedule-date.ts.
         const updateValues: Record<string, unknown> = typeof body.date === 'string'
             ? await datePatchValues(db, tenantId, id, body as Record<string, unknown> & { date: string })
             : { ...body };
+        Object.assign(updateValues, await templatePickValues(db, tenantId, body.templateId, inspection.templateSnapshot));
 
         // INVARIANT: every path that moves an appointment runs the same refusal.
         // A calendar drag lands HERE rather than on /{id}/schedule, so deciding
