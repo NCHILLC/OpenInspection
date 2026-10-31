@@ -1,6 +1,9 @@
 import type { Context } from 'hono';
 import type { HonoConfig } from '../types/hono';
 import { Errors } from './errors';
+import { getDeploymentProfile } from './deployment-profile';
+import { isDevEnvironment } from './dev-environment';
+import { logger } from './logger';
 
 /**
  * A Cloudflare rate-limit binding carries ONE fixed limit/period in its wrangler
@@ -24,12 +27,25 @@ export async function checkRateLimit(
     const binding = limiter === 'QBO_WEBHOOK_RATE_LIMITER' ? c.env.QBO_WEBHOOK_RATE_LIMITER
         : limiter === 'STRIPE_WEBHOOK_RATE_LIMITER' ? c.env.STRIPE_WEBHOOK_RATE_LIMITER
         : c.env.RATE_LIMITER;
-    if (!binding) return;
+    // Where protection is mandatory (saas) a deployment that is not a
+    // developer's local build must have its limiter: an absent binding is a misconfiguration
+    // that would otherwise leave every limited route unlimited without a sign.
+    // Standalone keeps the no-op, as does a local build (`ENVIRONMENT=development`).
+    const guarded = getDeploymentProfile(c.env).botProtectionMandatory && !isDevEnvironment(c.env);
+    if (!binding) {
+        if (!guarded) return;
+        logger.error('rate_limit.binding_missing', { limiter });
+        throw Errors.ServiceUnavailable('Rate limiting is not configured.');
+    }
     // Test/dev escape hatch (defaults to enforced): the seeded E2E suite drives
     // ~140 specs' logins from a single runner IP, which blows past the 10/60s
     // login limiter and 429s beforeAll hooks flakily. Only the ephemeral E2E
-    // .dev.vars sets this; production and self-host never do.
-    if (c.env.DISABLE_RATE_LIMIT === '1') return;
+    // .dev.vars sets this. Where protection is mandatory it is honoured on a
+    // local build only; production ignores it and says so.
+    if (c.env.DISABLE_RATE_LIMIT === '1') {
+        if (!guarded) return;
+        logger.warn('rate_limit.disable_flag_ignored', { limiter });
+    }
     const who = scope ?? c.req.header('CF-Connecting-IP') ?? 'unknown';
     const { success } = await binding.limit({ key: `${prefix}:${who}` });
     if (!success) throw Errors.RateLimited();

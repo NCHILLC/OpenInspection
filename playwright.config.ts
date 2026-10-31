@@ -61,7 +61,7 @@ export default defineConfig({
         //                        link then reached a port nothing served
         //                        (ERR_CONNECTION_REFUSED). Pin it to the port this
         //                        worker actually listens on.
-        command: 'npm run build && npx wrangler dev -c build/server/wrangler.json --persist-to .wrangler/state --port 8789 --var E2E_EMAIL_SINK:1 --var SETUP_CODE:000000 --var DISABLE_RATE_LIMIT:1 --var APP_BASE_URL:http://127.0.0.1:8789',
+        command: 'npm run build && npx wrangler dev -c build/server/wrangler.json --persist-to .wrangler/state --port 8789 --var E2E_EMAIL_SINK:1 --var SETUP_CODE:000000 --var DISABLE_RATE_LIMIT:1 --var ENVIRONMENT:development --var APP_BASE_URL:http://127.0.0.1:8789',
         url: 'http://127.0.0.1:8789/status',
         reuseExistingServer: true,
         stdout: 'pipe',

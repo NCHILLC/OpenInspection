@@ -52,6 +52,9 @@ const lines = [
   // 10/60s per IP — wrangler.jsonc). Honored only by checkRateLimit when set;
   // this file is throwaway + gitignored, so no real deploy ever sees it.
   'DISABLE_RATE_LIMIT=1',
+  // A local build: bot protection and rate limits are relaxed only when this is
+  // exactly `development`. Never set it on a deployed worker.
+  'ENVIRONMENT=development',
   `JWT_SECRET=${randomBytes(32).toString('hex')}`,
   `JWT_PRIVATE_KEY_V1=${oneLine(privateKey)}`,
   `JWT_PUBLIC_KEY_V1=${oneLine(publicKey)}`,

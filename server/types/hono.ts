@@ -143,6 +143,9 @@ export interface AppEnv {
     // suite's concentrated single-IP logins don't trip the 10/60s login limiter.
     // Unset (the default) everywhere else — production/self-host stays enforced.
     DISABLE_RATE_LIMIT?: string;
+    // `production` from the wrangler config; exactly `development` (set in a
+    // gitignored .dev.vars) marks a local build. See server/lib/dev-environment.ts.
+    ENVIRONMENT?: string;
     // Test-only email sink: when '1', every outbound email is captured to KV
     // instead of sent (RecordingEmailProvider) and the env-gated
     // `/api/__test__/last-email` route reads it back — so E2E can obtain the
