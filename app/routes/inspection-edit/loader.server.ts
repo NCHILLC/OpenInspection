@@ -374,5 +374,8 @@ export async function loader({ request, params, context }: Route.LoaderArgs) {
  // `report_versions.length`; both mean "a version already exists".
  const nextPublishIsAmendment = isReportPublished(inspection.reportStatus);
 
- return { inspection, schema, results, resultId, ratingLevels, token, tagLibrary, tenantSlug, displayTimeZone, streamCustomerSubdomain, videoProvider, collabEditing, templateSnapshot, revisionStatus, pcaNarrative, defectCategories, units, unitProgress, unitInspectionMode, compliance, relianceText, commercialPresets, statutoryDetails, statutoryCoverage, nextPublishIsAmendment };
+ // Returned values are written into the page source: the snapshot goes once (top-level), and no token.
+ const inspectionRow: Record<string, unknown> = { ...inspection };
+ delete inspectionRow.templateSnapshot;
+ return { inspection: inspectionRow, schema, results, resultId, ratingLevels, tagLibrary, tenantSlug, displayTimeZone, streamCustomerSubdomain, videoProvider, collabEditing, templateSnapshot, revisionStatus, pcaNarrative, defectCategories, units, unitProgress, unitInspectionMode, compliance, relianceText, commercialPresets, statutoryDetails, statutoryCoverage, nextPublishIsAmendment };
 }

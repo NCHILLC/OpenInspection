@@ -139,3 +139,8 @@ Pick a role and you are ~90% configured; the toggles cover the rest.
 ## A Note on Guest / Temporary Access
 
 Neither Spectora nor ISN has a dedicated "guest" or temporary-login role, so there is nothing to migrate in that category. To bring on temporary help, add the person as an Inspector and remove them when the work is done.
+
+### Every write route names its guard
+
+Every `POST`, `PUT`, `PATCH` and `DELETE` route must name a guard on who may call it: `requireRole(...)` or `requireCapability(...)` in its middleware, a router-level `.use(...)` of one, or one of the other principal guards the checker lists (the client-portal session, the portal-to-core signature). `npm run lint:mutating-route-guards` (`scripts/check-mutating-route-guards.mjs`, reader in `scripts/lib/mutating-route-guards.mjs`) fails the commit for a write route with none. The routes that are legitimately open (public forms, token links, webhooks, a signed-in user's own profile) are listed in `scripts/mutating-route-guard-allowlist.json`, each with one of a closed set of categories and a reason checked against the handler. The list can only shrink, and an entry for a route that no longer exists fails the check. This closes the gap the capability-declaration check and the default-deny spec leave: they compare routes that already declare a capability, or cover anonymous callers, so a new write route with no guard at all was invisible to both.
+

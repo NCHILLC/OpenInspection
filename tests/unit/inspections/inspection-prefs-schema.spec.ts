@@ -68,3 +68,9 @@ describe('DEFAULT_INSPECTION_PREFS', () => {
         expect(InspectionPrefsSchema.safeParse(DEFAULT_INSPECTION_PREFS).success).toBe(true);
     });
 });
+
+describe('InspectionPrefsPatchSchema', () => {
+    it('a patch of one field carries no defaults for the others', () => {
+        expect(InspectionPrefsPatchSchema.parse({ autoAdvance: 'off' })).toEqual({ autoAdvance: 'off' });
+    });
+});
