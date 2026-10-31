@@ -18,6 +18,7 @@ against `ISN_WEBHOOK_SECRET`, then re-reads the order with `GET /order/{id}` and
 stores ISN's answer in `isn_orders`. The webhook body is trusted only for which
 order changed. A delivery with `"test": true` is acknowledged and not applied.
 
+- A body over 256 KB: 413, refused before any lookup. There is no rate limit, so a retry is never turned away.
 - No secret, no tenant, or a bad signature: 401. Nothing is read or written.
 - The re-fetch fails: 500, so ISN retries (8 attempts over about a day).
 - A repeated delivery re-reads the order again; the row holds ISN's latest state.

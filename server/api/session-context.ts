@@ -12,6 +12,7 @@ import {
     type TimeFormat,
 } from '../lib/session/display-prefs';
 import { Errors } from '../lib/errors';
+import { sessionMarker } from '../lib/session-marker';
 import { logger } from '../lib/logger';
 import { mcpEnabled } from '../lib/mcp/flag';
 import { coerceOverrides, getCapabilities, type CapabilitySet } from '../lib/auth/capabilities';
@@ -103,6 +104,9 @@ const sessionContextRoutes = createApiRouter()
         if (!user?.sub) {
             throw Errors.Unauthorized('Authentication required');
         }
+        // Who is signed in, tenant settings and capabilities: never stored by a shared cache or the
+        // service worker (the page asks again on every load).
+        c.header('Cache-Control', 'private, no-store');
 
         const branding = c.get('branding');
         const profile = c.var.profile;
@@ -354,6 +358,8 @@ const sessionContextRoutes = createApiRouter()
                     timeFormat: tenantTimeFormat,
                 },
                 user: {
+                    // Opaque marker of this user, for the browser's service worker (see session-marker.ts).
+                    sessionMarker: await sessionMarker(user.sub),
                     name: userName,
                     email: userEmail,
                     role: user.role || 'inspector',
