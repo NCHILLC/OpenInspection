@@ -10,7 +10,7 @@ import {
 import { inspections, inspectionResults, templates } from '../lib/db/schema';
 import { withMcpMetadata } from "../lib/route-metadata-standards";
 import { getDrizzle } from '../lib/route-helpers';
-import { resolvePrimaryReportId } from '../lib/inspection/reports';
+import { readResultsData, resolveLegacyPhotoTarget } from '../lib/inspection/report-results';
 import { r2Delete } from '../lib/r2/objects';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
@@ -37,15 +37,9 @@ async function primaryResults(
     db: DrizzleD1Database,
     tenantId: string,
     inspectionId: string,
-): Promise<{ reportId: string; row: typeof inspectionResults.$inferSelect | undefined }> {
-    const reportId = await resolvePrimaryReportId(db, tenantId, inspectionId);
-    if (!reportId) throw Errors.NotFound('Inspection has no primary report');
-    const row = await db.select().from(inspectionResults)
-        .where(and(
-            eq(inspectionResults.tenantId, tenantId),
-            eq(inspectionResults.reportId, reportId),
-        )).get();
-    return { reportId, row };
+) {
+    // Two unassigned rows is a coded 409, never a guess.
+    return resolveLegacyPhotoTarget(db, tenantId, inspectionId);
 }
 
 const syncRoutes = createApiRouter()
@@ -90,7 +84,7 @@ const syncRoutes = createApiRouter()
     const { row } = await primaryResults(db, tenantId, id);
     if (!row) throw Errors.NotFound('Results not found');
 
-    const data = row.data as Record<string, { photos?: Array<{ key: string }> }>;
+    const data = readResultsData(row.data) as Record<string, { photos?: Array<{ key: string }> }>;
     const photos = data[itemId]?.photos ?? [];
     if (photoIndex >= photos.length) throw Errors.NotFound('Photo index out of range');
 
@@ -147,7 +141,8 @@ const syncRoutes = createApiRouter()
     if (!insp) throw Errors.NotFound('Inspection not found');
 
     const { reportId, row } = await primaryResults(db, tenantId, id);
-    const data = (row?.data as Record<string, unknown>) ?? {};
+    if (!row && !reportId) throw Errors.NotFound('Inspection has no primary report');
+    const data = readResultsData(row?.data);
     data['_inspector_signature'] = { signatureBase64, signedAt, updatedAt: signedAt };
 
     if (row) {
@@ -161,7 +156,7 @@ const syncRoutes = createApiRouter()
             inspectionId: id,
             // Bound at creation. A results row with no report belongs to no
             // deliverable and is read by nothing.
-            reportId,
+            ...(reportId ? { reportId } : {}),
             data: data as object,
             lastSyncedAt: new Date(),
         });

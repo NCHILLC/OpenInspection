@@ -108,24 +108,58 @@ export async function resolveLegacyPhotoTarget(
 }
 
 /**
- * First persist of the PRIMARY report's document with no row of its own: take
- * over the unassigned row in one tenant-filtered UPDATE rather than inserting a
- * second row beside it. False means nothing was adopted (an ancillary report, no
- * unassigned row, or more than one) and the caller inserts.
+ * `inspection_results.data` as an object. Tolerates a JSON string and a string
+ * that was stringified twice; anything else that is not an object reads as {}.
  */
-export async function adoptUnassignedResultsRow(
+export function readResultsData(value: unknown): Record<string, unknown> {
+    let v = value;
+    for (let i = 0; i < 3 && typeof v === 'string'; i++) {
+        try { v = JSON.parse(v) as unknown; } catch { return {}; }
+    }
+    return v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
+}
+
+/** Whether the stored data holds any content, however it was encoded. */
+const hasResultsContent = (value: unknown): boolean => Object.keys(readResultsData(value)).length > 0;
+
+/**
+ * The collab document's write to D1. The ONLY path that writes a report's
+ * document content from the Durable Object.
+ *   - Ambiguous (2+ unassigned rows, no exact row): write nothing; the DO keeps its state.
+ *   - The primary report's unassigned row is CLAIMED first (report_id only, and only
+ *     while still NULL), then the exact row is re-resolved: mine, or the winner's.
+ *   - An insert happens only when resolution says there is no row at all.
+ *   - A document that holds nothing never overwrites a row that holds content.
+ */
+export async function persistReportResults(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     db: DrizzleD1Database<any>,
     tenantId: string,
     inspectionId: string,
     reportId: string,
     values: { ydocState: Uint8Array; data: object },
-): Promise<boolean> {
-    const { row, ambiguous } = await resolveReportResults(db, tenantId, inspectionId, reportId);
-    if (ambiguous) logger.warn('collab persist: more than one unassigned results row, inserting a report row', { inspectionId });
-    if (!row || row.reportId != null) return false;
-    const res = await db.update(inspectionResults)
-        .set({ reportId, ydocState: values.ydocState, data: values.data, lastSyncedAt: new Date() })
-        .where(and(eq(inspectionResults.tenantId, tenantId), eq(inspectionResults.id, row.id), isNull(inspectionResults.reportId)));
-    return (res.meta?.changes ?? 0) > 0;
+): Promise<void> {
+    let res = await resolveReportResults(db, tenantId, inspectionId, reportId);
+    if (res.row && res.row.reportId == null) {
+        await db.update(inspectionResults).set({ reportId })
+            .where(and(eq(inspectionResults.tenantId, tenantId), eq(inspectionResults.id, res.row.id), isNull(inspectionResults.reportId)));
+        res = await resolveReportResults(db, tenantId, inspectionId, reportId);
+    }
+    if (res.ambiguous) {
+        logger.warn('collab persist: more than one unassigned results row, nothing written', { tenantId, inspectionId, reportId });
+        return;
+    }
+    if (!res.row) {
+        await db.insert(inspectionResults).values({
+            id: crypto.randomUUID(), tenantId, inspectionId, reportId, ydocState: values.ydocState, data: values.data, lastSyncedAt: new Date(),
+        });
+        return;
+    }
+    if (!hasResultsContent(values.data) && hasResultsContent(res.row.data)) {
+        logger.warn('collab persist: empty document left the stored results alone', { tenantId, inspectionId, reportId });
+        return;
+    }
+    await db.update(inspectionResults)
+        .set({ ydocState: values.ydocState, data: values.data, lastSyncedAt: new Date() })
+        .where(and(eq(inspectionResults.tenantId, tenantId), eq(inspectionResults.id, res.row.id)));
 }

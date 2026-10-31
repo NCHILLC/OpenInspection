@@ -51,7 +51,7 @@ import { applyFollowupPatch, resolveCarriedFindingKey } from '../lib/collab/foll
 import { findingKeysFromTemplateSnapshot } from '../lib/finding-key';
 import { inspectionResults, inspections } from '../lib/db/schema';
 import { logger } from '../lib/logger';
-import { adoptUnassignedResultsRow, selectReportResultsRow } from '../lib/inspection/report-results';
+import { persistReportResults, readResultsData, selectReportResultsRow } from '../lib/inspection/report-results';
 import { purgePathMatches } from './purge-path';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -627,41 +627,17 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         const db: DrizzleD1Database = drizzle(this.env.DB);
         const projection = projectResults(this.doc);
 
-        const updated = await db
-            .update(inspectionResults)
-            .set({
-                ydocState:    stateUpdate,
-                data:         projection,
-                lastSyncedAt: new Date(),
-            })
-            .where(
-                and(
-                    eq(inspectionResults.tenantId, tenantId),
-                    // Per REPORT when we know which one. An inspection can now
-                    // carry several results rows, and matching on inspection id
-                    // alone updates all of them with this document.
-                    this.reportId
-                        ? eq(inspectionResults.reportId, this.reportId)
-                        : eq(inspectionResults.inspectionId, inspectionId),
-                ),
-            );
-
-        // An UPDATE that matches no row is not an error — it quietly changes
-        // nothing. `createInspection` does not create this row, so for every
-        // inspection made through the wizard that silence WAS the bug: the
-        // editor showed ratings, the socket said Connected, and D1 stayed empty.
-        // Insert on the way through instead of dropping the document.
+        if (this.reportId) {
+            await persistReportResults(db, tenantId, inspectionId, this.reportId, { ydocState: stateUpdate, data: projection });
+            return;
+        }
+        // No report id (an identity from before reports): the inspection's rows, as before.
+        const updated = await db.update(inspectionResults)
+            .set({ ydocState: stateUpdate, data: projection, lastSyncedAt: new Date() })
+            .where(and(eq(inspectionResults.tenantId, tenantId), eq(inspectionResults.inspectionId, inspectionId)));
         if ((updated.meta?.changes ?? 0) === 0) {
-            // A row with no report id belongs to the primary report: adopt it in place.
-            if (this.reportId && await adoptUnassignedResultsRow(db, tenantId, inspectionId, this.reportId, { ydocState: stateUpdate, data: projection })) return;
             await db.insert(inspectionResults).values({
-                id:           crypto.randomUUID(),
-                tenantId,
-                inspectionId,
-                ...(this.reportId ? { reportId: this.reportId } : {}),
-                ydocState:    stateUpdate,
-                data:         projection,
-                lastSyncedAt: new Date(),
+                id: crypto.randomUUID(), tenantId, inspectionId, ydocState: stateUpdate, data: projection, lastSyncedAt: new Date(),
             });
         }
     }
@@ -977,7 +953,7 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         // collab state existed (hadStoredState), the doc is authoritative and
         // ahead of D1 — importing the stale blob would clobber unflushed edits.
         if (!this.hadStoredState) {
-            const blob = resultsRow?.data;
+            const blob = readResultsData(resultsRow?.data);
             if (isNonEmptyProjection(blob)) {
                 loadResultsProjection(this.doc, blob);
             }

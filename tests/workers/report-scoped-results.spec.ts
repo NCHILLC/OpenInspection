@@ -321,5 +321,59 @@ describe('results are read and written for one report', () => {
             await b.DB.prepare('DELETE FROM inspection_results WHERE id = ?').bind('row-primary').run();
             await expect(photoService().detachItemPhoto(INSPECTION, TENANT, KEY, 0)).rejects.toMatchObject({ status: 404 });
         });
+
+        describe('persist', () => {
+            const dataOf = async (id: string) => JSON.parse(await rawData(id)) as Record<string, { rating?: string }>;
+            const filledDO = (o: DOInternals) => { seedResultsDoc(o.doc, [{ findingKey: KEY }]); applyItemPatch(o.doc, KEY, 'rating', 'LIVE'); };
+
+            it('with two NULL rows writes nothing: both rows stay byte-identical and no third appears', async () => {
+                await seed({ legacyNullRow: true });
+                await addNullRow('row-null-2', { [KEY]: { rating: 'other' } });
+                const before = await b.DB.prepare('SELECT * FROM inspection_results ORDER BY id').all();
+                await withDO('doc-ambig-persist', PRIMARY, async (o) => { filledDO(o); await o.persist(); });
+                expect((await b.DB.prepare('SELECT * FROM inspection_results ORDER BY id').all()).results).toEqual(before.results);
+            });
+
+            it('a lost claim re-resolves to the winner\'s row: no insert, no unique-key failure', async () => {
+                await seed({ legacyNullRow: true });
+                await Promise.all(['doc-race-a', 'doc-race-b'].map((n) => withDO(n, PRIMARY, async (o) => {
+                    await o.hydrateFromD1Once(); await o.persist();
+                })));
+                expect(await rows()).toEqual([{ id: 'row-primary', report_id: PRIMARY }]);
+                expect((await dataOf('row-primary'))[KEY]?.rating).toBe('satisfactory');
+            });
+
+            it('a double-encoded NULL row hydrates, is claimed, and keeps its content', async () => {
+                await seed({ legacyNullRow: true, primaryData: JSON.stringify(PRIMARY_DATA) });
+                const seen = await withDO('doc-double', PRIMARY, async (o) => { await o.hydrateFromD1Once(); const r = ratingOf(o.doc); await o.persist(); return r; });
+                expect(seen).toBe('satisfactory');
+                expect(await rows()).toEqual([{ id: 'row-primary', report_id: PRIMARY }]);
+                expect((await dataOf('row-primary'))[KEY]?.rating).toBe('satisfactory');
+            });
+
+            it('a document that imported nothing does not overwrite a row that has content', async () => {
+                await seed({ legacyNullRow: true });
+                await withDO('doc-empty', PRIMARY, async (o) => { o.hadStoredState = true; await o.persist(); });
+                expect(await rows()).toEqual([{ id: 'row-primary', report_id: PRIMARY }]);
+                expect((await dataOf('row-primary'))[KEY]?.rating).toBe('satisfactory');
+            });
+
+            it('an exact row with content is not emptied by an empty document either', async () => {
+                await seed();
+                await withDO('doc-empty-exact', PRIMARY, async (o) => { o.hadStoredState = true; await o.persist(); });
+                expect((await dataOf('row-primary'))[KEY]?.rating).toBe('satisfactory');
+            });
+        });
+
+        it('a moved reader (auto-sign) writes the primary row, not the sibling inserted first', async () => {
+            await seed();
+            await b.DB.prepare("INSERT INTO users (id, tenant_id, email, password_hash, role, default_signature_base64, created_at) VALUES ('u-sign', ?, 's@x.test', 'x', 'inspector', 'data:image/png;base64,AAAA', 0)").bind(TENANT).run();
+            await db().update(schema.inspections).set({ autoSignOnPublish: true, inspectorId: 'u-sign' }).where(eq(schema.inspections.id, INSPECTION));
+            const sibling = await rawData('row-secondary');
+            const { applyAutoSignatureOnPublish } = await import('../../server/lib/inspection/auto-sign');
+            await applyAutoSignatureOnPublish(db(), TENANT, INSPECTION);
+            expect(await rawData('row-secondary')).toBe(sibling);
+            expect(JSON.parse(await rawData('row-primary'))._inspector_signature).toBeTruthy();
+        });
     });
 });
