@@ -11,8 +11,9 @@
  */
 import { drizzle } from 'drizzle-orm/d1';
 import { and, eq, desc, or, isNull } from 'drizzle-orm';
-import { reports, reportVersions, inspections, inspectionUnits, users, inspectionInspectors, templates, tenantConfigs } from '../lib/db/schema';
+import { reportVersions, inspections, inspectionUnits, users, inspectionInspectors, templates, tenantConfigs } from '../lib/db/schema';
 import { requireReportResultsForPublish } from '../lib/inspection/report-results';
+import { resolvePrimaryReportId } from '../lib/inspection/reports';
 import { computeDiff, SNAPSHOT_SCHEMA_VERSION, type Snapshot, type SnapshotInspector, type DiffPayload } from '../lib/version-diff';
 import { CredentialService } from './credential.service';
 import { resolveProfile } from '../lib/report-style/resolve';
@@ -29,7 +30,8 @@ export interface SnapshotResult {
 type ResultsData = Record<string, Record<string, unknown>>;
 
 export class ReportVersionService {
-    constructor(private db: D1Database, private encryptionSecret: string) {}
+    /** `requestEnv` (from the DI middleware) lets the primary-report lookup be shared across one page render. */
+    constructor(private db: D1Database, private encryptionSecret: string, private requestEnv?: unknown) {}
 
     private getDrizzle() {
         return drizzle(this.db);
@@ -47,14 +49,7 @@ export class ReportVersionService {
         db: any, tenantId: string, inspectionId: string, reportId?: string,
     ): Promise<string | null> {
         if (reportId) return reportId;
-        const primary = await db.select({ id: reports.id }).from(reports)
-            .where(and(
-                eq(reports.tenantId, tenantId),
-                eq(reports.inspectionId, inspectionId),
-                eq(reports.kind, 'primary'),
-            ))
-            .get();
-        return primary?.id ?? null;
+        return resolvePrimaryReportId(db, tenantId, inspectionId, this.requestEnv);
     }
 
     async snapshotOnPublish(

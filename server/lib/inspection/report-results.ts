@@ -54,6 +54,7 @@ async function resolveReportResults(
     tenantId: string,
     inspectionId: string,
     reportId: string | null,
+    requestEnv?: unknown,
 ): Promise<ResolvedReportResults> {
     const exactRow = async (id: string) => {
         const r = await db.select(rowColumns).from(inspectionResults)
@@ -69,7 +70,7 @@ async function resolveReportResults(
         const exact = await exactRow(reportId);
         if (exact) return { reportId, row: exact, ambiguous: false };
     }
-    const primaryId = await resolvePrimaryReportId(db, tenantId, inspectionId);
+    const primaryId = await resolvePrimaryReportId(db, tenantId, inspectionId, requestEnv);
     const target = reportId ?? primaryId;
     if (target) {
         if (target !== reportId) {
@@ -98,8 +99,9 @@ export async function selectReportResultsRow(
     tenantId: string,
     inspectionId: string,
     reportId: string | null,
+    requestEnv?: unknown,
 ): Promise<ReportResultsRow | null> {
-    return (await resolveReportResults(db, tenantId, inspectionId, reportId)).row;
+    return (await resolveReportResults(db, tenantId, inspectionId, reportId, requestEnv)).row;
 }
 
 const AMBIGUOUS_RESULTS_REASON = 'ambiguous_results_rows';
@@ -108,15 +110,17 @@ const AMBIGUOUS_RESULTS_REASON = 'ambiguous_results_rows';
  * The row the legacy photo routes act on. They carry no report id, so the
  * target is the inspection's primary report; never a sibling's row. Two NULL
  * rows is a coded 409, not a guess. No row at all is returned as null: attach
- * creates one, the others answer 404.
+ * creates one, the others answer 404. `requestEnv` shares the primary lookup
+ * across one page render's calls (see resolvePrimaryReportId).
  */
 export async function resolveLegacyPhotoTarget(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     db: DrizzleD1Database<any>,
     tenantId: string,
     inspectionId: string,
+    requestEnv?: unknown,
 ): Promise<{ reportId: string | null; row: ReportResultsRow | null }> {
-    const { reportId, row, ambiguous } = await resolveReportResults(db, tenantId, inspectionId, null);
+    const { reportId, row, ambiguous } = await resolveReportResults(db, tenantId, inspectionId, null, requestEnv);
     if (ambiguous) {
         throw new AppError(409, ErrorCode.CONFLICT, 'This inspection holds more than one unassigned results row', { reason: AMBIGUOUS_RESULTS_REASON });
     }

@@ -50,6 +50,8 @@ export class InspectionCoreService extends InspectionSubService {
     private readonly reinspection: InspectionReinspectionService;
     private readonly variants: InspectionCreateVariantsService;
     private readonly recipients: InspectionRecipientsService;
+    /** The request env of a page render's fan-out; lets reads that repeat across its calls be shared. */
+    private requestEnv?: unknown;
 
     constructor(
         db: D1Database,
@@ -123,7 +125,7 @@ export class InspectionCoreService extends InspectionSubService {
         const ins = await this.sdb.getById(inspections, inspectionId);
         if (!ins) throw Errors.NotFound('Inspection not found');
 
-        const { row: resultsRow } = await resolveLegacyPhotoTarget(this.sdb.raw as never, tenantId, inspectionId);
+        const { row: resultsRow } = await resolveLegacyPhotoTarget(this.sdb.raw as never, tenantId, inspectionId, this.requestEnv);
         const items = readResultsDataOrEmpty(resultsRow?.data, { inspectionId }) as Record<string, { rating?: unknown; value?: unknown }>;
 
         return computePreflightFromData(
@@ -459,6 +461,7 @@ export class InspectionCoreService extends InspectionSubService {
      */
     setRequestEnv(env: unknown): void {
         this.recipients.requestEnv = env;
+        this.requestEnv = env;
     }
 
     /** IA-18 — the inspector portal People card. Body in `./inspection-recipients.service`. */

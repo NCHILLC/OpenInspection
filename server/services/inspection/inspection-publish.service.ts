@@ -46,6 +46,9 @@ import type { InspectionService } from '../inspection.service';
  * computePublishReadiness internally.
  */
 export class InspectionPublishService extends InspectionSubService {
+    /** The request env of a page render's fan-out; lets the primary-report lookup be shared across its calls. */
+    public requestEnv?: unknown;
+
     constructor(
         db: D1Database,
         r2: R2Bucket | undefined,
@@ -712,7 +715,7 @@ export class InspectionPublishService extends InspectionSubService {
             .get();
         if (!inspection) throw Errors.NotFound('Inspection not found');
 
-        const resultsRow = await selectReportResultsRow(db, tenantId, inspectionId, null);
+        const resultsRow = await selectReportResultsRow(db, tenantId, inspectionId, null, this.requestEnv);
 
         // #307 — the per-inspection snapshot is REQUIRED, not preferred. This
         // used to fall back to the live template schema, so "may this report be
