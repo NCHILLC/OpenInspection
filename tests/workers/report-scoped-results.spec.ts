@@ -84,7 +84,7 @@ function photoService() {
 describe('results are read and written for one report', () => {
     beforeAll(() => replayMigrations(b.DB, migrationSql));
     beforeEach(async () => {
-        for (const t of ['inspection_media_pool', 'report_versions', 'signing_keys', 'inspection_results', 'reports', 'inspection_units', 'inspections', 'tenants']) {
+        for (const t of ['inspection_media_pool', 'report_versions', 'signing_keys', 'inspection_results', 'reports', 'inspection_units', 'inspections', 'rating_systems', 'users', 'tenants']) {
             await b.DB.exec(`DELETE FROM ${t};`);
         }
     });
@@ -432,15 +432,11 @@ describe('results are read and written for one report', () => {
             });
 
             describe('a document with no report id', () => {
-                it('writes nothing to D1 while several rows exist; once it carries an identity the next persist writes', async () => {
+                it('never writes to D1: several rows stay byte-identical and no row is added', async () => {
                     await seed();
                     const before = await allRows();
                     await withDO('doc-no-report-persist', null, async (o) => { filledDO(o); await o.persist(); });
                     expect(await allRows()).toEqual(before);
-                    await withDO('doc-no-report-persist', PRIMARY, async (o) => { await o.persist(); });
-                    expect((await dataOf('row-primary'))[KEY]?.rating).toBe('LIVE');
-                    expect((await dataOf('row-secondary'))[KEY]?.rating).toBe('defect');
-                    expect(await rows()).toHaveLength(2);
                 });
             });
         });
@@ -454,6 +450,59 @@ describe('results are read and written for one report', () => {
             await applyAutoSignatureOnPublish(db(), TENANT, INSPECTION);
             expect(await rawData('row-secondary')).toBe(sibling);
             expect(JSON.parse(await rawData('row-primary'))._inspector_signature).toBeTruthy();
+        });
+    });
+
+    describe('an unreadable stored row is never thrown on, cast or guessed at', () => {
+        const SNAP = JSON.stringify({ ratingSystem: { name: 'old', levels: [{ id: 'A', label: 'A', severity: 'good' }] }, sections: [] });
+        const setRaw = (id: string, text: string) => b.DB.prepare('UPDATE inspection_results SET data = ? WHERE id = ?').bind(text, id).run();
+
+        for (const [label, text] of [['malformed JSON', '{not json'], ['an array', '[1,2]'], ['a scalar', '5']] as const) {
+            it(`render and snapshot treat ${label} as no results`, async () => {
+                await seed();
+                await setRaw('row-primary', text);
+                await db().update(schema.inspections).set({ templateSnapshot: SNAP as never }).where(eq(schema.inspections.id, INSPECTION));
+                const before = await rawData('row-primary');
+                await expect(new InspectionService(b.DB).getReportData(INSPECTION, TENANT)).resolves.toBeTruthy();
+                const svc = new ReportVersionService(b.DB, 'test-key-encryption-secret-0123456789');
+                await svc.snapshotOnPublish(TENANT, INSPECTION, 'u1');
+                const r = await db().select().from(schema.reportVersions).get();
+                expect(JSON.parse(r!.snapshotJson).data).toEqual({});
+                expect(await rawData('row-primary')).toBe(before);
+            });
+        }
+
+        async function seedRatingSystem() {
+            await db().insert(schema.ratingSystems).values({
+                id: 'rs-new', tenantId: TENANT, name: 'New', slug: 'new',
+                levels: [{ label: 'Fine', severity: 'good' }] as never, createdAt: new Date(), updatedAt: new Date(),
+            });
+            await db().update(schema.inspections).set({ templateSnapshot: SNAP as never }).where(eq(schema.inspections.id, INSPECTION));
+        }
+        const inspectionSnapshot = async () => (await b.DB.prepare('SELECT template_snapshot AS t FROM inspections WHERE id = ?').bind(INSPECTION).first<{ t: string }>())!.t;
+
+        it('switchRatingSystem on a malformed row answers 409 and changes nothing, the template snapshot included', async () => {
+            await seed();
+            await seedRatingSystem();
+            await setRaw('row-primary', '{not json');
+            const rowsBefore = (await b.DB.prepare('SELECT * FROM inspection_results ORDER BY id').all()).results;
+            const snapBefore = await inspectionSnapshot();
+            await expect(new InspectionService(b.DB).switchRatingSystem(INSPECTION, TENANT, 'rs-new', 'remap'))
+                .rejects.toMatchObject({ status: 409, details: { reason: 'unreadable_results_row' } });
+            expect(await inspectionSnapshot()).toBe(snapBefore);
+            expect((await b.DB.prepare('SELECT * FROM inspection_results ORDER BY id').all()).results).toEqual(rowsBefore);
+        });
+
+        it('switchRatingSystem over two unassigned rows answers 409 and changes nothing', async () => {
+            await seed({ legacyNullRow: true });
+            await b.DB.prepare("INSERT INTO inspection_results (id, tenant_id, inspection_id, report_id, data, last_synced_at) VALUES ('row-null-2', ?, ?, NULL, '{}', 0)").bind(TENANT, INSPECTION).run();
+            await seedRatingSystem();
+            const rowsBefore = (await b.DB.prepare('SELECT * FROM inspection_results ORDER BY id').all()).results;
+            const snapBefore = await inspectionSnapshot();
+            await expect(new InspectionService(b.DB).switchRatingSystem(INSPECTION, TENANT, 'rs-new', 'remap'))
+                .rejects.toMatchObject({ status: 409, details: { reason: 'ambiguous_results_rows' } });
+            expect(await inspectionSnapshot()).toBe(snapBefore);
+            expect((await b.DB.prepare('SELECT * FROM inspection_results ORDER BY id').all()).results).toEqual(rowsBefore);
         });
     });
 });

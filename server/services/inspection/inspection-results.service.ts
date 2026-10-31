@@ -327,15 +327,21 @@ export class InspectionResultsService extends InspectionSubService {
                 levels:         newSnapLevels,
             },
         };
+        // Resolve the row and prove it readable BEFORE any write: an ambiguous or
+        // unreadable row is a 409 that has changed nothing, the template
+        // snapshot included.
+        const { row: existing } = await resolveLegacyPhotoTarget(db, tenantId, id);
+        const data = existing
+            ? { ...requireResultsData(existing.data) } as Record<string, Record<string, unknown>>
+            : null;
+
         await db.update(inspections)
             .set({ templateSnapshot: JSON.stringify(newSnapshot) as never })
             .where(and(eq(inspections.id, id), eq(inspections.tenantId, tenantId)));
 
         // Rewrite per-item ratings on inspection_results
-        const { row: existing } = await resolveLegacyPhotoTarget(db, tenantId, id);
         let remapped = 0, cleared = 0, total = 0;
-        if (existing) {
-            const data = { ...requireResultsData(existing.data) } as Record<string, Record<string, unknown>>;
+        if (existing && data) {
             for (const itemId of Object.keys(data)) {
                 const it = data[itemId];
                 if (!it || !('rating' in it)) continue;

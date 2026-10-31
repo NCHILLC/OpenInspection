@@ -628,8 +628,10 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
             await persistReportResults(db, tenantId, inspectionId, this.reportId, { ydocState: stateUpdate, data: projection });
             return;
         }
-        // No report id: this document cannot say whose row it is, so D1 is not touched.
-        // DO storage above still saved it; the next connection through fetch carries the identity.
+        // No report id: this document cannot say whose row it is, so D1 is never
+        // written from it. DO storage above still saved it. Nothing repairs such an
+        // object: clients connect to the report-named document, so a DO that never
+        // received a report id simply stops receiving edits.
         logger.warn('collab persist: no report id, D1 not written', { tenantId, inspectionId });
     }
 
