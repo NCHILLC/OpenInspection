@@ -90,13 +90,16 @@ describe('results are read and written for one report', () => {
     });
 
     describe('collaboration document hydrate', () => {
-        interface DOInternals { doc: Y.Doc; tenantId: string | null; inspectionId: string | null; reportId: string | null; hydrateFromD1Once(): Promise<void> }
+        interface DOInternals { doc: Y.Doc; tenantId: string | null; inspectionId: string | null; reportId: string | null; hydrateFromD1Once(): Promise<void>; persistTimer: ReturnType<typeof setTimeout> | null; ctx: { storage: { deleteAlarm(): Promise<void> } } }
         async function hydrated(name: string, reportId: string | null) {
             const stub = b.INSPECTION_DOC.get(b.INSPECTION_DOC.idFromName(name));
             return runInDurableObject(stub, async (inst) => {
                 const o = inst as unknown as DOInternals;
                 o.tenantId = TENANT; o.inspectionId = INSPECTION; o.reportId = reportId;
                 await o.hydrateFromD1Once();
+                // Hydrating schedules a debounced persist; cancel it so it cannot write during a later test.
+                if (o.persistTimer !== null) { clearTimeout(o.persistTimer); o.persistTimer = null; }
+                await o.ctx.storage.deleteAlarm();
                 return projectResults(o.doc);
             });
         }
