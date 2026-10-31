@@ -7,6 +7,8 @@ import { drizzle } from 'drizzle-orm/d1';
 import { eq } from 'drizzle-orm';
 import { tenantConfigs } from '../lib/db/schema/tenant';
 import { createApiRouter } from '../lib/openapi-router';
+import { requireRole } from '../lib/middleware/rbac';
+import { Errors } from '../lib/errors';
 import { withMcpMetadata } from '../lib/route-metadata-standards';
 import { reportLinkExpiresAt } from '../lib/report-link-ttl';
 import { ReportLinkTtlSchema } from '../lib/validations/report-link-ttl.schema';
@@ -30,6 +32,8 @@ const getRoute = withMcpMetadata(createRoute({
         },
     },
 }), { scopes: ['read'], tier: 'extended' });
+
+const POLICY_KEYS = ['requireDefectFields', 'agentRepairAccess', 'reportLinkTtl'] as const;
 
 const patchRoute = withMcpMetadata(createRoute({
     method: 'patch',
@@ -64,6 +68,7 @@ const patchRoute = withMcpMetadata(createRoute({
 const bulkExpiryRoute = createRoute(withMcpMetadata({
     method: 'post',
     path: '/report-link-expiry',
+    middleware: [requireRole('owner', 'manager')] as const,
     tags: ['inspections'],
     summary: 'Apply an expiry to the report links that already exist',
     request: {
@@ -132,6 +137,9 @@ const inspectionPrefsRoutes = createApiRouter()
     .openapi(patchRoute, async (c) => {
         const tenantId = c.get('tenantId') as string;
         const patch = c.req.valid('json');
+        // Editor ergonomics (clone, auto-advance, pinned tags) are the inspector's own to tune; the rest is
+        // company policy (publish gate, agent access, report-link lifetime) and stays with owner and manager.
+        if (c.get('userRole') === 'inspector' && POLICY_KEYS.some((k) => k in patch)) throw Errors.Forbidden('Company policy settings need an owner or manager');
         const db = drizzle(c.env.DB as never);
         const existing = await db.select({
             prefs:               tenantConfigs.inspectionPrefs,

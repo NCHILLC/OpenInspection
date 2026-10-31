@@ -1,6 +1,6 @@
 {
   "_comment": "Mutating routes with no principal guard (requireRole, requireCapability, ...). Each entry needs a category from CATEGORIES in scripts/lib/mutating-route-guards.mjs and a reason verified in the handler. The list may only shrink: lower maxEntries when you remove one. needs-owner-decision is temporary.",
-  "maxEntries": 64,
+  "maxEntries": 63,
   "entries": {
     "server/api/agent-signup.ts::POST /": {
       "category": "public-by-design",
@@ -115,12 +115,8 @@
       "reason": "/api/identities/ is in AGENT_API_ALLOW by policy: any signed-in identity exports its own data (user id from the session)"
     },
     "server/api/inspection-prefs.ts::PATCH /": {
-      "category": "needs-owner-decision",
-      "reason": "Fork route: any signed-in staff role may patch company editor prefs (the editor writes pinned tags and auto-advance); decide whether owner and manager only"
-    },
-    "server/api/inspection-prefs.ts::POST /report-link-expiry": {
-      "category": "needs-owner-decision",
-      "reason": "Fork route: any signed-in staff role may expire the existing report links from the inspection hub; decide whether owner and manager only"
+      "category": "self-guarded-in-handler",
+      "reason": "handler refuses an inspector who patches requireDefectFields, agentRepairAccess or reportLinkTtl (403); editor prefs stay open to staff"
     },
     "server/api/isn-webhook.ts::POST /": {
       "category": "webhook-signature",

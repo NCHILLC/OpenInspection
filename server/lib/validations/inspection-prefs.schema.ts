@@ -45,7 +45,15 @@ export const InspectionPrefsSchema = z.object({
 export type InspectionPrefs = z.infer<typeof InspectionPrefsSchema>;
 
 /** All fields optional — used by PATCH to support partial updates. */
-export const InspectionPrefsPatchSchema = InspectionPrefsSchema.partial().openapi('InspectionPrefsPatch');
+/**
+  * `.partial()` alone keeps each field's `.default()`, so a patch of one field arrived carrying the
+  * defaults of the others and the route wrote them over the company's saved values. Unwrap the
+  * defaults first: a field the caller left out must stay out of the patch.
+  */
+const patchShape = Object.fromEntries(
+    Object.entries(InspectionPrefsSchema.shape).map(([k, f]) => [k, f instanceof z.ZodDefault ? f.unwrap() : f]),
+) as unknown as typeof InspectionPrefsSchema.shape;
+export const InspectionPrefsPatchSchema = z.object(patchShape).partial().openapi('InspectionPrefsPatch');
 
 export const DEFAULT_INSPECTION_PREFS: InspectionPrefs = {
     cloneDefault:       'rating_notes',
