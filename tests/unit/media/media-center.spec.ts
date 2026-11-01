@@ -90,6 +90,11 @@ describe('InspectionService — Media Center (Round-2 backlog #9)', () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             templateSnapshot: snapshot as any,
         }]);
+        // The legacy attach route writes to the primary report's row.
+        await testDb.insert(schema.reports).values({
+            id: 'report-primary', tenantId: TENANT, inspectionId: INSPECTION_ID,
+            kind: 'primary', title: 'Inspection Report', createdAt: new Date(),
+        });
     });
 
     it('getMediaCenter returns empty arrays for an inspection with no photos', async () => {

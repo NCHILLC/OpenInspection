@@ -174,4 +174,41 @@ describe('applyReportCorrection — the applier behind cmd.report.correct', () =
         await expect(apply({}, {})).rejects.toThrow(/authorising record/i);
         expect(await versionCount()).toBe(0);
     });
+
+    describe('an unreadable or ambiguous results row refuses before anything changes', () => {
+        const seedRows = (rows: Array<[string, string]>) => {
+            for (const [id, data] of rows) {
+                sqlite.prepare('INSERT INTO inspection_results (id, tenant_id, inspection_id, data, last_synced_at) VALUES (?, ?, ?, ?, 0)')
+                    .run(id, TENANT, INSPECTION, data);
+            }
+        };
+        const state = async () => ({
+            address: (await db.select().from(schema.inspections).where(eq(schema.inspections.id, INSPECTION)).get())?.propertyAddress,
+            versions: await versionCount(),
+            rows: sqlite.prepare('SELECT id, report_id, data FROM inspection_results ORDER BY id').all(),
+        });
+
+        it.each([
+            ['malformed JSON', [['r1', '{not json']]],
+            ['a scalar', [['r1', '42']]],
+            ['two unassigned rows', [['r1', '{}'], ['r2', '{}']]],
+        ] as Array<[string, Array<[string, string]>]>)('%s: rejects, changing no field, version or row', async (_name, rows) => {
+            seedRows(rows);
+            const before = await state();
+            await expect(apply()).rejects.toMatchObject({ status: 409 });
+            expect(await state()).toEqual(before);
+        });
+
+        it('also leaves a prior published version untouched', async () => {
+            await new ReportVersionService({} as D1Database, SECRET).snapshotOnPublish(TENANT, INSPECTION, ACTOR);
+            seedRows([['r1', '{not json']]);
+            const before = await state();
+            await expect(apply()).rejects.toMatchObject({ status: 409 });
+            expect(await state()).toEqual(before);
+        });
+
+        it('a real no-row correction still works', async () => {
+            expect(await apply()).toMatchObject({ outcome: 'corrected' });
+        });
+    });
 });

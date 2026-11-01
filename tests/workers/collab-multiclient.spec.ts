@@ -163,12 +163,13 @@ class MockWebSocket {
 async function ensureResultsRow(
     tenantId: string,
     inspectionId: string,
+    reportId: string | null = null,
 ): Promise<void> {
     await b.DB
         .prepare(
-            'INSERT OR IGNORE INTO inspection_results (id, tenant_id, inspection_id, data, last_synced_at) VALUES (?, ?, ?, ?, ?)',
+            'INSERT OR IGNORE INTO inspection_results (id, tenant_id, inspection_id, report_id, data, last_synced_at) VALUES (?, ?, ?, ?, ?, ?)',
         )
-        .bind(crypto.randomUUID(), tenantId, inspectionId, '{}', Date.now())
+        .bind(crypto.randomUUID(), tenantId, inspectionId, reportId ?? `rpt-${inspectionId}`, '{}', Date.now())
         .run();
 }
 
@@ -205,6 +206,7 @@ interface DOInternals {
     doc: Y.Doc;
     tenantId: string | null;
     inspectionId: string | null;
+    reportId: string | null;
     identityPersisted: boolean;
     hadStoredState: boolean;
     persist(): Promise<void>;
@@ -276,6 +278,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             // Set identity so persist() can write to D1.
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             // Seed the doc with both item keys so nested structure exists.
@@ -337,6 +340,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             // Client A: starts with empty doc — creates the item from scratch.
@@ -394,6 +398,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             // Pre-seed so both clients share the nested structure.
@@ -451,6 +456,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             seedResultsDoc(io.doc, [{ findingKey: FINDING_KEY_A }]);
@@ -504,6 +510,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             seedResultsDoc(io.doc, [
@@ -557,6 +564,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             seedResultsDoc(io.doc, [
@@ -621,6 +629,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             seedResultsDoc(io.doc, [{ findingKey: FINDING_KEY_A }]);
@@ -701,6 +710,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             seedResultsDoc(io.doc, [{ findingKey: FINDING_KEY_A }]);
@@ -761,7 +771,8 @@ describe('#181 — multi-client DO merge + projection parity', () => {
     // Then persist() must NOT wipe the D1 row back to {}.
     it('Scenario 7 — no-wipe: DO hydrates the existing D1 blob + seeds template, persist does not wipe', async () => {
         const inspectionId = 'insp-hydrate-' + crypto.randomUUID().slice(0, 8);
-        await ensureResultsRow(TENANT, inspectionId);
+        const reportId = 'report-' + inspectionId;
+        await ensureResultsRow(TENANT, inspectionId, reportId);
 
         const blob = {
             [FINDING_KEY_A]: { rating: 'D', notes: 'cracked wall' },
@@ -777,6 +788,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = reportId;
             io.identityPersisted = true;
             // No prior collab state for a fresh DO.
             expect(io.hadStoredState).toBe(false);
@@ -826,6 +838,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             // Simulate prior collab state: a live edit + the no-wipe guard set.
@@ -863,6 +876,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             await io.hydrateFromD1Once();
@@ -899,6 +913,7 @@ describe('#181 — multi-client DO merge + projection parity', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId          = TENANT;
             io.inspectionId      = inspectionId;
+            io.reportId          = io.reportId ?? `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             // Seed two items so move has a target.

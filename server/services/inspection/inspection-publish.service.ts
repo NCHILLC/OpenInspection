@@ -1,7 +1,8 @@
 import { eq, and, desc, inArray } from 'drizzle-orm';
 // `templates` is deliberately absent: #307 removed the live-template fallback,
 // so nothing in this file reads the templates row any more.
-import { inspections, inspectionResults, users, tenantConfigs, tenants, inspectionServices, agreements, agreementRequests, agreementSigners, invoices, contacts } from '../../lib/db/schema';
+import { inspections, users, tenantConfigs, tenants, inspectionServices, agreements, agreementRequests, agreementSigners, invoices, contacts } from '../../lib/db/schema';
+import { requireReportResultsForPublish, selectReportResultsRow, readResultsDataOrEmpty } from '../../lib/inspection/report-results';
 import { Errors } from '../../lib/errors';
 import { logger } from '../../lib/logger';
 import { applyAutoSignatureOnPublish } from '../../lib/inspection/auto-sign';
@@ -36,15 +37,6 @@ import { InspectionSubService } from './base';
 import { CredentialService } from '../credential.service';
 import type { InspectionService } from '../inspection.service';
 
-/** Normalise a possibly-JSON-encoded D1 column: parse when it's a string,
- *  pass objects through, and collapse any falsy value (undefined/null/'') to
- *  null. computePublishReadiness reads templateSnapshot / template.schema /
- *  inspection_results.data through this — all may arrive as either shape. */
-function parseMaybeJson(raw: unknown): unknown {
-    if (!raw) return null;
-    return typeof raw === 'string' ? JSON.parse(raw) : raw;
-}
-
 /**
  * Report publish + pre-publish gate logic: publishInspection (status flip +
  * automation trigger + auto-sign), computePublishReadiness (defect-field gate),
@@ -54,6 +46,9 @@ function parseMaybeJson(raw: unknown): unknown {
  * computePublishReadiness internally.
  */
 export class InspectionPublishService extends InspectionSubService {
+    /** The request env of a page render's fan-out; lets the primary-report lookup be shared across its calls. */
+    public requestEnv?: unknown;
+
     constructor(
         db: D1Database,
         r2: R2Bucket | undefined,
@@ -639,6 +634,10 @@ export class InspectionPublishService extends InspectionSubService {
         const targetReportId = await resolvePublishTargetReport(
             db, tenantId, inspectionId, _options.reportId);
 
+        // Refuse before anything changes: an unreadable or ambiguous results row
+        // must not be published, snapshotted, notified or auto-signed.
+        await requireReportResultsForPublish(db, tenantId, inspectionId, targetReportId ?? null);
+
         await db.update(inspections)
             .set({ reportStatus: REPORT_STATUS.PUBLISHED })
             .where(and(eq(inspections.id, inspectionId), eq(inspections.tenantId, tenantId)));
@@ -716,9 +715,7 @@ export class InspectionPublishService extends InspectionSubService {
             .get();
         if (!inspection) throw Errors.NotFound('Inspection not found');
 
-        const resultsRow = await db.select().from(inspectionResults)
-            .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)))
-            .get();
+        const resultsRow = await selectReportResultsRow(db, tenantId, inspectionId, null, this.requestEnv);
 
         // #307 — the per-inspection snapshot is REQUIRED, not preferred. This
         // used to fall back to the live template schema, so "may this report be
@@ -729,7 +726,7 @@ export class InspectionPublishService extends InspectionSubService {
             tenantId,
         );
 
-        const resultData: Record<string, unknown> = (parseMaybeJson(resultsRow?.data) as Record<string, unknown> | null) ?? {};
+        const resultData = readResultsDataOrEmpty(resultsRow?.data, { tenantId, inspectionId });
 
         // Track H (IA-7 / P-6②) — effective requirement: per-inspection
         // override beats the tenant default; both unset → 'none' (loose).
