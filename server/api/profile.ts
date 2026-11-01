@@ -14,6 +14,7 @@ import { isValidTimeZone } from '../lib/tz';
 import { isValidLocale } from '../lib/locale';
 import { DATE_FORMATS, TIME_FORMATS } from '../lib/session/display-prefs';
 import { getDrizzle } from '../lib/route-helpers';
+import { getBookingHost } from '../lib/url';
 import { r2Put } from '../lib/r2/objects';
 import { FL_1802_QUALIFICATION_CATEGORIES } from '../lib/statutory/qualification-categories';
 
@@ -198,7 +199,8 @@ const profileRoutes = createApiRouter()
 
         if (!row) throw Errors.NotFound('User not found');
 
-        const host = new URL(c.req.url).host;
+        // Not the request's own host: this handler runs in-process, where that is `localhost:8788`.
+        const host = getBookingHost(c);
         const tenantSlug = c.get('requestedTenantSlug') ?? null;
         // The preview MUST carry credentials, or it shows a signature the
         // reader will never receive. `inspectorSignature` has accepted them
