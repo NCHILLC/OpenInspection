@@ -103,6 +103,12 @@ the branch up to date and no bypass (2026-10-31). The muster crew uses the same
 GitHub account as the owner, so a bypass would be a bypass for them too.
 If a gate fails, fix the cause.
 
+## Agent skills
+
+- **Issue tracker**: GitHub Issues on `NCHILLC/OpenInspection`, driven with `gh ... --repo NCHILLC/OpenInspection`. Never target `upstream` (`InspectorHub/OpenInspection`); filing there is public and not ours to do.
+- **Triage labels**: none. The `triage` skill is not installed, so do not invent a label vocabulary.
+- **Domain docs**: single context. Terms are the Product Terminology table below, plus `docs/develop/conventions/i18n-glossary.md` for UI strings. There is no `GLOSSARY.md` or ADR folder yet; create one only when a skill (`domain-modeling`) is asked to.
+
 ## Product Terminology (canonical)
 
 User-facing copy and NEW code identifiers use these terms. (Existing surfaces are renamed in a dedicated terminology pass; don't mix renames into feature work.)
