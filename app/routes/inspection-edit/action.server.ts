@@ -7,6 +7,7 @@ import { unwrapResultsResponse } from "~/lib/results";
 import { mapPool } from "~/lib/map-pool";
 import { handleStatutoryIntent } from "./action-statutory.server";
 import { handleFollowupIntent } from "./action-followup.server";
+import { publishFailureMessage, publishPreflight } from "./action-publish.server";
 import { handleIsnIntent } from "./action-isn.server";
 import type { IsnSync } from "~/components/editor/PublishModal";
 
@@ -43,6 +44,10 @@ export async function action({ request, params, context }: Route.ActionArgs) {
  }
 
  if (intent === "publish") {
+ // Read-only first: complete fires an automation and the auto-sign patch
+ // writes the row, neither of which may happen for a report publish refuses.
+ const refused = await publishPreflight(api, params.id);
+ if (refused) return refused;
  // "Mark complete and publish": fire complete first — idempotent and
  // non-blocking, so a failure there never stops the publish that follows.
  if (formData.get("markComplete") === "true") await completeEndpoint().catch(() => undefined);
@@ -63,20 +68,8 @@ export async function action({ request, params, context }: Route.ActionArgs) {
  // Publish has meaningful precondition failures (e.g. "Inspection must be
  // completed before publishing the report.") that the inspector MUST see —
  // returning a bare { ok:false } here routed the publish through the generic
- // autosave "Save failed" toast and swallowed the real reason. Parse the
- // AppError body ({ error: { code, message } }) and carry the message back
- // so the publish modal can show it inline.
- if (!res.ok) {
- const bodyText = await res.text().catch(() => "");
- let message = "Couldn't publish the report. Please try again.";
- try {
- const parsed = JSON.parse(bodyText) as { error?: { message?: string }; message?: string };
- message = parsed?.error?.message ?? parsed?.message ?? message;
- } catch {
- /* non-JSON body — keep the default message */
- }
- return { ok: false as const, intent: "publish", error: message };
- }
+ // autosave "Save failed" toast and swallowed the real reason.
+ if (!res.ok) return { ok: false as const, intent: "publish", error: await publishFailureMessage(res) };
  const published = (await res.json().catch(() => null)) as { data?: { isnSync?: IsnSync | null } } | null; // shown on the receipt
  return { ok: true as const, intent: "publish", isnSync: published?.data?.isnSync ?? null };
  }

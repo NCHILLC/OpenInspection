@@ -24,8 +24,7 @@ import { AggregatedRecommendationsResponseSchema } from '../../lib/validations/r
 import { aggregateAttachedRecommendations } from '../../lib/aggregate-recommendations';
 import { findingsForUnit } from '../../lib/finding-key';
 import { applyResultsBatch } from '../../services/inspection-results.service';
-import { inspectionResults } from '../../lib/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { readResultsDataOrEmpty, resolveLegacyPhotoTarget } from '../../lib/inspection/report-results';
 import { withMcpMetadata } from '../../lib/route-metadata-standards';
 import { refuseStatutorySnapshotEdit } from '../../lib/middleware/refuse-statutory-template-edit';
 import { getDrizzle } from '../../lib/route-helpers';
@@ -377,8 +376,8 @@ const resultsRoutes = createApiRouter()
         const { scope } = c.req.valid('query');
         const db = getDrizzle(c);
         await c.var.services.inspection.getInspection(id, c.get('tenantId'));
-        const results = await db.select().from(inspectionResults).where(and(eq(inspectionResults.inspectionId, id), eq(inspectionResults.tenantId, c.get('tenantId')))).get();
-        const data = (results?.data || {}) as Record<string, unknown>;
+        const { row: results } = await resolveLegacyPhotoTarget(db, c.get('tenantId'), id);
+        const data = readResultsDataOrEmpty(results?.data, { inspectionId: id });
         // Phase U — read-slice to one scope's findings when requested; no scope
         // ⇒ full map, unchanged. Write model (Yjs/DO) is untouched.
         const sliced = scope ? findingsForUnit(data, scope) : data;
@@ -409,9 +408,8 @@ const resultsRoutes = createApiRouter()
         const tenantId = c.get('tenantId') as string;
 
         const db = getDrizzle(c);
-        const row = await db.select().from(inspectionResults)
-            .where(and(eq(inspectionResults.inspectionId, id), eq(inspectionResults.tenantId, tenantId))).get();
-        const { items, totals } = aggregateAttachedRecommendations(row?.data as Record<string, unknown> | undefined);
+        const { row } = await resolveLegacyPhotoTarget(db, tenantId, id);
+        const { items, totals } = aggregateAttachedRecommendations(row ? readResultsDataOrEmpty(row.data, { inspectionId: id }) : undefined);
         return c.json({ success: true as const, data: { items, totals } }, 200);
     })
     .openapi(preflightRoute, async (c) => {

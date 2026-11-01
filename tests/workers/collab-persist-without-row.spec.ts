@@ -37,6 +37,7 @@ interface DOInternals {
     doc: Y.Doc;
     tenantId: string | null;
     inspectionId: string | null;
+    reportId: string | null;
     identityPersisted: boolean;
     alarm(): Promise<void>;
     persist(): Promise<void>;
@@ -46,6 +47,8 @@ interface DOInternals {
 
 async function seedSchema(): Promise<void> {
     await b.DB.exec(INSPECTION_RESULTS_TEST_DDL);
+    // Resolving which row is whose looks the inspection's primary report up.
+    await b.DB.exec('CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY NOT NULL, tenant_id TEXT NOT NULL, inspection_id TEXT NOT NULL, kind TEXT NOT NULL);');
 }
 
 async function clearResults(): Promise<void> {
@@ -81,6 +84,7 @@ describe('collab persistence with no pre-existing inspection_results row', () =>
             const io = instance as unknown as DOInternals;
             io.tenantId = TENANT;
             io.inspectionId = inspectionId;
+            io.reportId = `rpt-${inspectionId}`;
             io.identityPersisted = true;
 
             seedResultsDoc(io.doc, [{ findingKey: FINDING_KEY }]);
@@ -112,6 +116,7 @@ describe('collab persistence with no pre-existing inspection_results row', () =>
             const io = instance as unknown as DOInternals;
             io.tenantId = TENANT;
             io.inspectionId = inspectionId;
+            io.reportId = `rpt-${inspectionId}`;
             io.identityPersisted = true;
             seedResultsDoc(io.doc, [{ findingKey: FINDING_KEY }]);
 
@@ -137,7 +142,7 @@ describe('collab persistence with no pre-existing inspection_results row', () =>
         expect(data[FINDING_KEY]?.rating).toBe('Satisfactory');
     });
 
-    it('does not let a legacy identity alarm write without a report id', async () => {
+    it('a document with no report id saves nothing to D1, alarm included', async () => {
         const inspectionId = 'insp-legacy-identity-' + crypto.randomUUID().slice(0, 8);
         const stub = b.INSPECTION_DOC.get(b.INSPECTION_DOC.idFromName(`${TENANT}:${inspectionId}`));
 
@@ -174,6 +179,7 @@ describe('POST /flush', () => {
             const io = instance as unknown as DOInternals;
             io.tenantId = TENANT;
             io.inspectionId = inspectionId;
+            io.reportId = `rpt-${inspectionId}`;
             io.identityPersisted = true;
             seedResultsDoc(io.doc, [{ findingKey: FINDING_KEY }]);
 
