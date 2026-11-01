@@ -73,6 +73,8 @@ describe('public booking refuses a workspace with no declared timezone', () => {
     let svc: BookingService;
 
     beforeEach(async () => {
+        // The Fridays below are fixed dates; booking refuses a past day, so pin "today" before all of them.
+        vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-09-01T12:00:00Z') });
         const setup = createTestDb();
         db = setup.db as BetterSQLite3Database<typeof schema>;
         sqlite = setup.sqlite;
@@ -99,7 +101,10 @@ describe('public booking refuses a workspace with no declared timezone', () => {
         });
     });
 
-    afterEach(() => sqlite.close());
+    afterEach(() => {
+        vi.useRealTimers();
+        sqlite.close();
+    });
 
     /** The tenant's stored zone. `undefined` leaves the column at its NOT NULL
      *  default, which is exactly the never-configured state in production. */
