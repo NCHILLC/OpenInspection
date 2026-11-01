@@ -8,6 +8,7 @@ const completePost = vi.fn();
 const publishPost = vi.fn();
 const isnReportLinkPost = vi.fn();
 const inspectionPatch = vi.fn();
+const publishCheckGet = vi.fn();
 /** Call order across endpoints — the whole point of the auto-sign specs. */
 const calls: string[] = [];
 
@@ -20,6 +21,7 @@ vi.mock('~/lib/api-client.server', () => ({
             ':id': {
                 complete: { $post: completePost },
                 publish: { $post: publishPost },
+                'publish-check': { $get: publishCheckGet },
                 isn: { 'report-link': { $post: isnReportLinkPost } },
                 $patch: inspectionPatch,
             },
@@ -45,6 +47,7 @@ function post(fields: Record<string, string>) {
 
 describe('editor action — order-lifecycle intents (IA-30 Task 4)', () => {
     beforeEach(() => {
+        publishCheckGet.mockReset().mockResolvedValue(Response.json({ ok: true }));
         completePost.mockReset().mockResolvedValue(new Response(null, { status: 200 }));
         publishPost.mockReset().mockResolvedValue(new Response(null, { status: 200 }));
     });
@@ -109,6 +112,7 @@ describe('editor action — order-lifecycle intents (IA-30 Task 4)', () => {
  */
 describe('editor action — auto-sign on publish', () => {
     beforeEach(() => {
+        publishCheckGet.mockReset().mockResolvedValue(Response.json({ ok: true }));
         calls.length = 0;
         completePost.mockReset().mockImplementation(async () => { calls.push('complete'); return new Response(null, { status: 200 }); });
         publishPost.mockReset().mockImplementation(async () => { calls.push('publish'); return new Response(null, { status: 200 }); });
@@ -242,5 +246,31 @@ describe('editor action: the inspection id must be a single path segment', () =>
         const res = await postWithId('3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f');
         expect(completePost).toHaveBeenCalledTimes(1);
         expect(res).toMatchObject({ ok: true, intent: 'complete' });
+    });
+});
+
+describe('editor action — publish pre-flight', () => {
+    beforeEach(() => {
+        calls.length = 0;
+        completePost.mockReset().mockImplementation(async () => { calls.push('complete'); return new Response(null, { status: 200 }); });
+        publishPost.mockReset().mockImplementation(async () => { calls.push('publish'); return new Response(null, { status: 200 }); });
+        inspectionPatch.mockReset().mockImplementation(async () => { calls.push('patch'); return new Response(null, { status: 200 }); });
+        publishCheckGet.mockReset().mockImplementation(async () => { calls.push('check'); return new Response(null, { status: 200 }); });
+    });
+
+    it('checks first, then completes, patches and publishes', async () => {
+        await post({ intent: 'publish', markComplete: 'true', autoSignOnPublish: 'true' });
+        expect(calls).toEqual(['check', 'complete', 'patch', 'publish']);
+    });
+
+    it('a 409 from the check calls neither complete, the auto-sign patch nor publish', async () => {
+        publishCheckGet.mockImplementation(async () => Response.json(
+            { error: { code: 'CONFLICT', message: 'The stored results for this report could not be read' } }, { status: 409 },
+        ));
+        const res = await post({ intent: 'publish', markComplete: 'true', autoSignOnPublish: 'true' });
+        expect(completePost).not.toHaveBeenCalled();
+        expect(inspectionPatch).not.toHaveBeenCalled();
+        expect(publishPost).not.toHaveBeenCalled();
+        expect(res).toMatchObject({ ok: false, intent: 'publish', error: 'The stored results for this report could not be read' });
     });
 });

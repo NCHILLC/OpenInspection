@@ -8056,6 +8056,45 @@
     "description": "Return the current tenant-level inspection editor preferences (clone defaults, auto-advance delay, pinned tag IDs), applying built-in defaults for any field not yet configured."
   },
   {
+    "operationId": "getInspectionPublishCheck",
+    "method": "GET",
+    "pathTemplate": "/api/inspections/{id}/publish-check",
+    "scopes": [
+      "read"
+    ],
+    "tag": "inspections",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Inspection identifier",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Inspection identifier"
+          }
+        },
+        {
+          "name": "reportId",
+          "in": "query",
+          "required": false,
+          "description": "Report to check; defaults to the inspection primary report",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Report to check; defaults to the inspection primary report"
+          }
+        }
+      ],
+      "body": null
+    },
+    "summary": "Check that the report to publish has readable results",
+    "description": "Refuses with 409 (unreadable_results_row or ambiguous_results_rows) when the report results cannot be published safely. Read-only; the same check publish makes before changing anything."
+  },
+  {
     "operationId": "getInspectionPublishReadiness",
     "method": "GET",
     "pathTemplate": "/api/inspections/{id}/publish-readiness",

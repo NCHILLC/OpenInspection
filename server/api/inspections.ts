@@ -29,6 +29,7 @@ import scheduleRoutes from './inspections/schedule';
 import mediaRoutes from './inspections/media';
 import mediaStudioRoutes from './inspections/media-studio';
 import publishRoutes from './inspections/publish';
+import publishCheckRoutes from './inspections/publish-check';
 import reportGateRoutes from './inspections/report-gate';
 import reportTranslationRoutes from './inspections/report-translation';
 import reportDeliveryRoutes from './inspections/report-delivery';
@@ -65,6 +66,7 @@ export const inspectionsRoutes = createApiRouter()
     .route('/', resultsRoutes)
     .route('/', mediaRoutes)
     .route('/', mediaStudioRoutes)
+    .route('/', publishCheckRoutes)
     .route('/', publishRoutes)
     .route('/', reportGateRoutes)
     .route('/', reportTranslationRoutes)

@@ -15,6 +15,7 @@ import { InspectionSubService } from './base';
 import { templateSnapshotSectionsOrNone } from './shared';
 import type { InspectionService } from '../inspection.service';
 import { r2Keys } from '../../lib/r2-keys';
+import { readResultsDataOrEmpty, requireResultsData, resolveLegacyPhotoTarget } from '../../lib/inspection/report-results';
 
 const extFromName = (n: string) => (n.split('.').pop() || 'bin').toLowerCase();
 
@@ -22,7 +23,7 @@ const extFromName = (n: string) => (n.split('.').pop() || 'bin').toLowerCase();
  *  cache). Normalize either into a record; an empty object when absent. */
 function parseResultData<T = Record<string, never>>(data: unknown): T {
     if (!data) return {} as T;
-    return (typeof data === 'string' ? JSON.parse(data) : data) as T;
+    return requireResultsData(data) as T;
 }
 
 /**
@@ -66,17 +67,19 @@ export class InspectionPhotoService extends InspectionSubService {
         inspectionId: string,
         data: object,
         existingId: string | undefined,
+        reportId: string | null,
     ): Promise<void> {
         const db = this.getDrizzle();
         if (existingId) {
             await db.update(inspectionResults)
                 .set({ data: data as unknown as object, lastSyncedAt: new Date() })
-                .where(eq(inspectionResults.id, existingId));
+                .where(and(eq(inspectionResults.id, existingId), eq(inspectionResults.tenantId, tenantId)));
         } else {
             await db.insert(inspectionResults).values({
                 id:           crypto.randomUUID(),
                 tenantId,
                 inspectionId,
+                reportId,
                 data:         data as unknown as object,
                 lastSyncedAt: new Date(),
             });
@@ -199,7 +202,7 @@ export class InspectionPhotoService extends InspectionSubService {
             .all();
 
         const attached = resultsRows.flatMap((row) => collectAttachedPhotos(
-            parseResultData(row.data),
+            readResultsDataOrEmpty(row.data, { inspectionId }),
             itemMeta,
             (key) => `/api/inspections/${inspectionId}/photo?key=${encodeURIComponent(key)}`,
             (k) => { const pk = parseFindingKey(k); return { itemId: pk.itemId, sectionId: pk.sectionId }; },
@@ -299,9 +302,7 @@ export class InspectionPhotoService extends InspectionSubService {
         // Locate or create the inspection_results row, then append the
         // photo to data[key].photos[].
         interface ResultEntry { photos?: Array<{ key: string }> }
-        const existing = await db.select().from(inspectionResults)
-            .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)))
-            .get();
+        const { reportId, row: existing } = await resolveLegacyPhotoTarget(db, tenantId, inspectionId);
 
         const data = parseResultData<Record<string, ResultEntry>>(existing?.data);
         const key = sectionId ? findingKey(DEFAULT_UNIT, sectionId, itemId) : itemId;
@@ -312,7 +313,7 @@ export class InspectionPhotoService extends InspectionSubService {
         if (key !== itemId) delete data[itemId]; // migrate on write
         const photoIndex = photos.length - 1;
 
-        await this.upsertResultData(tenantId, inspectionId, data, existing?.id);
+        await this.upsertResultData(tenantId, inspectionId, data, existing?.id, reportId);
 
         // The pool row is a staging pointer only; once the photo key is written
         // into results.data the pool row is always removed (the R2 object is
@@ -344,21 +345,18 @@ export class InspectionPhotoService extends InspectionSubService {
     ): Promise<void> {
         await this.facade.getInspection(inspectionId, tenantId); // ownership check
         const db = this.getDrizzle();
-        const row = await db.select().from(inspectionResults)
-            .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)))
-            .get();
+        const { row } = await resolveLegacyPhotoTarget(db, tenantId, inspectionId);
         if (!row) throw Errors.NotFound('Results not found');
-        const data: Record<string, { photos?: { key: string }[] }> = typeof row.data === 'string'
-            ? JSON.parse(row.data)
-            : (row.data as Record<string, { photos?: { key: string }[] }>);
+        // Tolerates a double-encoded row; the write encodes the object once.
+        const data = parseResultData<Record<string, { photos?: { key: string }[] }>>(row.data);
         const key = sectionId ? findingKey(DEFAULT_UNIT, sectionId, itemId) : itemId;
         const entry = data[key] ?? data[itemId];
         if (!entry?.photos) throw Errors.BadRequest('no photos for item');
         entry.photos = transform(entry.photos);
         data[key] = entry;
         await db.update(inspectionResults)
-            .set({ data: JSON.stringify(data), lastSyncedAt: new Date() })
-            .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)));
+            .set({ data, lastSyncedAt: new Date() })
+            .where(and(eq(inspectionResults.id, row.id), eq(inspectionResults.tenantId, tenantId)));
     }
 
     /**
@@ -428,13 +426,9 @@ export class InspectionPhotoService extends InspectionSubService {
     ): Promise<{ toItemId: string; photoIndex: number }> {
         await this.facade.getInspection(inspectionId, tenantId); // ownership check
         const db = this.getDrizzle();
-        const rowSel = await db.select().from(inspectionResults)
-            .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)))
-            .get();
+        const { row: rowSel } = await resolveLegacyPhotoTarget(db, tenantId, inspectionId);
         if (!rowSel) throw Errors.NotFound('Results not found');
-        const data: Record<string, { photos?: PhotoEntry[] }> = typeof rowSel.data === 'string'
-            ? JSON.parse(rowSel.data)
-            : (rowSel.data as Record<string, { photos?: PhotoEntry[] }>);
+        const data = parseResultData<Record<string, { photos?: PhotoEntry[] }>>(rowSel.data);
         const fromKey = fromSectionId ? findingKey(DEFAULT_UNIT, fromSectionId, fromItemId) : fromItemId;
         const toKey   = toSectionId   ? findingKey(DEFAULT_UNIT, toSectionId, toItemId)     : toItemId;
         const fromEntry = data[fromKey] ?? data[fromItemId];
@@ -444,8 +438,8 @@ export class InspectionPhotoService extends InspectionSubService {
         data[fromKey] = { ...fromEntry, photos: moved.from };
         data[toKey]   = { ...toEntry,   photos: moved.to };
         await db.update(inspectionResults)
-            .set({ data: JSON.stringify(data), lastSyncedAt: new Date() })
-            .where(and(eq(inspectionResults.inspectionId, inspectionId), eq(inspectionResults.tenantId, tenantId)));
+            .set({ data, lastSyncedAt: new Date() })
+            .where(and(eq(inspectionResults.id, rowSel.id), eq(inspectionResults.tenantId, tenantId)));
         return { toItemId, photoIndex: moved.to.length - 1 };
     }
 

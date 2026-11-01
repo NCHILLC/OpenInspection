@@ -157,4 +157,60 @@ describe('offline field sync writes to the primary report, not to whichever resu
         const rows = await db.select().from(inspectionResults).all();
         expect(rows).toHaveLength(0);
     });
+
+    it('a row whose stored data cannot be read answers a coded 409 and stays byte-identical', async () => {
+        await seedResults();
+        const raw = sqlite as unknown as { prepare(s: string): { run(...a: unknown[]): unknown; all(): unknown[] } };
+        raw.prepare("UPDATE inspection_results SET data = '{oops' WHERE id = 'res-primary'").run();
+        const before = JSON.stringify(raw.prepare('SELECT * FROM inspection_results ORDER BY id').all());
+        const sig = await buildApp(db).request(`/${INSP_ID}/inspector-signature`, {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ signatureBase64: SIGNATURE, signedAt: 1_754_000_000_000 }),
+        }, FAKE_ENV);
+        const del = await buildApp(db).request(`/${INSP_ID}/items/item-1/photos/0`, { method: 'DELETE' }, FAKE_ENV);
+        expect(sig.status).toBe(409);
+        expect(del.status).toBe(409);
+        expect(JSON.stringify(raw.prepare('SELECT * FROM inspection_results ORDER BY id').all())).toBe(before);
+    });
+
+    describe('a results row with no report id (legacy) is the primary report\'s', () => {
+        const nullRow = (id: string, data: unknown) => db.insert(inspectionResults).values(
+            { id, tenantId: TENANT_ID, inspectionId: INSP_ID, reportId: null, data: data as object, lastSyncedAt: new Date(1) } as never);
+        const sign = () => buildApp(db).request(`/${INSP_ID}/inspector-signature`, {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ signatureBase64: SIGNATURE, signedAt: 1_754_000_000_000 }),
+        }, FAKE_ENV);
+
+        it('delete-photo works on a sole NULL row', async () => {
+            await nullRow('res-null', photoRow('legacy'));
+            const res = await buildApp(db).request(`/${INSP_ID}/items/item-1/photos/0`, { method: 'DELETE' }, FAKE_ENV);
+            expect(res.status).toBe(200);
+            const row = (await readRow('res-null'))?.data as Record<string, { photos: { key: string }[] }>;
+            expect(row['item-1'].photos.map((p) => p.key)).toEqual(['legacy-b.jpg']);
+        });
+
+        it('the signature merges into the NULL row: findings kept, still one row', async () => {
+            await nullRow('res-null', photoRow('legacy'));
+            expect((await sign()).status).toBe(200);
+            const rows = await db.select().from(inspectionResults).all();
+            expect(rows).toHaveLength(1);
+            const data = rows[0].data as Record<string, unknown>;
+            expect(data['_inspector_signature']).toBeTruthy();
+            expect(data['item-1']).toBeTruthy();
+        });
+
+        it('two NULL rows answer a coded 409 and nothing is written', async () => {
+            await nullRow('res-null-1', photoRow('a'));
+            await nullRow('res-null-2', photoRow('b'));
+            for (const res of [
+                await sign(),
+                await buildApp(db).request(`/${INSP_ID}/items/item-1/photos/0`, { method: 'DELETE' }, FAKE_ENV),
+            ]) {
+                expect(res.status).toBe(409);
+            }
+            const rows = await db.select().from(inspectionResults).all();
+            expect(rows).toHaveLength(2);
+            expect(JSON.stringify(rows.map((r) => r.data))).not.toContain('_inspector_signature');
+        });
+    });
 });

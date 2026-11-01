@@ -15,9 +15,10 @@
  * path that a reader should be able to find without walking nine hundred lines
  * of payload assembly.
  */
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
-import { inspectionResults, reports } from '../../lib/db/schema';
+import { reports } from '../../lib/db/schema';
+import { selectReportResultsRow } from '../../lib/inspection/report-results';
 import { sha256Hex } from '../../lib/sha256';
 import { RENDER_VERSION } from '../../lib/pdf';
 
@@ -75,21 +76,10 @@ export async function resolveRenderedReportId(
 }
 
 /**
- * The `inspection_results` row for one rendered report.
- *
- * Two shapes are both correct, and the difference is a migration rather than a
- * bug:
- *
- *  - `report_id` set — the row for THAT report. Every row carries one once the
- *    backfill has run, and it is the only shape that can express an inspection
- *    delivering more than one document.
- *  - `report_id` NULL — a row written before reports existed. There is exactly
- *    one such row per inspection, so "the results for this inspection" is
- *    unambiguous and a report id is simply not part of the question.
- *
- * So a report-scoped read is tried first and an un-scoped row is the fallback.
- * The other order answers a multi-report inspection with a coin flip, which is
- * the behaviour this replaced.
+ * The `inspection_results` row for one rendered report. The rule for which row
+ * is whose (a NULL `report_id` row belongs to the primary report) lives in
+ * `resolveReportResults`, shared with hydrate, persist, snapshot and the photo
+ * routes so they cannot disagree.
  */
 export async function resolveResultsRow(
     db: Db,
@@ -97,38 +87,7 @@ export async function resolveResultsRow(
     inspectionId: string,
     reportId: string | null,
 ) {
-    if (reportId) {
-        const scoped = await db
-            .select()
-            .from(inspectionResults)
-            .where(and(
-                eq(inspectionResults.tenantId, tenantId),
-                eq(inspectionResults.inspectionId, inspectionId),
-                eq(inspectionResults.reportId, reportId),
-            ))
-            .get();
-        if (scoped) return scoped;
-        // Named a report and found no row for it. Fall back ONLY to a row that
-        // claims no report — never to another report's row, which is how a
-        // radon report would come to render the standard report's findings.
-        return db
-            .select()
-            .from(inspectionResults)
-            .where(and(
-                eq(inspectionResults.tenantId, tenantId),
-                eq(inspectionResults.inspectionId, inspectionId),
-                isNull(inspectionResults.reportId),
-            ))
-            .get();
-    }
-    return db
-        .select()
-        .from(inspectionResults)
-        .where(and(
-            eq(inspectionResults.tenantId, tenantId),
-            eq(inspectionResults.inspectionId, inspectionId),
-        ))
-        .get();
+    return selectReportResultsRow(db, tenantId, inspectionId, reportId);
 }
 
 /**

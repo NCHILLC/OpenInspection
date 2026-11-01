@@ -13,6 +13,7 @@ import { Errors } from '../errors';
 import { logger } from '../logger';
 import { safeISODate } from '../date';
 import { REPORT_STATUS, isReportPublished } from '../status/report-status';
+import { memoOnce } from '../request-scope';
 
 /**
  * Every deliverable on one order, in the order a person would read them.
@@ -40,20 +41,28 @@ export async function listReports(
  * been created yet has nothing to open, and callers must fail closed rather
  * than fall back to an inspection-keyed document — that fallback is exactly the
  * shared-Y.Doc corruption this entity exists to prevent.
+ *
+ * `requestEnv` is the request env of a page render's in-process fan-out: when
+ * present the answer is shared by every call of that render (see memoOnce), so
+ * the hub and the versions list do not each read it. Absent, it reads directly.
  */
 export async function resolvePrimaryReportId(
-    db: DrizzleD1Database,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    db: DrizzleD1Database<any>,
     tenantId: string,
     inspectionId: string,
+    requestEnv?: unknown,
 ): Promise<string | null> {
-    const row = await db.select({ id: reports.id }).from(reports)
-        .where(and(
-            eq(reports.tenantId, tenantId),
-            eq(reports.inspectionId, inspectionId),
-            eq(reports.kind, 'primary'),
-        ))
-        .get();
-    return row?.id ?? null;
+    return memoOnce(requestEnv, `primary-report:${tenantId}:${inspectionId}`, async () => {
+        const row = await db.select({ id: reports.id }).from(reports)
+            .where(and(
+                eq(reports.tenantId, tenantId),
+                eq(reports.inspectionId, inspectionId),
+                eq(reports.kind, 'primary'),
+            ))
+            .get();
+        return row?.id ?? null;
+    });
 }
 
 /**

@@ -29,7 +29,7 @@ interface ResultEntry {
 /** Pure: flatten one inspection_results.data map into attached photos.
  *  parseKey resolves a composite finding-key back to its itemId. */
 export function collectAttachedPhotos(
-  data: Record<string, ResultEntry>,
+  data: Record<string, unknown>,
   itemMeta: Map<string, ItemMeta>,
   makeUrl: (key: string) => string,
   parseKey: (key: string) => { itemId: string; sectionId?: string } = (k) => ({ itemId: k }),
@@ -47,7 +47,10 @@ export function collectAttachedPhotos(
     if (defectId !== undefined) attached.defectId = defectId;
     out.push(attached);
   };
-  for (const [key, entry] of Object.entries(data)) {
+  for (const [key, raw] of Object.entries(data)) {
+    // Stored JSON guarantees nothing about an entry's shape: anything that is not an
+    // object holds no photos. The field reads below stay defensive for the same reason.
+    const entry: ResultEntry = typeof raw === 'object' && raw !== null && !Array.isArray(raw) ? raw : {};
     const { itemId, sectionId } = parseKey(key);
     (Array.isArray(entry?.photos) ? entry.photos : []).forEach((p, i) => push(itemId, sectionId, p, i));
     const cannedDefects = entry?.tabs?.defects ?? {};
