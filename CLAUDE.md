@@ -106,7 +106,7 @@ If a gate fails, fix the cause.
 ## Agent skills
 
 - **Issue tracker**: GitHub Issues on `NCHILLC/OpenInspection`, driven with `gh ... --repo NCHILLC/OpenInspection`. Never target `upstream` (`InspectorHub/OpenInspection`); filing there is public and not ours to do.
-- **Triage labels**: none. The `triage` skill is not installed, so do not invent a label vocabulary.
+- **Triage labels**: the `triage` skill's five roles map to the same-named labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Category roles are `bug` and `enhancement`.
 - **Domain docs**: single context. Terms are the Product Terminology table below, plus `docs/develop/conventions/i18n-glossary.md` for UI strings. There is no `GLOSSARY.md` or ADR folder yet; create one only when a skill (`domain-modeling`) is asked to.
 
 ## Product Terminology (canonical)
