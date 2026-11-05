@@ -75,7 +75,7 @@ describe('apply ISN template in the primary document concurrency gate', () => {
 
     it('sees live changes before the D1 projection is flushed', async () => {
         await runInDurableObject(stub, async (instance) => {
-            applyItemPatch((instance as unknown as { doc: Y.Doc }).doc, 'roof', { notes: 'Still only in the live doc' });
+            applyItemPatch((instance as unknown as { doc: Y.Doc }).doc, 'roof', 'notes', 'Still only in the live doc');
         });
         expect((await apply()).status).toBe(409);
         expect((await inspectionRow())?.templateId).toBe(oldTemplate);

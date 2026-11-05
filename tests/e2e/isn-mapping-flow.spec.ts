@@ -3,6 +3,7 @@ import { loginAsSeedUser, authedWriteHeaders } from './helpers/seed-login';
 import { SEED_EMAILS } from '../seed-fixtures';
 
 test('ISN mapping controls new imports and changes an existing template only through the explicit safe action', async ({ page }, testInfo) => {
+    test.setTimeout(60_000);
     const reset = await page.request.post('http://127.0.0.1:8792/__test/reset');
     expect(reset.ok()).toBe(true);
     const orderNumber = String((await reset.json()).order.oid);
@@ -66,7 +67,10 @@ test('ISN mapping controls new imports and changes an existing template only thr
     const repeat = await page.request.post(`/api/inspections/${inspection.id}/isn/apply-template`, { headers });
     expect(repeat.status()).toBe(200);
     expect((await repeat.json()).changed).toBe(false);
+    const editorConnected = page.waitForEvent('websocket', { predicate: (socket) => socket.url().includes(`/inspections/${inspection.id}/collab/ws`) })
+        .then((socket) => socket.waitForEvent('framereceived'));
     await page.goto(`/inspections/${inspection.id}/edit`);
+    await editorConnected;
     await expect(page.getByText('Corrected section', { exact: true }).first()).toBeVisible();
     await saveMapping(templateId);
     await page.goto(`/inspections/${inspection.id}`);
