@@ -2,7 +2,7 @@ import type { Route } from "./+types/isn-mappings";
 import { requireToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
 
-async function errorMessage(res: Response) {
+async function errorMessage(res: { json: () => Promise<unknown> }) {
     const body = await res.json().catch(() => null) as { error?: { message?: string } } | null;
     return body?.error?.message ?? "ISN template mappings are unavailable. Try again.";
 }
