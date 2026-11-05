@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Staff can explicitly apply a corrected ISN template mapping to an untouched report; opened or written reports are protected.
 - Owners and managers can map ISN inspection types to primary report templates for new imports.
 - Company staff can refresh one linked inspection from ISN, with safe retries and redacted errors.
 

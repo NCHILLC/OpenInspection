@@ -101,6 +101,15 @@ it does not replace an existing template. Intake must be configured. A failure
 keeps the link and displays the reason with credentials redacted, so it can be
 retried safely.
 
+**Apply mapped template** is a separate, explicit card action for staff after
+an owner or manager corrects a mapping. It reads the current mapping for the
+stored ISN order type. It supports one primary report and keeps its identity;
+the inspection snapshot, report template and empty result state change together.
+A report that has been opened, written, submitted or published refuses the
+replacement, including photos, Repair Items, report narrative and unassigned
+media. An already-applied mapping is a safe no-op. Ordinary refresh continues to
+keep the existing template.
+
 On the inspections list, **From ISN** (in the filter strip, shown once any
 inspection came from ISN) lists those inspections. A row whose order has a
 service missing from the inspection, or an inspector with no OI user, carries a

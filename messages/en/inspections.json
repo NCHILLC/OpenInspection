@@ -364,5 +364,8 @@
   "inspections_field_log_issue": "Issue",
   "inspections_isn_refresh_button": "Refresh from ISN",
   "inspections_isn_refresh_busy": "Refreshing…",
-  "inspections_isn_refresh_success": "Refreshed from ISN."
+  "inspections_isn_refresh_success": "Refreshed from ISN.",
+  "inspections_isn_apply_template": "Apply mapped template",
+  "inspections_isn_apply_help": "Use the current ISN mapping for this report. Only available before the report has been opened or written. Refresh from ISN keeps the existing template.",
+  "inspections_isn_apply_success": "The report uses its mapped template."
 }

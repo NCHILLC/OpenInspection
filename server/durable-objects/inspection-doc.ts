@@ -309,10 +309,12 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         }
     };
 
-    // ── fetch ─────────────────────────────────────────────────────────────────
-
     async fetch(req: Request): Promise<Response> {
         const url = new URL(req.url);
+        if (url.pathname.endsWith('/isn-template') && req.method === 'POST') {
+            return this.ctx.blockConcurrencyWhile(async () =>
+                (await import('../lib/collab/isn-template-request')).handleIsnTemplateRequest(req, this.env.DB, this.ctx, this.doc));
+        }
 
         if (url.pathname.endsWith('/ws')) {
             if (req.headers.get('Upgrade') !== 'websocket') {
@@ -807,8 +809,6 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
 
         return { ok: true };
     }
-
-    // ── D8: Template restructure ──────────────────────────────────────────────
 
     /**
      * Re-read the (already-updated) `templateSnapshot` from D1, diff the current
