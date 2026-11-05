@@ -456,6 +456,7 @@ jobs:
         suite:
           - { id: seeded-d1, label: 'seeded D1', script: 'test:e2e' }
           - { id: multi-user, label: 'multi-user seed', script: 'test:e2e:seeded' }
+          - { id: isn, label: 'ISN mapping', script: 'test:e2e:isn' }
     steps:
       - name: Checkout
         uses: actions/checkout@v5

@@ -19,6 +19,7 @@ import { resolveEmailProvider } from '../lib/email/resolve-provider';
 import { logger } from '../lib/logger';
 import { recordIntegrationTest, listIntegrationTestResults, type IntegrationTarget } from '../lib/integration-test-results';
 import { getDrizzle, createDrizzle } from '../lib/route-helpers';
+import isnMappingRoutes from './integrations-isn-mappings';
 
 /**
  * Single write point for the four "Test connection" probes in this file — keeps
@@ -214,9 +215,8 @@ const isnStatusRoute = createRoute(withMcpMetadata({
     description: 'Reports, from the same merged deployment and stored values the cron and Pull now use, whether the four ISN keys are set, whether ISN_WEBHOOK_SECRET is set, and whether intake is therefore on (both). Never returns a secret value.',
 }, { scopes: ['admin'], tier: 'extended' }));
 
-// ─── Router ───────────────────────────────────────────────────────────────────
-
 const integrationsRoutes = createApiRouter()
+    .route('/isn', isnMappingRoutes)
     .openapi(isnStatusRoute, async (c) => {
         const { isnIntakeState } = await import('../services/isn/api-base');
         return c.json({ success: true as const, data: isnIntakeState(c.env) }, 200);

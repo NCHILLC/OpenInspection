@@ -96,7 +96,7 @@ const refreshRoute = createRoute(withMcpMetadata({
 const isnCardRoutes = createApiRouter()
     .openapi(refreshRoute, async (c) => {
         const cfg = isnConfig(c.env);
-        if (!cfg || !isnIntakeState(c.env).intakeOn) throw Errors.ServiceUnavailable('ISN intake is off: set the ISN keys and ISN_WEBHOOK_SECRET first');
+        if (!cfg || !isnIntakeState(c.env).intakeOn) throw Errors.ServiceUnavailable('ISN intake is off. Ask an owner or manager to finish setup in Settings → Advanced.');
         try {
             await refreshIsnInspection(c.env.DB, c.get('tenantId'), cfg, c.req.valid('param').id);
             return c.json({ success: true as const }, 200);

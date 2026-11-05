@@ -86,6 +86,14 @@ order type), order notes and attachments. **Open in ISN** links to the order's
 page in ISN (`/<company key>/order/view?pq=`, where `pq` is base64 of the
 zlib-compressed, PHP-serialized order number); it shows once the ISN keys are set.
 
+**Primary report templates** in Settings → Advanced → ISN lets an owner or
+manager choose one template per ISN inspection type, read from ISN's catalogue.
+The mapping takes precedence over a service's default template for new imports;
+service selection still matches by name. Leaving the mapping blank preserves
+service defaults. Saving or clearing a mapping does not change any existing
+inspection. A missing or retired mapped template is shown as unavailable and
+blocks new imports for that type until the mapping is corrected or cleared.
+
 **Refresh from ISN** on the card re-reads just this linked inspection's order.
 Owners, managers and inspectors can use it for their company's inspections,
 without a scheduling override. It follows the same field authority as webhooks;

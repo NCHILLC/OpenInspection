@@ -362,5 +362,13 @@
   "settings_msgtpl_language_label": "Language",
   "settings_msgtpl_language_locked": "A language version of “{name}”. Versions share a name and a channel; only the language differs.",
   "settings_msgtpl_new_variant_title": "New {language} version",
-  "settings_msgtpl_delete_variant_aria": "Delete the {language} version"
+  "settings_msgtpl_delete_variant_aria": "Delete the {language} version",
+  "settings_isn_mapping_heading": "Primary report templates",
+  "settings_isn_mapping_help": "Choose the primary report template for each ISN inspection type. Changes affect new imports only. Existing services still match by name.",
+  "settings_isn_mapping_default": "Use service defaults",
+  "settings_isn_mapping_unavailable": "Unavailable template",
+  "settings_isn_mapping_unavailable_help": "Choose an available template or clear this mapping. Imports cannot use the unavailable template.",
+  "settings_isn_mapping_saved": "Template mapping saved.",
+  "settings_isn_mapping_empty": "No ISN inspection types found.",
+  "settings_isn_mapping_retry": "Try again"
 }

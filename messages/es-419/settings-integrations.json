@@ -362,5 +362,13 @@
   "settings_msgtpl_language_label": "Idioma",
   "settings_msgtpl_language_locked": "Una versión en otro idioma de «{name}». Las versiones comparten nombre y canal; solo cambia el idioma.",
   "settings_msgtpl_new_variant_title": "Nueva versión en {language}",
-  "settings_msgtpl_delete_variant_aria": "Eliminar la versión en {language}"
+  "settings_msgtpl_delete_variant_aria": "Eliminar la versión en {language}",
+  "settings_isn_mapping_heading": "Plantillas del informe principal",
+  "settings_isn_mapping_help": "Elige la plantilla principal para cada tipo de inspección de ISN. Los cambios solo afectan nuevas importaciones. Los servicios se siguen vinculando por nombre.",
+  "settings_isn_mapping_default": "Usar las plantillas de los servicios",
+  "settings_isn_mapping_unavailable": "Plantilla no disponible",
+  "settings_isn_mapping_unavailable_help": "Elige una plantilla disponible o elimina esta asignación. Las importaciones no pueden usar la plantilla no disponible.",
+  "settings_isn_mapping_saved": "Asignación de plantilla guardada.",
+  "settings_isn_mapping_empty": "No se encontraron tipos de inspección de ISN.",
+  "settings_isn_mapping_retry": "Intentar de nuevo"
 }

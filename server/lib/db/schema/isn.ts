@@ -1,5 +1,15 @@
 import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+/** Explicit defaults for future ISN imports; changing one never edits an inspection. */
+export const isnOrderTypeTemplates = sqliteTable('isn_order_type_templates', {
+    id: text('id').primaryKey(),
+    tenantId: text('tenant_id').notNull(),
+    isnOrderTypeId: text('isn_order_type_id').notNull(),
+    templateId: text('template_id').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+}, (t) => [uniqueIndex('uq_isn_order_type_templates_tenant_type').on(t.tenantId, t.isnOrderTypeId)]);
+
 /**
  * The last copy of each ISN order this app has read, as ISN's `GET /order/{id}`
  * returned it. Written by the ISN webhook receiver (`POST /webhooks/isn`), which
