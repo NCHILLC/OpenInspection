@@ -7,7 +7,7 @@
   "globalMiddlewareUse": 12,
   "fanOutTotals": {
     "files": 141,
-    "dollarMethods": 554,
+    "dollarMethods": 555,
     "apiWorker": 9
   },
   "fanOut": {
@@ -392,7 +392,7 @@
       "apiWorker": 0
     },
     "app/routes/resources/isn-card.tsx": {
-      "dollarMethods": 1,
+      "dollarMethods": 2,
       "apiWorker": 0
     },
     "app/routes/resources/marketplace-install.tsx": {

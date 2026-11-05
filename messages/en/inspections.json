@@ -361,5 +361,8 @@
   "inspections_field_log_empty": "Nothing recorded for this inspection yet.",
   "inspections_field_log_card_toggle": "Record my activity during inspections",
   "inspections_field_log_card_help": "Keeps screens, actions, failed requests and crashes for 30 days, with no client details or note text.",
-  "inspections_field_log_issue": "Issue"
+  "inspections_field_log_issue": "Issue",
+  "inspections_isn_refresh_button": "Refresh from ISN",
+  "inspections_isn_refresh_busy": "Refreshing…",
+  "inspections_isn_refresh_success": "Refreshed from ISN."
 }

@@ -86,6 +86,13 @@ order type), order notes and attachments. **Open in ISN** links to the order's
 page in ISN (`/<company key>/order/view?pq=`, where `pq` is base64 of the
 zlib-compressed, PHP-serialized order number); it shows once the ISN keys are set.
 
+**Refresh from ISN** on the card re-reads just this linked inspection's order.
+Owners, managers and inspectors can use it for their company's inspections,
+without a scheduling override. It follows the same field authority as webhooks;
+it does not replace an existing template. Intake must be configured. A failure
+keeps the link and displays the reason with credentials redacted, so it can be
+retried safely.
+
 On the inspections list, **From ISN** (in the filter strip, shown once any
 inspection came from ISN) lists those inspections. A row whose order has a
 service missing from the inspection, or an inspector with no OI user, carries a

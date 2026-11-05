@@ -15,10 +15,12 @@ import { requireRole } from '../../lib/middleware/rbac';
 import { withMcpMetadata } from '../../lib/route-metadata-standards';
 import { getDrizzle } from '../../lib/route-helpers';
 import { isnOrders, reports } from '../../lib/db/schema';
-import { Errors } from '../../lib/errors';
+import { AppError, Errors } from '../../lib/errors';
 import { requireCapability } from '../../lib/middleware/require-capability';
 import { isnCardFields } from '../../services/isn/order-payload';
-import { isnConfig, isnOrderPageUrl } from '../../services/isn/api-base';
+import { isnConfig, isnIntakeState, isnOrderPageUrl, redactIsnSecrets } from '../../services/isn/api-base';
+import { refreshIsnInspection } from '../../services/isn/inspection-actions';
+import { IsnInspectionParamsSchema } from '../../lib/validations/isn-inspection.schema';
 import { safeTimestamp } from '../../lib/date';
 
 const yn = z.boolean().nullable();
@@ -73,7 +75,37 @@ const reportLinkRoute = createRoute(withMcpMetadata({
     operationId: 'retryInspectionIsnReportLink',
 }, { scopes: ['write'], tier: 'extended', capability: 'publish' }));
 
+const refreshRoute = createRoute(withMcpMetadata({
+    method: 'post',
+    path: '/{id}/isn/refresh',
+    tags: ['inspections'],
+    summary: 'Refresh a linked inspection from ISN',
+    description: 'Re-fetches the linked order and applies supported ISN facts through shared intake. Available to all company staff. Does not create another inspection or replace an existing template.',
+    middleware: [requireRole('owner', 'manager', 'inspector')] as const,
+    request: { params: IsnInspectionParamsSchema },
+    responses: {
+        200: { description: 'Inspection refreshed', content: { 'application/json': { schema: z.object({ success: z.literal(true) }) } } },
+        404: { description: 'No linked inspection in this company' },
+        409: { description: 'The linked order changed' },
+        502: { description: 'ISN refresh failed; the link was preserved' },
+        503: { description: 'ISN intake is not configured' },
+    },
+    operationId: 'refreshInspectionFromIsn',
+}, { scopes: ['write'], tier: 'extended' }));
+
 const isnCardRoutes = createApiRouter()
+    .openapi(refreshRoute, async (c) => {
+        const cfg = isnConfig(c.env);
+        if (!cfg || !isnIntakeState(c.env).intakeOn) throw Errors.ServiceUnavailable('ISN intake is off: set the ISN keys and ISN_WEBHOOK_SECRET first');
+        try {
+            await refreshIsnInspection(c.env.DB, c.get('tenantId'), cfg, c.req.valid('param').id);
+            return c.json({ success: true as const }, 200);
+        } catch (error) {
+            if (error instanceof AppError) throw error;
+            const message = redactIsnSecrets(error instanceof Error ? error.message : 'ISN refresh failed. Try again.', cfg);
+            return c.json({ success: false as const, error: { message } }, 502);
+        }
+    })
     .openapi(isnCardRoute, async (c) => {
         const { id } = c.req.valid('param');
         const row = await getDrizzle(c).select({ payload: isnOrders.payload, fetchedAt: isnOrders.fetchedAt })
