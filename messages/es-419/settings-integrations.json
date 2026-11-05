@@ -370,5 +370,5 @@
   "settings_isn_mapping_unavailable_help": "Elige una plantilla disponible o elimina esta asignación. Las importaciones no pueden usar la plantilla no disponible.",
   "settings_isn_mapping_saved": "Asignación de plantilla guardada.",
   "settings_isn_mapping_empty": "No se encontraron tipos de inspección de ISN.",
-  "settings_isn_mapping_retry": "Intentar de nuevo"
+  "settings_isn_mapping_retry": "Reintentar"
 }

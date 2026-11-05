@@ -14,6 +14,7 @@ createServer((request, response) => {
     if (path === '/__test/reset' && request.method === 'POST') {
         order.oid = ++nextOrder;
         order.id = `fixture-isn-${nextOrder}`;
+        order.address1 = `${nextOrder} ISN Fixture Street`;
         return response.end(JSON.stringify({ order }));
     }
     if (request.method !== 'GET') { response.writeHead(405); return response.end('{"status":"error","message":"Read-only fixture"}'); }
