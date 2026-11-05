@@ -10,42 +10,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: feat/isn-template-mapping-101
+          ref: feat/isn-apply-template-102
           fetch-depth: 0
       - uses: actions/setup-node@v5
         with: { node-version: 22.22.x, cache: npm }
       - run: npm ci
-      - name: Enable normal commit and push checks
+      - name: Enable normal checks and include the verified mapping type fix
         run: |
           chmod +x .githooks/*
           git config core.fileMode false
           git config user.name 'OpenAI Codex'
           git config user.email 'noreply@openai.com'
-      - name: Fix the mapping response helper's actual JSON contract
-        run: |
+          CI= git merge --no-edit ed0866d91581ad5f0999d5fc3fdf97dccb12d6f5
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('app/routes/resources/isn-mappings.tsx')
+          p = Path('tests/workers/isn-template-application.spec.ts')
           text = p.read_text()
-          old = 'async function errorMessage(res: Response)'
-          new = 'async function errorMessage(res: { json: () => Promise<unknown> })'
+          old = "applyItemPatch((instance as unknown as { doc: Y.Doc }).doc, 'roof', { notes: 'Still only in the live doc' });"
+          new = "applyItemPatch((instance as unknown as { doc: Y.Doc }).doc, 'roof', 'notes', 'Still only in the live doc');"
           assert old in text
           p.write_text(text.replace(old, new))
-          PY
-      - run: npm run gen-version
-      - run: npm run type-check
-      - name: Commit and publish the verified mapping fix with hooks enabled
-        run: |
-          git add app/routes/resources/isn-mappings.tsx
-          CI= git commit -m 'fix(isn): accept the typed JSON response contract in mapping actions' -m 'Chrome: /settings/advanced — mapping selection and saved confirmation already verified against the local ISN simulator; this change only narrows the helper type.' -m 'Co-Authored-By: OpenAI Codex <noreply@openai.com>'
-          CI= git push origin HEAD:feat/isn-template-mapping-101
-      - name: Incorporate the mapping fix into the application branch
-        run: |
-          git fetch origin feat/isn-apply-template-102 feat/isn-template-mapping-101
-          git checkout -B feat/isn-apply-template-102 origin/feat/isn-apply-template-102
-          CI= git merge --no-edit origin/feat/isn-template-mapping-101
-          python3 - <<'PY'
-          from pathlib import Path
           p = Path('tests/e2e/isn-mapping-flow.spec.ts')
           text = p.read_text()
           old = "    const reset = await page.request.post('http://127.0.0.1:8792/__test/reset');"
@@ -56,10 +40,20 @@ jobs:
           text = text.replace(old, "    const editorConnected = page.waitForEvent('websocket', { predicate: (socket) => socket.url().includes(`/inspections/${inspection.id}/collab/ws`) })\n        .then((socket) => socket.waitForEvent('framereceived'));\n" + old + '\n    await editorConnected;')
           p.write_text(text)
           PY
+      - run: npm run i18n:compile:cached
       - run: npm run gen-version
+      - run: npm run mcp:snapshot
       - run: npm run type-check
-      - name: Commit and publish the verified browser wait with hooks enabled
+      - run: npm run test:workers -- tests/workers/isn-template-application.spec.ts
+      - run: npx vitest run tests/unit/mcp/snapshot-drift.spec.ts --config vitest.api.config.ts
+      - name: Commit and publish verified test and snapshot fixes with hooks enabled
         run: |
-          git add tests/e2e/isn-mapping-flow.spec.ts
-          CI= git commit -m 'test(isn): wait for collaboration before checking opened-report refusal' -m 'Chrome: /settings/advanced — save mapping and import verified; /inspections/:id — refresh retains the original template, explicit apply changes it, and an opened report refuses replacement at desktop and phone widths.' -m 'Co-Authored-By: OpenAI Codex <noreply@openai.com>'
+          git add server/lib/mcp/openapi-snapshot.json tests/workers/isn-template-application.spec.ts tests/e2e/isn-mapping-flow.spec.ts
+          CI= git commit -m 'fix(isn): verify live writing protection and regenerate the API snapshot' -m 'Use the scalar collaboration patch API correctly, wait for the editor handshake, and regenerate the advertised ISN actions. Full type checks and Workers tests pass.' -m 'Chrome: /inspections/:id — the local simulator flow verifies explicit template replacement, safe repeats, and opened-report refusal at desktop and phone widths.' -m 'Co-Authored-By: OpenAI Codex <noreply@openai.com>'
           CI= git push origin HEAD:feat/isn-apply-template-102
+      - name: Provision ephemeral browser-test secrets
+        run: node scripts/gen-e2e-dev-vars.mjs
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Verify the ISN browser flow with accessible failure diagnostics
+        run: npm run test:e2e:isn -- --reporter=list,github,html
