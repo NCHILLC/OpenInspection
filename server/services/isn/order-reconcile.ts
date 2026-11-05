@@ -9,15 +9,15 @@
  * resumed after the last ISN order id pulled.
  */
 import { drizzle } from 'drizzle-orm/d1';
-import { and, eq, inArray, like, lt } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { isnOrders } from '../../lib/db/schema';
 import { logger } from '../../lib/logger';
 import { isnCall, type IsnConfig } from './api-base';
 import { orderFacts } from './order-payload';
 import { pullIsnOrder } from './order-pull';
 
-/** A `pending:` claim older than this was left by a Worker that died mid-create. */
-export const STALE_CLAIM_MS = 15 * 60 * 1000;
+import { releaseStaleIsnClaims } from './order-intake';
+export { STALE_CLAIM_MS } from './order-intake';
 
 type Rec = Record<string, unknown>;
 
@@ -25,12 +25,7 @@ export async function reconcileIsnOrders(
     d1: D1Database, tenantId: string, cfg: IsnConfig, cursor: string | null, limit: number, now = new Date(),
 ): Promise<{ processed: number; failed: number; nextCursor: string | null }> {
     const db = drizzle(d1);
-    // Free the claim so the pull below (or the next webhook) can create the inspection.
-    // ponytail: a Worker killed AFTER createInspection but before linking leaves an
-    // inspection this cannot see, and the retry makes a second one; rare, fix by hand.
-    await db.update(isnOrders).set({ inspectionId: null })
-        .where(and(eq(isnOrders.tenantId, tenantId), like(isnOrders.inspectionId, 'pending:%'),
-            lt(isnOrders.fetchedAt, new Date(now.getTime() - STALE_CLAIM_MS))));
+    await releaseStaleIsnClaims(db, tenantId, now);
 
     // From yesterday (UTC), so an evening order in a US timezone is not cut off.
     const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);

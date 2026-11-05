@@ -15,7 +15,7 @@
  * only fills the ones the inspection has none of (`fillBlanksFromOrder`).
  */
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1';
+import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { contactRoleProfiles, inspectionPeople, inspections, inspectionResults, inspectionServices, isnOrders, services, users } from '../../lib/db/schema';
 import { createScopedDb, type DrizzleDB } from '../../lib/db/scoped';
 import { syncInspectionAssignments } from '../../lib/db/assignment-links';
@@ -66,25 +66,8 @@ async function matchServices(db: Db, tenantId: string, rowId: string, f: IsnOrde
     return matched;
 }
 
-export async function applyIsnOrder(
-    d1: D1Database, tenantId: string, cfg: IsnConfig,
-    row: { id: string; inspectionId: string | null; payload: Rec },
-): Promise<string | null> {
-    const db = drizzle(d1);
-    // Another delivery is creating this order's inspection right now; it applies
-    // the newest stored payload once it is done (below), this one included.
-    if (row.inspectionId?.startsWith('pending:')) return null;
-    if (row.inspectionId) return updateFromOrder(d1, db, cfg, tenantId, row.id, row.inspectionId, row.payload);
-
-    const created = await createFromOrder(d1, db, cfg, tenantId, row);
-    if (!created) return null;
-    const latest = await db.select({ payload: isnOrders.payload }).from(isnOrders)
-        .where(and(eq(isnOrders.id, row.id), eq(isnOrders.tenantId, tenantId))).get();
-    return updateFromOrder(d1, db, cfg, tenantId, row.id, created, (latest?.payload as Rec | undefined) ?? row.payload);
-}
-
-/** Creates the bare inspection and links it to the order; facts, team and status come from `updateFromOrder`. */
-async function createFromOrder(
+/** Creates the bare inspection; intake owns the claim and link, then applies current facts. */
+export async function createInspectionFromIsn(
     d1: D1Database, db: Db, cfg: IsnConfig, tenantId: string,
     row: { id: string; payload: Rec },
 ): Promise<string | null> {
@@ -98,49 +81,28 @@ async function createFromOrder(
         fetchPerson(cfg, 'agent', f.sellersAgentId),
     ]);
 
-    // Claim the row so two deliveries for one new order (ORDER_CREATED and
-    // ORDER_SCHEDULED arrive together) cannot both create an inspection.
-    // A Worker killed between claim and create leaves the row claimed; the
-    // reconcile cron frees claims older than STALE_CLAIM_MS (order-reconcile.ts).
-    const claim = `pending:${crypto.randomUUID()}`;
-    const claimed = await db.update(isnOrders).set({ inspectionId: claim })
-        .where(and(eq(isnOrders.id, row.id), eq(isnOrders.tenantId, tenantId), isNull(isnOrders.inspectionId)))
-        .returning({ id: isnOrders.id });
-    if (claimed.length === 0) return null;
+    const contactsSvc = new ContactService(d1);
+    const agentId = async (p: typeof buyersAgent) => (p ? (await contactsSvc.upsertClientContact(tenantId, { ...p, type: 'agent' })).id : null);
+    const matched = await matchServices(db, tenantId, row.id, f);
 
-    let createdId: string;
-    try {
-        const contactsSvc = new ContactService(d1);
-        const agentId = async (p: typeof buyersAgent) => (p ? (await contactsSvc.upsertClientContact(tenantId, { ...p, type: 'agent' })).id : null);
-        const matched = await matchServices(db, tenantId, row.id, f);
-
-        const core = new InspectionCoreService(d1, undefined, createScopedDb(db as unknown as DrizzleDB, tenantId));
-        createdId = (await core.createInspection(tenantId, {
-            propertyAddress: f.propertyAddress,
-            ...f.address,
-            date: f.date ?? undefined,
-            templateId: matched.find((s) => s.templateId)?.templateId ?? null,
-            serviceIds: matched.map((s) => s.id),
-            clientName: client?.name ?? 'Private Client',
-            clientEmail: client?.email ?? null,
-            clientPhone: client?.phone ?? null,
-            referredByAgentId: await agentId(buyersAgent),
-            sellingAgentId: await agentId(sellersAgent),
-            // ISN takes the payment and the agreement, and OI offers no way to do
-            // either while it is the CRM, so the company's block defaults would
-            // hold this report forever.
-            paymentRequired: false,
-            agreementRequired: false,
-        } as unknown as Parameters<InspectionCoreService['createInspection']>[1], { automations: false })).id;
-    } catch (e) {
-        // Nothing was created, so the next delivery may try again.
-        await db.update(isnOrders).set({ inspectionId: null })
-            .where(and(eq(isnOrders.id, row.id), eq(isnOrders.tenantId, tenantId), eq(isnOrders.inspectionId, claim)));
-        throw e;
-    }
-    await db.update(isnOrders).set({ inspectionId: createdId })
-        .where(and(eq(isnOrders.id, row.id), eq(isnOrders.tenantId, tenantId)));
-    return createdId;
+    const core = new InspectionCoreService(d1, undefined, createScopedDb(db as unknown as DrizzleDB, tenantId));
+    return (await core.createInspection(tenantId, {
+        propertyAddress: f.propertyAddress,
+        ...f.address,
+        date: f.date ?? undefined,
+        templateId: matched.find((s) => s.templateId)?.templateId ?? null,
+        serviceIds: matched.map((s) => s.id),
+        clientName: client?.name ?? 'Private Client',
+        clientEmail: client?.email ?? null,
+        clientPhone: client?.phone ?? null,
+        referredByAgentId: await agentId(buyersAgent),
+        sellingAgentId: await agentId(sellersAgent),
+        // ISN takes the payment and the agreement, and OI offers no way to do
+        // either while it is the CRM, so the company's block defaults would
+        // hold this report forever.
+        paymentRequired: false,
+        agreementRequired: false,
+    } as unknown as Parameters<InspectionCoreService['createInspection']>[1], { automations: false })).id;
 }
 
 /**
@@ -184,7 +146,7 @@ async function fillBlanksFromOrder(d1: D1Database, db: Db, cfg: IsnConfig, tenan
     await writeInspectionServiceSnapshots(db, tenantId, inspectionId, { serviceIds: matched.map((s) => s.id) });
 }
 
-async function updateFromOrder(d1: D1Database, db: Db, cfg: IsnConfig, tenantId: string, rowId: string, inspectionId: string, payload: Rec): Promise<string> {
+export async function updateInspectionFromIsn(d1: D1Database, db: Db, cfg: IsnConfig, tenantId: string, rowId: string, inspectionId: string, payload: Rec): Promise<string> {
     const f = orderFacts(payload);
     const inspectorIds = await matchInspectors(db, cfg, tenantId, f.inspectorIds);
     await db.update(isnOrders).set({ unmatchedInspectors: f.inspectorIds.length - inspectorIds.length })

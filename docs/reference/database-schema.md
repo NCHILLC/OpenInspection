@@ -10,10 +10,10 @@ from the Drizzle definitions in `server/lib/db/schema/` — the two that
 | | |
 |---|---|
 | Tables | 111 |
-| Columns | 1283 |
+| Columns | 1284 |
 | Indexes (excluding primary keys) | 186 |
 | Database foreign keys (all legacy, frozen) | 51 |
-| Columns carrying a source comment | 615 (48%) |
+| Columns carrying a source comment | 616 (48%) |
 
 **Tables without `tenant_id`.** Every table holding tenant data must carry it —
 `npm run lint:tenant-scope` is the gate. These are the tables that are not *about*
@@ -24,7 +24,7 @@ a tenant, which is the only reason to be missing it:
 That is 13 of 111. If a table you just added appears here,
 that is the bug, not the list.
 
-**Timestamps.** 207 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
+**Timestamps.** 208 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
 epoch MILLISECONDS, with no legacy `mode: 'timestamp'` columns left.
 Seconds and milliseconds are one multiplication apart and the mistake reads as a
 date tens of thousands of years out, so the Schema Rules allow only the former for
@@ -1512,7 +1512,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 
 ## `isn_orders`
 
-<sub>server/lib/db/schema/isn.ts · 7 columns · primary key `id`</sub>
+<sub>server/lib/db/schema/isn.ts · 8 columns · primary key `id`</sub>
 
 > The last copy of each ISN order this app has read, as ISN's `GET /order/{id}` returned it.
 
@@ -1525,6 +1525,7 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 | `payload` | text | NN |  |  |  |
 | `fetched_at` | integer | NN |  |  | *Timestamp, epoch milliseconds. NULL means it has not happened.* |
 | `unmatched_inspectors` | integer |  |  |  | How many of the order's ISN inspectors have no OI user with the same email, as of the last apply. |
+| `claim_started_at` | integer |  |  |  | Claim age is independent of order fetches: duplicate deliveries must not keep a dead creator's lease alive. |
 
 **Indexes**
 
