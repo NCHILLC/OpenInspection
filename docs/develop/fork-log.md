@@ -20,6 +20,16 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## ISN intake — 2026-11-05
+
+Fork-only intake remains separate from upstream's report-link integration. Checked
+upstream's ISN history before this change: there is no intake implementation to
+port. Webhook, manual pull and catch-up share order storage and creation leases.
+The lease timestamp is independent of fetch time; every intake path can recover
+an expired lease. Claim release and linking check ownership. A crash after
+inspection creation but before linking can still leave an orphan and a subsequent
+retry can create another inspection; this is not exactly-once creation.
+
 ## Field log — 2026-10-31
 
 Fork-only feature, no upstream equivalent: per-user phone activity log, Mark issue and a per-inspection timeline. See [`docs/operate/field-log.md`](../operate/field-log.md).

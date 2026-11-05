@@ -46,6 +46,14 @@ history as the other integrations.
 Not covered: an order dated before yesterday, and an order ISN stops listing
 (not checked whether `GET /orders` lists cancelled or deleted orders).
 
+Webhook, manual pull and catch-up all use the same intake boundary. Creation
+leases expire after 15 minutes measured from claim acquisition, independently of
+later order fetches. A delivery may recover an expired lease; catch-up also clears
+expired claims for orders outside its current list. A crash after inspection
+creation but before linking may leave an orphan and a retry may create a second
+inspection. Normal competing deliveries share a single claim; creation is not
+exactly-once.
+
 Each stored order is then applied to its inspection. ISN wins on schedule and
 order facts:
 

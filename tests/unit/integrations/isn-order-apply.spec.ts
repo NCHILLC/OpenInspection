@@ -15,7 +15,7 @@ vi.mock('drizzle-orm/d1', () => ({ drizzle: vi.fn() }));
 const fireAutomation = vi.fn(async () => {});
 vi.mock('../../../server/services/inspection/automation-fire', () => ({ fireAutomation }));
 import { drizzle as mockDrizzle } from 'drizzle-orm/d1';
-const { applyIsnOrder } = await import('../../../server/services/isn/order-apply');
+const { applyStoredIsnOrder: applyIsnOrder } = await import('../../../server/services/isn/order-intake');
 const { isnReadyChecks } = await import('../../../server/services/isn/ready-check');
 const { requireTemplateSnapshot } = await import('../../../server/services/inspection/shared');
 

@@ -24,6 +24,9 @@ export const isnOrders = sqliteTable('isn_orders', {
     // null until the order has been applied. Not derivable later: matching needs
     // ISN's `GET /user/{id}`, which the list must not call.
     unmatchedInspectors: integer('unmatched_inspectors'),
+    // Claim age is independent of order fetches: duplicate deliveries must not
+    // keep a dead creator's lease alive. Null when no creator owns the row.
+    claimStartedAt: integer('claim_started_at', { mode: 'timestamp_ms' }),
 }, (t) => [
     uniqueIndex('uq_isn_orders_tenant_order').on(t.tenantId, t.isnOrderId),
 ]);
