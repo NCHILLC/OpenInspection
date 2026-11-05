@@ -43,6 +43,13 @@
       "when": 1793915735215,
       "tag": "0104_isn_claim_age",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793916599597,
+      "tag": "0105_isn_template_mapping",
+      "breakpoints": true
     }
   ]
 }

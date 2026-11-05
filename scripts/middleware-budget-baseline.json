@@ -6,8 +6,8 @@
   ],
   "globalMiddlewareUse": 12,
   "fanOutTotals": {
-    "files": 141,
-    "dollarMethods": 555,
+    "files": 142,
+    "dollarMethods": 558,
     "apiWorker": 9
   },
   "fanOut": {
@@ -392,6 +392,10 @@
       "apiWorker": 0
     },
     "app/routes/resources/isn-card.tsx": {
+      "dollarMethods": 3,
+      "apiWorker": 0
+    },
+    "app/routes/resources/isn-mappings.tsx": {
       "dollarMethods": 2,
       "apiWorker": 0
     },

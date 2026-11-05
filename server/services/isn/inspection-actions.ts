@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { inspections, isnOrders } from '../../lib/db/schema';
 import { Errors } from '../../lib/errors';
-import { type IsnConfig } from './api-base';
+import type { IsnConfig } from './api-base';
 import { intakeIsnOrder } from './order-intake';
 
 export async function refreshIsnInspection(d1: D1Database, tenantId: string, cfg: IsnConfig, inspectionId: string) {

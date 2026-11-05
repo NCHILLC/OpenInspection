@@ -22,6 +22,8 @@ import { isnConfig, isnIntakeState, isnOrderPageUrl, redactIsnSecrets } from '..
 import { refreshIsnInspection } from '../../services/isn/inspection-actions';
 import { IsnInspectionParamsSchema } from '../../lib/validations/isn-inspection.schema';
 import { safeTimestamp } from '../../lib/date';
+import { resolvePrimaryReportId } from '../../lib/inspection/reports';
+import { collabDocName } from '../../lib/collab/doc-name';
 
 const yn = z.boolean().nullable();
 const IsnCardSchema = z.object({
@@ -93,10 +95,42 @@ const refreshRoute = createRoute(withMcpMetadata({
     operationId: 'refreshInspectionFromIsn',
 }, { scopes: ['write'], tier: 'extended' }));
 
+const applyTemplateRoute = createRoute(withMcpMetadata({
+    method: 'post',
+    path: '/{id}/isn/apply-template',
+    tags: ['inspections'],
+    summary: 'Apply the mapped primary template to an untouched ISN inspection',
+    description: 'An explicit action separate from refresh. Refuses opened, written, submitted or published reports. Keeps the primary report identity and applies both template pointers and result state atomically.',
+    middleware: [requireRole('owner', 'manager', 'inspector')] as const,
+    request: { params: IsnInspectionParamsSchema },
+    responses: {
+        200: { description: 'Mapped template applied, or already applied', content: { 'application/json': { schema: z.object({ success: z.literal(true), changed: z.boolean() }) } } },
+        404: { description: 'No linked inspection in this company' },
+        409: { description: 'No mapping, or the report is not eligible for template replacement' },
+        503: { description: 'The report state could not be checked' },
+    },
+    operationId: 'applyInspectionIsnTemplate',
+}, { scopes: ['write'], tier: 'extended' }));
+
 const isnCardRoutes = createApiRouter()
+    .openapi(applyTemplateRoute, async (c) => {
+        const tenantId = c.get('tenantId');
+        const { id } = c.req.valid('param');
+        const reportId = await resolvePrimaryReportId(getDrizzle(c), tenantId, id);
+        if (!reportId) throw Errors.Conflict('This inspection has no primary report to update.');
+        const ns = c.env.INSPECTION_DOC;
+        if (!ns) throw Errors.ServiceUnavailable('The report state could not be checked. Try again.');
+        try {
+            return await ns.get(ns.idFromName(collabDocName(tenantId, reportId))).fetch('https://do/isn-template', {
+                method: 'POST', headers: { 'x-tenant-id': tenantId, 'x-inspection-id': id, 'x-report-id': reportId },
+            });
+        } catch {
+            throw Errors.ServiceUnavailable('The report state could not be checked. Try again.');
+        }
+    })
     .openapi(refreshRoute, async (c) => {
         const cfg = isnConfig(c.env);
-        if (!cfg || !isnIntakeState(c.env).intakeOn) throw Errors.ServiceUnavailable('ISN intake is off: set the ISN keys and ISN_WEBHOOK_SECRET first');
+        if (!cfg || !isnIntakeState(c.env).intakeOn) throw Errors.ServiceUnavailable('ISN intake is off. Ask an owner or manager to finish setup in Settings → Advanced.');
         try {
             await refreshIsnInspection(c.env.DB, c.get('tenantId'), cfg, c.req.valid('param').id);
             return c.json({ success: true as const }, 200);

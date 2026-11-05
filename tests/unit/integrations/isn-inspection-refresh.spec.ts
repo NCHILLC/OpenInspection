@@ -21,7 +21,7 @@ let inspectionId: string;
 let order: Record<string, unknown>;
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function call(role: string | null = 'inspector', tenant = TENANT, id = inspectionId, keys: Record<string, string> = KEYS) {
+function call(role: string | null = 'inspector', tenant = TENANT, id = inspectionId, keys: Record<string, string> = KEYS, action = 'refresh', namespace?: unknown) {
     const app = new OpenAPIHono<HonoConfig>();
     app.use('*', async (c, next) => {
         if (role) c.set('userRole', role as never);
@@ -32,7 +32,7 @@ function call(role: string | null = 'inspector', tenant = TENANT, id = inspectio
         ? c.json({ success: false, error: { message: error.message } }, error.status)
         : c.json({ success: false }, 500));
     app.route('/api/inspections', isnRoutes);
-    return app.request(`/api/inspections/${id}/isn/refresh`, { method: 'POST' }, { DB: D1, ...keys });
+    return app.request(`/api/inspections/${id}/isn/${action}`, { method: 'POST' }, { DB: D1, ...keys, ...(namespace ? { INSPECTION_DOC: namespace } : {}) });
 }
 
 beforeEach(async () => {
@@ -92,5 +92,18 @@ describe('refresh a linked inspection', () => {
         expect(db.select().from(schema.isnOrders).all()).toHaveLength(1);
         expect(db.select().from(schema.isnOrders).where(eq(schema.isnOrders.tenantId, TENANT)).get()?.isnOrderId).toBe('isn-1');
         expect(db.select().from(schema.inspections).all()).toHaveLength(1);
+    });
+    it.each(['owner', 'manager', 'inspector'])('allows %s to apply through the tenant-scoped primary document', async (role) => {
+        const forwarded = vi.fn(async () => Response.json({ success: true, changed: true }));
+        const namespace = { idFromName: vi.fn((name: string) => name), get: () => ({ fetch: forwarded }) };
+        expect((await call(role, TENANT, inspectionId, KEYS, 'apply-template', namespace)).status).toBe(200);
+        const primary = db.select().from(schema.reports).get()!;
+        expect(namespace.idFromName).toHaveBeenCalledWith(`${TENANT}:${primary.id}`);
+        expect(forwarded).toHaveBeenCalledWith('https://do/isn-template', { method: 'POST', headers: {
+            'x-tenant-id': TENANT, 'x-inspection-id': inspectionId, 'x-report-id': primary.id,
+        } });
+    });
+    it.each(['agent', 'client'])('refuses %s from applying a template', async (role) => {
+        expect((await call(role, TENANT, inspectionId, KEYS, 'apply-template')).status).toBe(403);
     });
 });

@@ -16,6 +16,7 @@ import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
 export function IsnCard({ inspectionId }: { inspectionId: string }) {
     const fetcher = useFetcher<typeof loader>();
     const refresh = useGuardedSubmit<typeof action>();
+    const apply = useGuardedSubmit<typeof action>();
     useEffect(() => {
         fetcher.load(`/resources/isn-card?inspectionId=${encodeURIComponent(inspectionId)}`);
         // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per inspection
@@ -38,7 +39,7 @@ export function IsnCard({ inspectionId }: { inspectionId: string }) {
     return (
         <Card className="p-5" data-testid="isn-card">
             <h3 className="text-[15px] font-semibold tracking-tight text-ih-fg-1">{m.inspections_isn_card_title()}</h3>
-            <button type="button" disabled={refresh.busy}
+            <button type="button" disabled={refresh.busy || apply.busy}
                 onClick={() => refresh.submit({ inspectionId }, { method: "post", action: "/resources/isn-card" })}
                 className="mt-3 min-h-11 px-3 rounded-md border border-ih-border text-[13px] font-semibold text-ih-fg-1 disabled:opacity-60">
                 {refresh.busy ? m.inspections_isn_refresh_busy() : m.inspections_isn_refresh_button()}
@@ -48,6 +49,17 @@ export function IsnCard({ inspectionId }: { inspectionId: string }) {
                     {refresh.fetcher.data.ok ? m.inspections_isn_refresh_success() : refresh.fetcher.data.error}
                 </p>
             )}
+            <div className="mt-3 space-y-2 border-t border-ih-border pt-3">
+                <button type="button" disabled={apply.busy || refresh.busy}
+                    onClick={() => apply.submit({ inspectionId, intent: "apply-template" }, { method: "post", action: "/resources/isn-card" })}
+                    className="min-h-11 rounded-md border border-ih-border px-3 text-[13px] font-semibold text-ih-fg-1 disabled:opacity-60">
+                    {apply.busy ? m.common_saving() : m.inspections_isn_apply_template()}
+                </button>
+                <p className="text-[13px] text-ih-fg-3">{m.inspections_isn_apply_help()}</p>
+                {!apply.busy && apply.fetcher.data && <p role="status" className={`text-[13px] ${apply.fetcher.data.ok ? "text-ih-ok-fg" : "text-ih-bad-fg"}`}>
+                    {apply.fetcher.data.ok ? m.inspections_isn_apply_success() : apply.fetcher.data.error}
+                </p>}
+            </div>
             {d.canceled && <p className="mt-1 text-[13px] font-bold text-ih-bad-fg">{m.inspections_isn_card_canceled()}</p>}
             <dl className="mt-3 space-y-2">
                 {rows.filter(([, v]) => v).map(([label, value]) => (

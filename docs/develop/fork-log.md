@@ -20,6 +20,25 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Applying an ISN mapping — 2026-11-05
+
+Fork-only explicit application to an untouched, single-primary linked inspection.
+The existing conservative report-generation definition of untouched is reused:
+stored Yjs state counts as touched even with an empty visible projection. The
+primary document serializes replacement against incoming editor activity;
+transactional SQL guards also recheck narrative, media, publication and mapping
+state against concurrent HTTP writers. No existing writing is reset. Both
+inspection and report template pointers change with the empty result state.
+
+## ISN template mapping — 2026-11-05
+
+Fork-only explicit primary report template defaults per ISN order type. New
+imports use a valid mapped template ahead of service defaults; existing
+inspections keep their template during normal refresh. Missing or retired mapped
+templates are an error, never silently replaced. Services still match by name.
+The ISN browser suite uses a separate local fixture server and test-only worker
+bindings, and writes no data to a real ISN company.
+
 ## ISN intake — 2026-11-05
 
 Fork-only intake remains separate from upstream's report-link integration. Checked

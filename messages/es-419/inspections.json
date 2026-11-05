@@ -364,5 +364,8 @@
   "inspections_field_log_issue": "Problema",
   "inspections_isn_refresh_button": "Actualizar desde ISN",
   "inspections_isn_refresh_busy": "Actualizando…",
-  "inspections_isn_refresh_success": "Actualizado desde ISN."
+  "inspections_isn_refresh_success": "Actualizado desde ISN.",
+  "inspections_isn_apply_template": "Aplicar plantilla asignada",
+  "inspections_isn_apply_help": "Usa la asignación actual de ISN para este informe. Solo está disponible antes de abrir o redactar el informe. Actualizar desde ISN conserva la plantilla existente.",
+  "inspections_isn_apply_success": "El informe usa su plantilla asignada."
 }

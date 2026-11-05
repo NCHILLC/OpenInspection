@@ -49,7 +49,7 @@ export function reportCountWarnings(reportCount: number): string[] {
 }
 
 /** Has anyone written into the primary report's document yet? */
-async function primaryIsUntouched(
+export async function primaryIsUntouched(
     db: DrizzleD1Database,
     tenantId: string,
     inspectionId: string,
