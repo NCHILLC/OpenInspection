@@ -7,13 +7,13 @@ import { isnCall, type IsnConfig } from './api-base';
 import { decodeIsnText } from './order-payload';
 
 /** The catalogue is read from ISN, never inferred from previously imported orders. */
-export async function listIsnOrderTypes(cfg: IsnConfig) {
+async function listIsnOrderTypes(cfg: IsnConfig) {
     const parsed = IsnOrderTypesResponseSchema.safeParse(await isnCall(cfg, 'GET', '/ordertypes'));
     if (!parsed.success) throw Errors.ServiceUnavailable('ISN returned an unexpected order type catalogue. Try again or check the connection.');
     return parsed.data.ordertypes.map((type) => ({ id: type.id, name: decodeIsnText(type.name) }));
 }
 
-export async function requireIsnTemplate(db: DrizzleD1Database, tenantId: string, templateId: string) {
+async function requireIsnTemplate(db: DrizzleD1Database, tenantId: string, templateId: string) {
     const row = await db.select().from(templates)
         .where(and(eq(templates.tenantId, tenantId), eq(templates.id, templateId))).get();
     if (!row || row.retiredAt != null) throw Errors.Conflict('The mapped report template is unavailable. Choose an available template in ISN settings.');

@@ -32,7 +32,7 @@ test('saving an ISN mapping selects the primary template for a new import', asyn
     expect(list.ok()).toBe(true);
     const body = await list.json();
     const rows = Array.isArray(body.data) ? body.data : body.data.inspections;
-    const inspection = rows.find((row: { referenceNumber?: string }) => row.referenceNumber === orderNumber);
+    const inspection = rows.find((row: { propertyAddress?: string }) => row.propertyAddress?.startsWith(`${orderNumber} ISN Fixture Street`));
     expect(inspection).toBeTruthy();
     const detail = await page.request.get(`/api/inspections/${inspection.id}`, { headers });
     expect(detail.ok()).toBe(true);
