@@ -17107,6 +17107,34 @@
     "description": "Auto-generated placeholder for refreshInspection (POST /{id}/pdf/refresh, inspections domain). TODO: replace with a real description sourced from the handler."
   },
   {
+    "operationId": "refreshInspectionFromIsn",
+    "method": "POST",
+    "pathTemplate": "/api/inspections/{id}/isn/refresh",
+    "scopes": [
+      "write"
+    ],
+    "tag": "inspections",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Inspection identifier.",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Inspection identifier."
+          }
+        }
+      ],
+      "body": null
+    },
+    "summary": "Refresh a linked inspection from ISN",
+    "description": "Re-fetches the linked order and applies supported ISN facts through shared intake. Available to all company staff. Does not create another inspection or replace an existing template."
+  },
+  {
     "operationId": "refreshInspectionPaySplits",
     "method": "POST",
     "pathTemplate": "/api/inspections/{id}/pay-splits/refresh",
