@@ -28,6 +28,7 @@ import { InspectionCoreService } from '../inspection/inspection-core.service';
 import { PeopleService } from '../people.service';
 import { isnCall, type IsnConfig } from './api-base';
 import { orderFacts, personFromIsn, type IsnOrderFacts } from './order-payload';
+import { mappedIsnTemplate } from './template-mapping';
 
 type Rec = Record<string, unknown>;
 type Db = DrizzleD1Database;
@@ -74,6 +75,7 @@ export async function createInspectionFromIsn(
     const f = orderFacts(row.payload);
     // Never create an inspection for an order that was cancelled before OI saw it.
     if (f.canceled || !f.propertyAddress) return null;
+    const mappedTemplate = await mappedIsnTemplate(db, tenantId, row.payload);
 
     const [client, buyersAgent, sellersAgent] = await Promise.all([
         fetchPerson(cfg, 'client', f.clientId),
@@ -90,7 +92,7 @@ export async function createInspectionFromIsn(
         propertyAddress: f.propertyAddress,
         ...f.address,
         date: f.date ?? undefined,
-        templateId: matched.find((s) => s.templateId)?.templateId ?? null,
+        templateId: mappedTemplate?.id ?? matched.find((s) => s.templateId)?.templateId ?? null,
         serviceIds: matched.map((s) => s.id),
         clientName: client?.name ?? 'Private Client',
         clientEmail: client?.email ?? null,

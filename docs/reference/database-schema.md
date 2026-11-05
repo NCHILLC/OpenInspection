@@ -9,9 +9,9 @@ from the Drizzle definitions in `server/lib/db/schema/` — the two that
 
 | | |
 |---|---|
-| Tables | 111 |
-| Columns | 1284 |
-| Indexes (excluding primary keys) | 186 |
+| Tables | 112 |
+| Columns | 1290 |
+| Indexes (excluding primary keys) | 187 |
 | Database foreign keys (all legacy, frozen) | 51 |
 | Columns carrying a source comment | 616 (48%) |
 
@@ -21,10 +21,10 @@ a tenant, which is the only reason to be missing it:
 
 `agent_terms_acceptances` · `deployment_legal_versions` · `discovery_objections` · `marketplace_libraries` · `parked_cmd_events` · `processed_cmd_events` · `processed_webhook_events` · `slug_reservations` · `sms_disclosure_versions` · `statutory_form_sightings` · `statutory_form_versions` · `sync_outbox` · `tenants`
 
-That is 13 of 111. If a table you just added appears here,
+That is 13 of 112. If a table you just added appears here,
 that is the bug, not the list.
 
-**Timestamps.** 208 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
+**Timestamps.** 210 column(s) use `integer(..., { mode: 'timestamp_ms' })` —
 epoch MILLISECONDS, with no legacy `mode: 'timestamp'` columns left.
 Seconds and milliseconds are one multiplication apart and the mistake reads as a
 date tens of thousands of years out, so the Schema Rules allow only the former for
@@ -1507,6 +1507,27 @@ neither is left blank. `[more]` marks a column whose source comment runs past
 - `idx_invoices_inspection` (inspection_id)
 - `idx_invoices_contact` (tenant_id, contact_id)
 - **UNIQUE** `uq_invoices_tenant_number` (tenant_id, invoice_number)
+
+---
+
+## `isn_order_type_templates`
+
+<sub>server/lib/db/schema/isn.ts · 6 columns · primary key `id`</sub>
+
+> Explicit defaults for future ISN imports; changing one never edits an inspection.
+
+| Column | Type | Flags | Default | Values | Description |
+|---|---|---|---|---|---|
+| `id` | text | PK NN |  |  | *Primary key — an application-generated string id.* |
+| `tenant_id` | text | NN UQ |  |  | *Tenant isolation key. Every read and write must filter on it.* |
+| `isn_order_type_id` | text | NN UQ |  |  | *App-layer reference to another row — no database foreign key.* |
+| `template_id` | text | NN |  |  | *App-layer reference to another row — no database foreign key.* |
+| `created_at` | integer | NN |  |  | *Creation time, epoch milliseconds.* |
+| `updated_at` | integer | NN |  |  | *Last write time, epoch milliseconds.* |
+
+**Indexes**
+
+- **UNIQUE** `uq_isn_order_type_templates_tenant_type` (tenant_id, isn_order_type_id)
 
 ---
 

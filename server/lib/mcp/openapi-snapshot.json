@@ -11923,6 +11923,22 @@
     "description": "Auto-generated placeholder for listInvoices (GET /, invoices domain). TODO: replace with a real description sourced from the handler."
   },
   {
+    "operationId": "listIsnOrderTypeTemplates",
+    "method": "GET",
+    "pathTemplate": "/api/integrations/isn/order-types",
+    "scopes": [
+      "admin"
+    ],
+    "tag": "integrations",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [],
+      "body": null
+    },
+    "summary": "List ISN order types and primary template mappings",
+    "description": "Reads the company catalogue from ISN and its tenant-scoped mappings. Retired or missing mapped templates are reported as unavailable."
+  },
+  {
     "operationId": "listMarketplaceImportsHistory",
     "method": "GET",
     "pathTemplate": "/api/templates/marketplace/imports/history",
@@ -19148,6 +19164,48 @@
     },
     "summary": "Set a video poster frame (Stream-only: thumbnailTimestampPct as a 0..1 fraction)",
     "description": "Set the Cloudflare Stream poster frame and persist posterPct on the pool row. Stream-only — R2 videos use the r2-upload-poster route."
+  },
+  {
+    "operationId": "setIsnOrderTypeTemplate",
+    "method": "PUT",
+    "pathTemplate": "/api/integrations/isn/order-types/{orderTypeId}/template",
+    "scopes": [
+      "admin"
+    ],
+    "tag": "integrations",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [
+        {
+          "name": "orderTypeId",
+          "in": "path",
+          "required": true,
+          "description": "ISN order type identifier.",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "description": "ISN order type identifier."
+          }
+        }
+      ],
+      "body": {
+        "type": "object",
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 1,
+            "description": "Primary report template, or null to clear the mapping."
+          }
+        },
+        "required": [
+          "templateId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "summary": "Set or clear an ISN order type’s primary report template",
+    "description": "Changes the default for future imports only. Existing inspections and service-name matching are unchanged."
   },
   {
     "operationId": "setPublicViewTrackingObjection",
