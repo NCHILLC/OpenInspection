@@ -3,6 +3,8 @@ import { useFetcher } from "react-router";
 import { Card } from "@core/shared-ui";
 import { m } from "~/paraglide/messages";
 import type { loader } from "~/routes/resources/isn-card";
+import type { action } from "~/routes/resources/isn-card";
+import { useGuardedSubmit } from "~/hooks/useGuardedSubmit";
 
 /**
  * The ISN card: what the ISN order says that OI keeps nowhere else (access
@@ -13,6 +15,7 @@ import type { loader } from "~/routes/resources/isn-card";
  */
 export function IsnCard({ inspectionId }: { inspectionId: string }) {
     const fetcher = useFetcher<typeof loader>();
+    const refresh = useGuardedSubmit<typeof action>();
     useEffect(() => {
         fetcher.load(`/resources/isn-card?inspectionId=${encodeURIComponent(inspectionId)}`);
         // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per inspection
@@ -35,6 +38,16 @@ export function IsnCard({ inspectionId }: { inspectionId: string }) {
     return (
         <Card className="p-5" data-testid="isn-card">
             <h3 className="text-[15px] font-semibold tracking-tight text-ih-fg-1">{m.inspections_isn_card_title()}</h3>
+            <button type="button" disabled={refresh.busy}
+                onClick={() => refresh.submit({ inspectionId }, { method: "post", action: "/resources/isn-card" })}
+                className="mt-3 min-h-11 px-3 rounded-md border border-ih-border text-[13px] font-semibold text-ih-fg-1 disabled:opacity-60">
+                {refresh.busy ? m.inspections_isn_refresh_busy() : m.inspections_isn_refresh_button()}
+            </button>
+            {!refresh.busy && refresh.fetcher.data && (
+                <p role="status" className={`mt-2 text-[13px] ${refresh.fetcher.data.ok ? "text-ih-ok-fg" : "text-ih-bad-fg"}`}>
+                    {refresh.fetcher.data.ok ? m.inspections_isn_refresh_success() : refresh.fetcher.data.error}
+                </p>
+            )}
             {d.canceled && <p className="mt-1 text-[13px] font-bold text-ih-bad-fg">{m.inspections_isn_card_canceled()}</p>}
             <dl className="mt-3 space-y-2">
                 {rows.filter(([, v]) => v).map(([label, value]) => (

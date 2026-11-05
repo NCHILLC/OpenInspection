@@ -2,6 +2,7 @@
 import { and, eq, isNull, like, lt, or } from 'drizzle-orm';
 import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1';
 import { isnOrders } from '../../lib/db/schema';
+import { Errors } from '../../lib/errors';
 import { isnCall, type IsnConfig } from './api-base';
 import { createInspectionFromIsn, updateInspectionFromIsn } from './order-apply';
 
@@ -45,10 +46,18 @@ export async function applyStoredIsnOrder(d1: D1Database, tenantId: string, cfg:
     return updateInspectionFromIsn(d1, db, cfg, tenantId, row.id, created, linked[0]!.payload);
 }
 
-export async function intakeIsnOrder(d1: D1Database, tenantId: string, cfg: IsnConfig, orderRef: string, now = new Date()) {
+export async function intakeIsnOrder(d1: D1Database, tenantId: string, cfg: IsnConfig, orderRef: string, now = new Date(), expectedInspectionId?: string) {
     const order = (await isnCall(cfg, 'GET', `/order/${encodeURIComponent(orderRef)}`)).order as Record<string, unknown> | undefined;
     if (typeof order?.id !== 'string' || !order.id.trim()) throw new Error('ISN returned no order for the requested reference');
     const db = drizzle(d1);
+    if (expectedInspectionId) {
+        if (order.id !== orderRef) throw Errors.Conflict('ISN returned a different order; the inspection link was kept');
+        const rows = await db.update(isnOrders).set({ payload: order, fetchedAt: now })
+            .where(and(eq(isnOrders.tenantId, tenantId), eq(isnOrders.isnOrderId, orderRef), eq(isnOrders.inspectionId, expectedInspectionId)))
+            .returning();
+        if (!rows[0]) throw Errors.NotFound('This inspection is no longer linked to that ISN order');
+        return { isnOrderId: order.id, inspectionId: await applyStoredIsnOrder(d1, tenantId, cfg, rows[0], now) };
+    }
     // Recover BEFORE updating fetchedAt, including claims created before claimStartedAt existed.
     await releaseStaleIsnClaims(db, tenantId, now);
     await db.insert(isnOrders)

@@ -361,5 +361,8 @@
   "inspections_field_log_empty": "Aún no hay nada registrado para esta inspección.",
   "inspections_field_log_card_toggle": "Registrar mi actividad durante las inspecciones",
   "inspections_field_log_card_help": "Conserva pantallas, acciones, solicitudes fallidas y fallos durante 30 días, sin datos de clientes ni texto de notas.",
-  "inspections_field_log_issue": "Problema"
+  "inspections_field_log_issue": "Problema",
+  "inspections_isn_refresh_button": "Actualizar desde ISN",
+  "inspections_isn_refresh_busy": "Actualizando…",
+  "inspections_isn_refresh_success": "Actualizado desde ISN."
 }

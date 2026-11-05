@@ -4,7 +4,7 @@
  * from ISN, or on any failure (the card then renders nothing).
  */
 import type { Route } from "./+types/isn-card";
-import { getToken } from "~/lib/session.server";
+import { getToken, requireToken } from "~/lib/session.server";
 import { createApi } from "~/lib/api-client.server";
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -16,4 +16,21 @@ export async function loader({ request, context }: Route.LoaderArgs) {
         .catch(() => null);
     if (!res?.ok) return null;
     return (await res.json()).data;
+}
+
+export async function action({ request, context }: Route.ActionArgs) {
+    const token = await requireToken(context, request);
+    const form = await request.formData();
+    const id = String(form.get("inspectionId") ?? "");
+    if (!id) return { ok: false as const, error: "Missing inspection id" };
+    try {
+        const res = await createApi(context, { token }).inspections[":id"].isn.refresh.$post(
+            { param: { id } }, { headers: { "Idempotency-Key": String(form.get("idempotencyKey") ?? "") } },
+        );
+        if (res.ok) return { ok: true as const };
+        const body = await res.json().catch(() => null) as { error?: { message?: string } } | null;
+        return { ok: false as const, error: body?.error?.message ?? "ISN refresh failed. Try again." };
+    } catch {
+        return { ok: false as const, error: "ISN refresh failed. Try again." };
+    }
 }
