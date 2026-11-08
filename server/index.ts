@@ -565,6 +565,8 @@ app.get('/inspector/:tenant/:slug/calendar.ics', async (c) => {
     if (!tenantId || c.get('requestedTenantSlug') !== tenantSlugFromPath) {
         return c.text('Not found', 404);
     }
+    // Event UIDs are keyed hashes: without the deployment secret no feed can be built, and raw ids are never published instead.
+    if (!c.env.JWT_SECRET) return c.text('Not found', 404);
     const ics = await c.var.services.ics.busyFeedForInspector(tenantId, slug);
     return new Response(ics, {
         status: 200,
