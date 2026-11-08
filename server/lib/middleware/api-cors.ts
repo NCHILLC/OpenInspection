@@ -30,7 +30,7 @@ function normalizeOrigin(value: string): string | null {
 }
 
 /** The explicit allow-list from `CORS_ALLOWED_ORIGINS` (comma-separated origins). Invalid entries are ignored. */
-export function parseAllowedOrigins(raw: string | undefined): string[] {
+function parseAllowedOrigins(raw: string | undefined): string[] {
     if (!raw) return [];
     const out: string[] = [];
     for (const part of raw.split(',')) {
@@ -50,7 +50,7 @@ type CorsEnv = { APP_BASE_URL?: string; CORS_ALLOWED_ORIGINS?: string };
  * Origins that may call the API WITH credentials (cookies): this deployment's own origin, its configured public base URL,
  * the operator's `CORS_ALLOWED_ORIGINS` list, and (loopback hosts only) the Vite dev server.
  */
-export function credentialedOrigins(requestUrl: string, env: CorsEnv): string[] {
+function credentialedOrigins(requestUrl: string, env: CorsEnv): string[] {
     const own = new URL(requestUrl);
     const list = [own.origin];
     const base = env.APP_BASE_URL ? normalizeOrigin(env.APP_BASE_URL) : null;
