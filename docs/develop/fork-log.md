@@ -20,6 +20,15 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream security, CORS and calendar feeds — 2026-11-08
+
+Checked upstream through `3c577d10`. Ported by hand (hashes are upstream's):
+
+- `b06422d8`, CORS part only. `server/lib/middleware/api-cors.ts` no longer reflects the caller's origin. Credentials go to the request's own origin, `APP_BASE_URL`, the new optional `CORS_ALLOWED_ORIGINS` list and (loopback hosts only) the Vite dev origins; the booking widget routes answer `*` without credentials. Upstream's native-app origins are not taken: the fork has no native client.
+- `76f66331`, calendar feeds part only. Event UIDs are a keyed hash (`server/lib/calendar/ics-uid.ts`), feeds cover yesterday through 90 days ahead, and every feed answers 404 when `JWT_SECRET` is empty. The company feed's event link is `/inspections`, with no inspection id. Deviation: the company feed keeps `| Fee: $…` in its description (the fork's own behaviour, pinned by a spec); upstream dropped it.
+
+The other parts of those commits and the rest of the Oct 29 to Nov 7 upstream range are not yet sorted here.
+
 ## ISN intake — 2026-11-05
 
 Fork-only intake remains separate from upstream's report-link integration. Checked
