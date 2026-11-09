@@ -1,4 +1,4 @@
-import { and, eq, or, isNull } from 'drizzle-orm';
+import { and, eq, or, isNull, sql } from 'drizzle-orm';
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 import { reportVersions } from './db/schema';
 import { resolvePrimaryReportId } from './inspection/reports';
@@ -60,4 +60,55 @@ export async function loadPinnedSnapshot(
     } catch {
         return null;
     }
+}
+
+/** Snapshot fields that name a stored file. */
+const FILE_KEY_FIELDS = new Set(['key', 'annotatedKey', 'croppedKey', 'posterKey', 'streamUid', 'mediaId']);
+
+/** Most versions of one inspection read at once; an inspection has a handful. */
+const MAX_VERSIONS_SCANNED = 200;
+
+/** Every stored-file key a results document names (original, annotated, cropped, video, poster), added to `into`. */
+export function collectFileKeys(node: unknown, into: Set<string>): void {
+    if (Array.isArray(node)) { for (const item of node) collectFileKeys(item, into); return; }
+    if (node === null || typeof node !== 'object') return;
+    for (const [name, value] of Object.entries(node)) {
+        if (typeof value === 'string') { if (FILE_KEY_FIELDS.has(name) && value) into.add(value); }
+        else collectFileKeys(value, into);
+    }
+}
+
+/**
+ * Every stored file the published versions of an inspection refer to: photos (original, annotated, cropped), videos (stored key,
+ * poster, stream id) and the cover. A frozen report shows these exactly as published, so they must outlive any later edit of the
+ * working copy. ALL versions, not only the latest: an earlier version stays verifiable. Used by the orphan sweep, which must not
+ * reap them.
+ *
+ * Throws when a version's data cannot be read: the files of that version are unknown, so the caller must not free anything on the
+ * strength of an incomplete list.
+ */
+export async function loadFrozenFileKeys(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    db: DrizzleD1Database<any>,
+    tenantId: string,
+    inspectionId: string,
+): Promise<Set<string>> {
+    const rows = await db.select({
+        data: sql<string | null>`json_extract(${reportVersions.snapshotJson}, '$.data')`,
+        coverImageKey: sql<string | null>`json_extract(${reportVersions.snapshotJson}, '$.inspection.coverImageKey')`,
+        coverPhotoId: sql<string | null>`json_extract(${reportVersions.snapshotJson}, '$.inspection.coverPhotoId')`,
+    }).from(reportVersions)
+        .where(and(eq(reportVersions.tenantId, tenantId), eq(reportVersions.inspectionId, inspectionId)))
+        .limit(MAX_VERSIONS_SCANNED).all();
+    const keys = new Set<string>();
+    for (const row of rows) {
+        if (row.coverImageKey) keys.add(row.coverImageKey);
+        if (row.coverPhotoId) keys.add(row.coverPhotoId);
+        if (typeof row.data !== 'string') continue;
+        try { collectFileKeys(JSON.parse(row.data), keys); }
+        catch (err) {
+            throw new Error(`snapshot data of inspection ${inspectionId} is unreadable`, { cause: err });
+        }
+    }
+    return keys;
 }
