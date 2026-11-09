@@ -20,6 +20,10 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream take 2, CORS headers on raw responses — 2026-11-09
+
+Upstream `11927dd8`, CORS part only. `server/lib/middleware/api-cors.ts` now writes its headers through `c.res` (`putHeader`) instead of `c.header()`, so a route that returns a fresh `Response` (the public report video routes, anything served from R2 or a Durable Object) keeps `Access-Control-Allow-Origin`, credentials and `Vary: Origin`. The widget routes also get `Vary: Origin` now. Deviation from upstream: the fork has no `server/lib/native/cors-origins.ts` and no native-app origins, so the same change lands in `api-cors.ts`, whose helpers were already unexported. Upstream's registry and gate parts of the commit are not taken (the fork has no converted-router list, and the agent photo route and the cron-budget line do not exist here). Covered by the new "raw responses" cases in `tests/unit/platform/api-cors.spec.ts`. Not deployed.
+
 ## Upstream sort, Oct 29 to Nov 7 — 2026-11-09
 
 Checked upstream through `3c577d10`: all 101 non-merge commits after `3647c614`, sorted by reading what each one changes and whether that code exists here. Hashes are upstream's. Nothing in this list is ported by this entry; each "take" becomes its own small change.
