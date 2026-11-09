@@ -20,6 +20,10 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream take 6, neutral wording for the mobile begin hint — 2026-11-09
+
+Upstream `51783db0`, taken as is. `editor_route_mobile_begin` reads "Open [☰ Sections] below to begin" (was "Tap ...") and es-419 "Abra [☰ Secciones] abajo para comenzar" (was "Toque ..."), so the hint is right where the editor is driven with a mouse. The fork had the same key and the same old text. Only this key changes; the touch-only Speed Mode coaching and the other "Tap" strings are left alone, as upstream did. Client-facing wording, so it waits for the owner's yes to merge.
+
 ## Upstream take 5, orphan sweep — 2026-11-09
 
 Upstream `de987ea5`, `010287af` and `ed3b8034`, ported together as one change onto a sweep that is older than the one they patch. `sweepOrphanedMedia` (`server/lib/media/sweep-orphans.ts`) now also lists `{tenant}/inspections/{inspection}/photos/` (`r2Keys.inspectionPhotosPrefix`), never its parent folder, which also holds videos, documents, agreement files and Word exports. It keeps `collectFileKeys` and `loadFrozenFileKeys` (new in `report-snapshot.ts`, copied from upstream) in the live set, so the cropped file of a cropped-then-annotated photo and every file a published version shows are kept. A pass counts its storage and database calls and stops before an inspection that would not fit (`callBudget`, default 36, private to the module), returning the cursor of the last inspection examined. Specs: `tests/unit/media/sweep-current-photo-layout.spec.ts`, and the folder count in `sweep-orphans-paging.spec.ts`.
