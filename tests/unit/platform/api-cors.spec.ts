@@ -3,6 +3,8 @@
  * APP_BASE_URL and the operator's CORS_ALLOWED_ORIGINS get credentials. The public booking routes answer `*` without them.
  */
 import { describe, it, expect, afterEach } from 'vitest';
+import { Hono } from 'hono';
+import { apiCors } from '../../../server/lib/middleware/api-cors';
 import { app } from '../../../server/index';
 import { makeExecutionContext } from '../helpers/exec-ctx';
 import { createHarness, type Harness } from '../helpers/tenant-email-harness';
@@ -104,5 +106,39 @@ describe('API CORS (real app)', () => {
                 }
             }
         }
+    });
+});
+
+describe('API CORS on raw responses', () => {
+    // A route that returns `new Response(...)` (a Durable Object or R2 answer, the public report video routes) used to lose
+    // the headers the middleware wrote before it ran.
+    const raw = new Hono();
+    raw.use('/api/*', apiCors);
+    raw.get('/api/raw', () => new Response('clip', { status: 200, headers: { 'Content-Type': 'video/mp4' } }));
+    raw.get('/api/public/widget/raw', () => new Response('x'));
+    const get = (path: string, origin: string, base = 'http://localhost') => raw.request(`${base}${path}`, { headers: { Origin: origin } }, {});
+
+    it('keeps the credentialed CORS headers for an allowed origin', async () => {
+        const res = await get('/api/raw', 'http://localhost');
+        expect(await res.text()).toBe('clip');
+        expect(res.headers.get('Content-Type')).toBe('video/mp4');
+        expect(res.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost');
+        expect(res.headers.get('Access-Control-Allow-Credentials')).toBe('true');
+        expect(res.headers.get('Access-Control-Expose-Headers')).toBe('Set-Cookie');
+        expect(res.headers.get('Vary')).toContain('Origin');
+    });
+
+    it('adds no CORS headers for a disallowed origin, but still varies on Origin', async () => {
+        const res = await get('/api/raw', OTHER_ORIGIN);
+        expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
+        expect(res.headers.get('Access-Control-Allow-Credentials')).toBeNull();
+        expect(res.headers.get('Vary')).toContain('Origin');
+    });
+
+    it('keeps the wildcard on a raw widget answer, with Vary: Origin and no credentials', async () => {
+        const res = await get('/api/public/widget/raw', OTHER_ORIGIN);
+        expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+        expect(res.headers.get('Access-Control-Allow-Credentials')).toBeNull();
+        expect(res.headers.get('Vary')).toContain('Origin');
     });
 });
