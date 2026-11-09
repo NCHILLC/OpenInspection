@@ -50,6 +50,8 @@ export interface ReportMediaContext {
      * degrade to the image branch.
      */
     r2BaseUrl?: string | undefined;
+    /** Query string (with its `?`) appended to every R2 video URL: the proof the serve route checks. Empty for a session reader. */
+    r2ProofQuery?: string | undefined;
 }
 
 export type ReportMedia =
@@ -121,8 +123,9 @@ export function selectReportMedia(entry: ReportMediaEntry, ctx: ReportMediaConte
     if (isR2Video) {
         const mediaId = entry.mediaId!;
         const base = ctx.r2BaseUrl!;
-        const posterUrl = `${base}/r2-object/${encodeURIComponent(mediaId)}/poster`;
-        const playerSrc = `${base}/r2-object/${encodeURIComponent(mediaId)}`;
+        const proof = ctx.r2ProofQuery ?? '';
+        const posterUrl = `${base}/r2-object/${encodeURIComponent(mediaId)}/poster${proof}`;
+        const playerSrc = `${base}/r2-object/${encodeURIComponent(mediaId)}${proof}`;
 
         if (ctx.isPdf) {
             // PDF cannot play video — degrade to poster JPEG only.

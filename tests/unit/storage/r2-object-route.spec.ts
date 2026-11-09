@@ -69,10 +69,16 @@ function makeR2Stub() {
         };
     }
 
-    return { store, put, get } as {
+    async function head(key: string): Promise<{ size: number } | null> {
+        const entry = store.get(key);
+        return entry ? { size: entry.bytes.length } : null;
+    }
+
+    return { store, put, get, head } as {
         store: Map<string, FakeR2Entry>;
         put: typeof put;
         get: typeof get;
+        head: typeof head;
     };
 }
 
@@ -288,7 +294,7 @@ describe('r2-object serve route', () => {
 
         expect(res.status).toBe(200);
         expect(res.headers.get('Content-Type')).toContain('image/jpeg');
-        expect(res.headers.get('Cache-Control')).toBe('public, max-age=86400');
+        expect(res.headers.get('Cache-Control')).toBe('private, max-age=86400');
 
         const body = new Uint8Array(await res.arrayBuffer());
         expect(body).toEqual(posterBytes);
