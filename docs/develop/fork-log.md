@@ -20,6 +20,32 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream sort, Oct 29 to Nov 7 — 2026-11-09
+
+Checked upstream through `3c577d10`: all 101 non-merge commits after `3647c614`, sorted by reading what each one changes and whether that code exists here. Hashes are upstream's. Nothing in this list is ported by this entry; each "take" becomes its own small change.
+
+**Already here or done:** `4b87b07c` (e2e runner pinned to ubuntu-24.04), `d0352385` (booking spec clock pin; the fork's own `22d081cc`), the parts of `b06422d8` and `76f66331` recorded in the 2026-11-08 entry, and the video part of `61f4c917` (the staff clip and poster routes need a session, #117). The public report video routes of `61f4c917` are a take (below); the rest of it (share-link PDF caching and limits, the agent photo gate, view counting) goes with the public-response change. `b06422d8`'s discount-code list gate and `174a1bec`'s money-field classification are deliberately not taken.
+
+**Take, as separate small changes:**
+- `61f4c917`, public video routes: the published report builds its uploaded-clip and poster URLs under the staff route (`/api/inspections/:id/media/video`), which now needs a session (#117), so a client's clip and poster need the token-gated routes under `/api/public/report/:tenant/:id/video/`, with the range-request helper they share with the staff route. Taken first. Read from the code; not yet seen in a browser.
+- `11927dd8`, CORS part: the middleware writes its headers before the route runs, so a route that returns a fresh `Response` (Durable Object, R2) loses them. The fork's `api-cors.ts` has the same shape. Its registry and gate parts are upstream-only.
+- Clock-change days: `7c769ef3`, `f35110cd`, `9fc138e2`, `309a40de`. The dispatch board counts a dropped time from noon instead of midnight, and `wallClockToEpochMs` takes a second offset so a time just after the change west of Greenwich is not an hour early. The fork's company zone is west of Greenwich.
+- Report PDFs: `08369c89` and `7ad22803` (the retention rule skips the PDF of a published report, tolerates placeholder rows and batches its deletes; the post-publish purge keeps a file a published row shares), `97c5e7a5` (re-render when the stored file is missing).
+- Orphan sweep: `de987ea5`, `010287af` and `ed3b8034`, only together. The first lists the current photo folder, which the fork's sweep does not; the second keeps the cropped file of an annotated photo out of the delete set, and the fork has no `collectFileKeys`, so that part needs its own version.
+- `64bf2565`, wizard half: the wizard route accepts a property-type list that differs from every other writer. `d43482e3`: text fields at 16px on iOS. `51783db0`: "Open [Sections] below to begin" instead of "Tap".
+
+**Held, not decided:**
+- Publish lock, edit-again, read-only published editor, republish notice choice and serving clients the stored published snapshot: `df6f5c8a`, `12e687f3`, `867c8368`, `d27222be`, `50a46ce6`, `b063ec47`, `12727da3`, `056e0370`, `2d097d3e`, `06428c6f` and their test and gate follow-ups (`76012bc6`, `22c8351b`, `a3490bf6`). One feature set that overlaps the fork's phone editor; it needs a decision on the feature, not a port.
+- Public responses built from field lists: `b34f6f4a`, `97415775`, `5c451d5c`, with the company-relative key commits `30c6dc61`, `ef6e352d`, `221ba7b3`. The fork has no `response-projection.ts`; this is a real port, one change.
+- E-sign audit chain and signing claim `633feb03`, `177f852c`, and the signed-record export second factor `8bfae822` (needs migration `0008_verify_export_attempts` and a verify page the fork lacks).
+
+**Skipped, and why:**
+- Everything in `packages/field-ui` and `packages/offline-package` and their release commits: the fork has neither package (the field-ui move is open). The UI commits that rely on field-ui's `--keyboard-height` variable go with them: `db3121ae`, `39e52640`, `de3f19cc`, `45124671`, `c2505431`, `6400b6e8`, `9b1e0e10`, `e93cbf4c`, `a5197949`, `fc4edbda`, `4ca4a3b6`, `2565318b`, `962c590a`, `99e16314`, `96ee76a6`.
+- Native-app contract and its checks (the fork has no native client): `0b407181`, `b52ee649`, `d7244cbf`, `4aa79b5d`, `88ab6334`.
+- Staged-bundle delivery for large migration bundles (`0c318f27`, `7df467b5`, `baf349dd`, `8341f470`, `12cdca07`): no sender for it exists in the fork.
+- Test-suite and CI speed work that would collide with the fork's merge gate or `ci.yml`: `6fb15421`, `8e0da2df`, `7ae5f9ec`, `b95aeadb`, `6e246a34`, `312093c2` (worktrees live outside this checkout), `d54944ac` (the agent sign-in page it budgets is not here).
+- Release bumps (`chore(main): release …`) are upstream's versions.
+
 ## Upstream security, CORS and calendar feeds — 2026-11-08
 
 Checked upstream through `3c577d10`. Ported by hand (hashes are upstream's):
@@ -29,7 +55,7 @@ Checked upstream through `3c577d10`. Ported by hand (hashes are upstream's):
 - `b06422d8`, same-origin part, with the helper from `76f66331` (`app/lib/same-origin-post.server.ts`). Public actions refuse a cross-site POST before calling the API: staff login and its second step, forgot and reset password, setup, join, concierge confirm, SMS opt-in, unsubscribe and the portal link request. Posts with neither `Sec-Fetch-Site` nor `Origin` still pass. Not taken: the agent-portal routes (the fork has none) and the portal/agent emailed-link Continue pages of `76f66331`.
 - `76f66331`, client portal sign-in link only. `/portal/:tenant/auth` shows a Continue page on GET and redeems the link on the POST, so mail scanners and link previews no longer spend it; the POST also refuses cross-site requests and shows an API rate limit as a limit. Not taken: the single-use KV marker, the agent emailed-link page (the fork has no `/agent/magic-login` page route) and the per-visitor limiter changes. The Continue button uses `disabled` while submitting because the fork's `Button` has no `pending` prop.
 
-The other parts of those commits and the rest of the Oct 29 to Nov 7 upstream range are not yet sorted here.
+The other parts of those commits are sorted in the 2026-11-09 entry above.
 
 ## ISN intake — 2026-11-05
 
