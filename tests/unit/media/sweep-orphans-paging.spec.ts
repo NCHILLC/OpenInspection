@@ -53,7 +53,7 @@ describe('sweepOrphanedMedia paging', () => {
             limit: 2, afterInspectionId: null,
         });
         expect(first.nextCursor, 'a partial sweep must say where to resume').toBe('i2');
-        expect(r2.list, 'exactly `limit` inspections may be listed').toHaveBeenCalledTimes(2);
+        expect(r2.list, 'exactly `limit` inspections may be listed, two folders each').toHaveBeenCalledTimes(4);
     });
 
     it('resumes after the cursor rather than restarting', async () => {
@@ -65,8 +65,10 @@ describe('sweepOrphanedMedia paging', () => {
             limit: 2, afterInspectionId: first.nextCursor,
         });
         expect(second.nextCursor).toBe('i4');
-        expect(r2.list.mock.calls.map((c) => (c[0] as { prefix?: string }).prefix))
-            .toEqual([`${TENANT}/i1/`, `${TENANT}/i2/`, `${TENANT}/i3/`, `${TENANT}/i4/`]);
+        const olderPrefixes = r2.list.mock.calls
+            .map((c) => (c[0] as { prefix?: string }).prefix)
+            .filter((p) => /^t1\/i\d\/$/.test(p ?? ''));
+        expect(olderPrefixes).toEqual([`${TENANT}/i1/`, `${TENANT}/i2/`, `${TENANT}/i3/`, `${TENANT}/i4/`]);
     });
 
     it('returns a null cursor on the last page, so the sweep can end', async () => {
@@ -75,7 +77,7 @@ describe('sweepOrphanedMedia paging', () => {
             limit: 100, afterInspectionId: null,
         });
         expect(last.nextCursor).toBeNull();
-        expect(r2.list).toHaveBeenCalledTimes(IDS.length);
+        expect(r2.list).toHaveBeenCalledTimes(IDS.length * 2);
     });
 
     it('does not read the report blob for an inspection whose R2 prefix is empty', async () => {

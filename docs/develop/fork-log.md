@@ -20,6 +20,20 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream take 5, orphan sweep — 2026-11-09
+
+Upstream `de987ea5`, `010287af` and `ed3b8034`, ported together as one change onto a sweep that is older than the one they patch. `sweepOrphanedMedia` (`server/lib/media/sweep-orphans.ts`) now also lists `{tenant}/inspections/{inspection}/photos/` (`r2Keys.inspectionPhotosPrefix`), never its parent folder, which also holds videos, documents, agreement files and Word exports. It keeps `collectFileKeys` and `loadFrozenFileKeys` (new in `report-snapshot.ts`, copied from upstream) in the live set, so the cropped file of a cropped-then-annotated photo and every file a published version shows are kept. A pass counts its storage and database calls and stops before an inspection that would not fit (`callBudget`, default 36, private to the module), returning the cursor of the last inspection examined. Specs: `tests/unit/media/sweep-current-photo-layout.spec.ts`, and the folder count in `sweep-orphans-paging.spec.ts`.
+
+**Why the three go together.** Listing the photos folder is what makes a current-layout photo freeable at all. Without the live-set half, a photo that was cropped and then annotated names three files and the working-copy walker returned two, so the cropped file would be freed 7 days after it was last seen unreferenced, and a photo only a published version shows would go the same way. The fork's sweep read neither, so the live-set half is not a small patch here: `loadFrozenFileKeys` is new.
+
+**Deviations from upstream.**
+- Upstream's sweep also lists the message-attachment folder and keeps files sent in a message. The fork has no such listing (its attachments are keyed `{tenant}/messages/...`, outside both prefixes), so that part is not taken.
+- The old `{tenant}/{inspection}/` listing now skips `reports/`. Upstream does this in an earlier commit the fork never took; stored report PDFs sat under that prefix with nothing in the live set naming them, so the sweep would have recorded each one and freed it after the grace window. Found while porting, fixed in the same change because the new listing runs the same code.
+- **Fail safe.** Upstream lets an unreadable published snapshot throw out of the pass. Here any failure collecting an inspection's live keys (unparseable working copy, unreadable snapshot, a database error) logs, skips that inspection whole (nothing recorded, cleared or deleted) and carries on with the next. Specs prove an expired record survives each failure and is freed when the live set is readable.
+- No migration, no new scheduled trigger: the same `orphan-sweep` job runs the same hourly pass.
+
+**Known ceiling.** A reinspection copies its baseline's photo entries (same keys, baseline's folder). If the baseline drops such a photo and only the reinspection shows it, the baseline's sweep does not know the reinspection's results and frees the file after the grace window. Upstream has the same shape; not changed here.
+
 ## Upstream take 2, CORS headers on raw responses — 2026-11-09
 
 Upstream `11927dd8`, CORS part only. `server/lib/middleware/api-cors.ts` now writes its headers through `c.res` (`putHeader`) instead of `c.header()`, so a route that returns a fresh `Response` (the public report video routes, anything served from R2 or a Durable Object) keeps `Access-Control-Allow-Origin`, credentials and `Vary: Origin`. The widget routes also get `Vary: Origin` now. Deviation from upstream: the fork has no `server/lib/native/cors-origins.ts` and no native-app origins, so the same change lands in `api-cors.ts`, whose helpers were already unexported. Upstream's registry and gate parts of the commit are not taken (the fork has no converted-router list, and the agent photo route and the cron-budget line do not exist here). Covered by the new "raw responses" cases in `tests/unit/platform/api-cors.spec.ts`. Not deployed.
