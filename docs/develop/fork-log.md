@@ -20,6 +20,10 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream take 6, iOS text fields at 16px — 2026-11-09
+
+Upstream `d43482e3`. `app/styles/tailwind.css` ends with an unlayered `@supports (-webkit-touch-callout: none)` rule that raises textareas, selects and text inputs to `max(16px, 1em)`, so iOS WebKit does not zoom the page when a 13-14px field takes focus. Pinch zoom stays; other browsers keep the denser sizes. Spec: `tests/unit/tooling/ios-text-field-size.spec.ts`, which reads the stylesheet. Deviation: the upstream commit message says the native app has the same rule in its own stylesheet; the fork has no native app, so there is nothing to port there. The cherry-pick conflicted only because the fork's stylesheet ends with the tap-suppression rule; both are kept. Not seen on an iPhone. Not deployed.
+
 ## Upstream take 5, orphan sweep — 2026-11-09
 
 Upstream `de987ea5`, `010287af` and `ed3b8034`, ported together as one change onto a sweep that is older than the one they patch. `sweepOrphanedMedia` (`server/lib/media/sweep-orphans.ts`) now also lists `{tenant}/inspections/{inspection}/photos/` (`r2Keys.inspectionPhotosPrefix`), never its parent folder, which also holds videos, documents, agreement files and Word exports. It keeps `collectFileKeys` and `loadFrozenFileKeys` (new in `report-snapshot.ts`, copied from upstream) in the live set, so the cropped file of a cropped-then-annotated photo and every file a published version shows are kept. A pass counts its storage and database calls and stops before an inspection that would not fit (`callBudget`, default 36, private to the module), returning the cursor of the last inspection examined. Specs: `tests/unit/media/sweep-current-photo-layout.spec.ts`, and the folder count in `sweep-orphans-paging.spec.ts`.
