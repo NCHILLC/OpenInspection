@@ -45,7 +45,33 @@ step() { printf '\n  →  %b\n' "$1"; }
 
 printf '%b\n' "${BOLD}── OpenInspection (Pre-commit Checks) ───────────────────────────${NC}"
 
-# 1. Type check — SCOPED to what the staged changes can actually affect.
+# 1. Conformance gates, all in ONE node process (scripts/run-gates.mjs):
+#      DS tokens · SVG dimensions · migration-reference hygiene · large-file
+#      ratchet · calendar timezone-safety · duplicate-code ceiling
+#    Each was its own `node scripts/check-*.mjs` spawn. The checks themselves scan
+#    a few hundred files in milliseconds; what cost 0.7-1.3s apiece was node
+#    starting up, so paying it six times was almost all of the 5.5s these gates
+#    took. Merged: 1.9s. The runner prints the same per-gate ✓/✗ lines, runs every
+#    gate even after one fails, and shows violations only for the ones that did.
+#    CI still runs them individually via `npm run lint` -- that stays the
+#    authoritative gate, and jscpd is a child process either way.
+step "Conformance gates"
+if node scripts/run-gates.mjs --rung precommit; then
+    :
+else
+    FAILED=1
+fi
+
+# Fail fast. These run in seconds; the type check below runs for minutes. A commit
+# that already fails a cheap gate (line endings, file size, token conformance)
+# stops here instead of paying for the slow steps first.
+if [ "$FAILED" -eq 1 ]; then
+    printf '\n%b\n' "${RED}Conformance gates failed; skipped the type check and lint. Fix the gates above and commit again.${NC}"
+    exit 1
+fi
+
+
+# 2. Type check — SCOPED to what the staged changes can actually affect.
 #    Runs tsc (the SAME compiler as CI's authoritative "verify" gate) with
 #    --incremental build-info caching, so a warm commit only re-checks what
 #    changed and stays fast. (We used tsgo/@typescript/native-preview here before;
@@ -116,7 +142,13 @@ elif [ -z "$CONFIG_STAGED" ] && [ -z "$(echo "$TS_STAGED" | grep -vE '^(server|t
     # `type-check:tests` runs `tsc -b tsconfig.api.json` first, so it subsumes
     # the api pass rather than adding a second one; the extra cost is the tests
     # program alone (587 files, ~16s warm, capped at 1024 MB).
-    if npm run type-check:tests > /dev/null 2>&1; then
+    # The tests program compiles workers/app.ts, which needs the generated route
+    # types (and the compiled messages). A fresh worktree has neither, so build
+    # whichever is missing; present outputs are left alone to keep this tier fast.
+    TESTS_GEN_OK=1
+    [ -d app/paraglide ] || npm run i18n:compile:cached > /dev/null 2>&1 || TESTS_GEN_OK=0
+    [ -d .react-router/types ] || npx react-router typegen > /dev/null 2>&1 || TESTS_GEN_OK=0
+    if [ "$TESTS_GEN_OK" -eq 1 ] && npm run type-check:tests > /dev/null 2>&1; then
         pass "Type check passed (tsc, api + tests programs — staged TS confined to server/ and tests/)"
     else
         fail "Type check failed  →  npm run type-check:tests"
@@ -182,7 +214,7 @@ else
     fi
 fi
 
-# 2. Lint & Fix — ONE eslint process over every staged file (see .lintstagedrc).
+# 3. Lint & Fix — ONE eslint process over every staged file (see .lintstagedrc).
 #    eslint's cost here is the type-information program, not the file count:
 #    `parserOptions.project` names both tsconfigs, so any invocation builds the app
 #    program AND the api program before it checks a single line. Four parallel
@@ -210,23 +242,6 @@ if ESLINT_FAST=1 npx lint-staged; then
     pass "Lint & Fix passed"
 else
     fail "Lint failed  →  npx lint-staged"
-fi
-
-# 3. Conformance gates, all in ONE node process (scripts/run-gates.mjs):
-#      DS tokens · SVG dimensions · migration-reference hygiene · large-file
-#      ratchet · calendar timezone-safety · duplicate-code ceiling
-#    Each was its own `node scripts/check-*.mjs` spawn. The checks themselves scan
-#    a few hundred files in milliseconds; what cost 0.7-1.3s apiece was node
-#    starting up, so paying it six times was almost all of the 5.5s these gates
-#    took. Merged: 1.9s. The runner prints the same per-gate ✓/✗ lines, runs every
-#    gate even after one fails, and shows violations only for the ones that did.
-#    CI still runs them individually via `npm run lint` -- that stays the
-#    authoritative gate, and jscpd is a child process either way.
-step "Conformance gates"
-if node scripts/run-gates.mjs --rung precommit; then
-    :
-else
-    FAILED=1
 fi
 
 # NOTE: the Worker bundle-size gate lives in .githooks/pre-push, not here. The

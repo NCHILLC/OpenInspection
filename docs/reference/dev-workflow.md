@@ -26,6 +26,7 @@ npm run dev:tunnel   # Like `dev`, but also exposed over a Cloudflare Quick Tunn
 npm run build        # react-router build — bundles server/ (API) + app/ (RR SSR) into one worker
 npm run deploy       # standalone: build + wrangler deploy (real ids via wrangler.local.jsonc)
 npm run deploy:saas  # saas: build + wrangler deploy with wrangler.saas.jsonc
+npm run worktree:setup  # fresh clone or worktree: version stamp, messages, route types (type-check:* needs them)
 npm run type-check   # i18n:compile + react-router typegen, then FOUR tsc passes serially
                      # (app, api, e2e, tests) — serial to keep peak RAM down
 npm run type-check:app   # `tsc -b tsconfig.json` — the app/worker program

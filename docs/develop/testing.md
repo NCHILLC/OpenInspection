@@ -126,6 +126,7 @@ tests/
 - A file that needs a DOM opts in per-file with `// @vitest-environment happy-dom`
   (vitest v4 replacement for `environmentMatchGlobs`).
 - Prefer asserting **service-layer** behavior directly over reconstructing HTTP.
+- After refactoring a module, run `npm run test:unit:branch` before pushing: it runs every spec that imports a file changed since `origin/main`, including specs of neighbouring routes that share the module. (`test:unit:changed` sees only uncommitted edits.)
 
 ### Worker-runtime (`tests/workers/*.spec.ts`)
 
