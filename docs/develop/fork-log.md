@@ -26,6 +26,7 @@ Checked upstream through `3c577d10`. Ported by hand (hashes are upstream's):
 
 - `b06422d8`, CORS part only. `server/lib/middleware/api-cors.ts` no longer reflects the caller's origin. Credentials go to the request's own origin, `APP_BASE_URL`, the new optional `CORS_ALLOWED_ORIGINS` list and (loopback hosts only) the Vite dev origins; the booking widget routes answer `*` without credentials. Upstream's native-app origins are not taken: the fork has no native client.
 - `76f66331`, calendar feeds part only. Event UIDs are a keyed hash (`server/lib/calendar/ics-uid.ts`), feeds cover yesterday through 90 days ahead, and every feed answers 404 when `JWT_SECRET` is empty. The company feed's event link is `/inspections`, with no inspection id. Deviation: the company feed keeps `| Fee: $…` in its description (the fork's own behaviour, pinned by a spec); upstream dropped it.
+- `b06422d8`, same-origin part, with the helper from `76f66331` (`app/lib/same-origin-post.server.ts`). Public actions refuse a cross-site POST before calling the API: staff login and its second step, forgot and reset password, setup, join, concierge confirm, SMS opt-in, unsubscribe and the portal link request. Posts with neither `Sec-Fetch-Site` nor `Origin` still pass. Not taken: the agent-portal routes (the fork has none) and the portal/agent emailed-link Continue pages of `76f66331`.
 
 The other parts of those commits and the rest of the Oct 29 to Nov 7 upstream range are not yet sorted here.
 
