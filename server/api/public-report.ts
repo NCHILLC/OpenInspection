@@ -1,16 +1,16 @@
-import type { Context } from 'hono';
 import { createRoute, z } from '@hono/zod-openapi';
 import { eq, and } from 'drizzle-orm';
-import type { HonoConfig } from '../types/hono';
 import { inspections, tenants } from '../lib/db/schema';
 import { resolveRenderAccess } from '../lib/render-token';
 import { createApiRouter } from '../lib/openapi-router';
 import { withMcpMetadata } from '../lib/route-metadata-standards';
 import { createApiResponseSchema } from '../lib/validations/shared.schema';
-import { resolvePortalAccess, resolveOwnerPreview, classifyPortalAccess } from '../lib/public-access';
+import { resolveOwnerPreview, classifyPortalAccess } from '../lib/public-access';
 import { resolveClientActor } from '../lib/portal-client-actor';
 import { recordReportView, readReportViewCountingEnabled } from '../lib/report-views';
 import publicViewTrackingRoutes from './public/view-tracking';
+import publicReportVideoRoutes from './public/report-video';
+import { authorizeReportMedia, releaseGateFor, resolveClientTenant } from '../lib/report-link-access';
 // Re-exported for existing importers (tests); both now live in lib/.
 export { resolveOwnerPreviewToken } from '../lib/public-access';
 export { resolveRenderAccess } from '../lib/render-token';
@@ -26,53 +26,6 @@ import { PublicInvoiceBodySchema } from '../lib/validations/invoice.schema';
 import { getDrizzle } from '../lib/route-helpers';
 import { readCourtesyTranslationForReport } from '../lib/translation/read-for-report';
 import { COURTESY_TRANSLATION_LOCALE, PublicReportResponseSchema } from '../lib/validations/courtesy-translation.schema';
-
-/**
- * The outstanding release gate for a public request, or null when nothing holds
- * the report back.
- *
- * Skipped entirely on the bypass paths rather than computed and discarded: the
- * predicate ignores it there, and asking anyway would put two database reads on
- * every page the headless PDF renderer loads.
- *
- * Takes the service structurally so this module needs no new import, and so a
- * test can hand it a stub without constructing the whole service graph.
- */
-async function releaseGateFor(
-    services: { inspection: { resolveReleaseGate(inspectionId: string, tenantId: string): Promise<{ reason: 'payment' | 'agreement' } | null> } },
-    id: string,
-    tenantId: string,
-    bypass: boolean,
-): Promise<'payment' | 'agreement' | null> {
-    if (bypass) return null;
-    const gate = await services.inspection.resolveReleaseGate(id, tenantId);
-    return gate?.reason ?? null;
-}
-
-/**
- * Shared client-facing tenant resolution for the public report endpoints:
- * the persistent per-(recipient, order) portal token, falling back to the
- * legacy KV agent-view-token bridge (`?view=agent&token=`). Returns the
- * AUTHORITATIVE tenantId from whichever token resolves to THIS inspection, or
- * null. Identical across the report-data, report-photo, and report-PDF routes.
- * `accessTokenId` is the per-recipient token row's id, or null on the legacy
- * KV bridge (no row) — so a bridge view is never counted, which is right: it
- * names no recipient. It is the identity delivery confirmation counts against.
- */
-async function resolveClientTenant(
-    c: Context<HonoConfig>, token: string | undefined, id: string,
-): Promise<{ tenantId: string; accessTokenId: string | null } | null> {
-    const grant = await resolvePortalAccess(c.var.services.portalAccess, token, id);
-    if (grant) return { tenantId: grant.tenantId, accessTokenId: grant.accessTokenId };
-    if (!token) return null;
-    // Bridge: existing customer share links carry the KV agent-view-token until
-    // persistent per-recipient token issuance is wired (see plan
-    // 2026-06-01-core-esign-redesign). Validate it the same way: token must
-    // resolve to THIS inspection; tenantId from the token.
-    const legacy = await c.var.services.inspection.resolveAgentViewToken(token);
-    if (legacy && legacy.inspectionId === id) return { tenantId: legacy.tenantId, accessTokenId: null };
-    return null;
-}
 
 /**
  * Public, no-login portal endpoints (`/api/public/*`). Access is gated by the
@@ -273,6 +226,7 @@ const reportGateRoute = createRoute(withMcpMetadata({
 const publicReportRoutes = createApiRouter()
     .route('/', publicVerifyRoutes)
     .route('/', publicViewTrackingRoutes)
+    .route('/', publicReportVideoRoutes)
     .openapi(reportRoute, async (c) => {
         const { tenant, id } = c.req.valid('param');
         const { token, render } = c.req.valid('query');
@@ -402,13 +356,15 @@ const publicReportRoutes = createApiRouter()
         // link.
         const streamCustomerSubdomain = c.env.STREAM_CUSTOMER_SUBDOMAIN ?? '';
         const appBaseUrl = new URL(c.req.url).origin;
-        // R2 video serve base: PDF consumes only the poster JPEG (render-token);
-        // web viewer fetches clips, tenant-guarded by the pool-row lookup.
+        // R2 video serve base. A client and the PDF renderer use the report's own gated routes, carrying the same proof as its
+        // photos (the link token, or the render token, which only reads the poster). The owner's preview has no token and a
+        // <video> element can not send an Authorization header, so it uses the staff route, which its session cookie opens.
         const data = await c.var.services.inspection.getReportData(id, tenantId, makePhotoUrl, {
             isPdf: renderMode,
             streamCustomerSubdomain,
             appBaseUrl,
-            r2BaseUrl: `/api/inspections/${id}/media/video`,
+            r2BaseUrl: ownerPreview ? `/api/inspections/${id}/media/video` : `/api/public/report/${tenant}/${id}/video`,
+            r2ProofQuery: renderMode ? `?render=${encodeURIComponent(render!)}` : ownerPreview ? '' : `?token=${encodeURIComponent(tk)}`,
         }, pinnedVersion);
         // #23 — the courtesy translation, when one is stored AND still describes
         // this English. ⚠️ No tenant setting is read: production is gated,
@@ -422,33 +378,10 @@ const publicReportRoutes = createApiRouter()
     .openapi(reportPhotoRoute, async (c) => {
         const { id } = c.req.valid('param');
         const { key, token, download, render, w } = c.req.valid('query');
-        let tenantId = (await resolveClientTenant(c, token, id))?.tenantId ?? null;
-        let renderMode = false;
-        let ownerPreview = false;
-        if (!tenantId && render) {
-            const r = await resolveRenderAccess(render, id, c.env.JWT_SECRET);
-            if (r) {
-                const db = getDrizzle(c);
-                const row = await db.select({ tenantId: inspections.tenantId })
-                    .from(inspections).where(eq(inspections.id, id)).get();
-                if (row) { tenantId = row.tenantId; renderMode = true; }
-            }
-        }
-        // Owner-session preview — same fallback as the report data route so the
-        // owner's tokenless preview can load its photos (the key is re-checked
-        // against this tenant + inspection below).
-        if (!tenantId) { tenantId = await resolveOwnerPreview(c); ownerPreview = !!tenantId; }
-        if (!tenantId) return c.notFound();
-        const photoGate = await getDrizzle(c)
-            .select({ reportStatus: inspections.reportStatus })
-            .from(inspections)
-            .where(and(eq(inspections.id, id), eq(inspections.tenantId, tenantId)))
-            .get();
-        // A gate that holds the report but serves its photographs is not a gate.
-        const photoReleaseGate = await releaseGateFor(c.var.services, id, tenantId, renderMode || ownerPreview);
-        if (!publicReportAccessAllowed({ renderMode, ownerPreview, reportStatus: photoGate?.reportStatus, releaseGate: photoReleaseGate })) {
-            return c.notFound();
-        }
+        // Same proofs and gates as the report's video routes (see `authorizeReportMedia`).
+        const access = await authorizeReportMedia(c, id, { token, render });
+        if (!access) return c.notFound();
+        const { tenantId } = access;
         // Ownership: keys are `${tenantId}/inspections/${inspectionId}/...` — reject
         // anything outside the token's tenant + the requested inspection.
         if (!key.startsWith(`${tenantId}/inspections/${id}/`)) return c.notFound();
