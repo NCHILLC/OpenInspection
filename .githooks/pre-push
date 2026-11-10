@@ -114,7 +114,18 @@ while read -r _l_ref l_sha _r_ref r_sha; do
         # already-verified work to the new branch — which is exactly what fired
         # this gate on a branch that touches no QuickBooks file at all, and a
         # gate that fires on every first push is one people learn to skip.
-        QBASE=$(git merge-base "$l_sha" upstream/main 2>/dev/null)             || QBASE=$(git merge-base "$l_sha" origin/main 2>/dev/null)             || QBASE=""
+        #
+        # The same failure runs the other way on a fork that is AHEAD of
+        # upstream: there the upstream merge-base is months back, and the range
+        # re-attributes the fork's own merged QuickBooks commits to every new
+        # branch. So take whichever base is NEARER the pushed commit: when one
+        # is an ancestor of the other, the descendant is the real fork point.
+        QUB=$(git merge-base "$l_sha" upstream/main 2>/dev/null) || QUB=""
+        QOB=$(git merge-base "$l_sha" origin/main 2>/dev/null) || QOB=""
+        QBASE=${QUB:-$QOB}
+        if [ -n "$QUB" ] && [ -n "$QOB" ] && git merge-base --is-ancestor "$QUB" "$QOB" 2>/dev/null; then
+            QBASE=$QOB
+        fi
         [ -z "$QBASE" ] && { QBO_CHANGED="unknown"; break; }
         QRANGE="$QBASE..$l_sha"
     else
