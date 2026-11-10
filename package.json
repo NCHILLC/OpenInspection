@@ -177,7 +177,8 @@
     "lint:unwired": "node scripts/check-unwired.mjs",
     "lint:unread-fields": "node scripts/check-unread-fields.mjs",
     "lint:url-taxonomy": "node scripts/check-url-taxonomy.mjs",
-    "lint:route-dispatch": "node scripts/check-route-dispatch-parity.mjs"
+    "lint:route-dispatch": "node scripts/check-route-dispatch-parity.mjs",
+    "test:e2e:isn": "playwright test -c playwright.isn.config.ts"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.8.1",

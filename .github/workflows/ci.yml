@@ -456,6 +456,7 @@ jobs:
         suite:
           - { id: seeded-d1, label: 'seeded D1', script: 'test:e2e' }
           - { id: multi-user, label: 'multi-user seed', script: 'test:e2e:seeded' }
+          - { id: isn, label: 'ISN mapping', script: 'test:e2e:isn' }
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -501,7 +502,7 @@ jobs:
       # is why they are two runners rather than one run — each gets its own
       # worker and its own D1 by construction.
       - name: E2E tests
-        run: npm run ${{ matrix.suite.script }}
+        run: npm run ${{ matrix.suite.script }} -- --reporter=list,github,html
 
       # ⚠️ Per-leg artifact name. upload-artifact@v4 FAILS on a duplicate name
       # rather than merging, so a matrix that uploads must key the name on the

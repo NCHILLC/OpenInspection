@@ -97,6 +97,15 @@ Checked upstream through `3c577d10`. Ported by hand (hashes are upstream's):
 
 The other parts of those commits are sorted in the 2026-11-09 entry above.
 
+## ISN template mapping — 2026-11-05
+
+Fork-only explicit primary report template defaults per ISN order type. New
+imports use a valid mapped template ahead of service defaults; existing
+inspections keep their template during normal refresh. Missing or retired mapped
+templates are an error, never silently replaced. Services still match by name.
+The ISN browser suite uses a separate local fixture server and test-only worker
+bindings, and writes no data to a real ISN company.
+
 ## ISN intake — 2026-11-05
 
 Fork-only intake remains separate from upstream's report-link integration. Checked

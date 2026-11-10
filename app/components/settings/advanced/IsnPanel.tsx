@@ -3,6 +3,7 @@ import { SecretField } from "~/components/SecretField";
 import { TestConnectionButton } from "~/components/settings/TestConnectionButton";
 import { ConnectionTestStatus, type ConnectionTestResult } from "~/components/settings/ConnectionTestStatus";
 import { m } from "~/paraglide/messages";
+import { IsnTemplateMappings } from "./IsnTemplateMappings";
 
 export const ISN_SECRET_KEYS = ["ISN_DOMAIN", "ISN_COMPANY_KEY", "ISN_ACCESS_KEY", "ISN_SECRET_KEY"] as const;
 export type IsnSecrets = Record<(typeof ISN_SECRET_KEYS)[number], string>;
@@ -59,6 +60,7 @@ export function IsnPanel({ secrets, intake, testResults = [], fieldError, saving
         )}
       </TestConnectionButton>
       <ConnectionTestStatus results={testResults} target="isn" />
+      {intake?.keysSet && <IsnTemplateMappings />}
       <pull.Form method="post" className="space-y-3 max-w-xl pt-4 border-t border-ih-border">
         <input type="hidden" name="intent" value="pull-isn" />
         <input type="hidden" name="cursor" value={pulled?.pull?.nextCursor ?? ""} />
