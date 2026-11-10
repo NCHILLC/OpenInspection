@@ -45,6 +45,14 @@ step() { printf '\n  →  %b\n' "$1"; }
 
 printf '%b\n' "${BOLD}── OpenInspection (Pre-commit Checks) ───────────────────────────${NC}"
 
+# Every step below runs a package from node_modules, which a new worktree does
+# not have. Say so once instead of failing each step on a missing command.
+if ! SETUP_OUT=$(node scripts/check-worktree-setup.mjs --deps-only 2>&1); then
+    fail "$SETUP_OUT"
+    printf '\n%b\n' "${RED}Pre-commit checks failed. Fix the errors before committing.${NC}"
+    exit 1
+fi
+
 # 1. Conformance gates, all in ONE node process (scripts/run-gates.mjs):
 #      DS tokens · SVG dimensions · migration-reference hygiene · large-file
 #      ratchet · calendar timezone-safety · duplicate-code ceiling
