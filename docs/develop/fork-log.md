@@ -20,6 +20,12 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream take 6, one property type vocabulary — 2026-11-09
+
+Upstream `64bf2565`, the wizard half only. `POST /api/inspections/wizard` validated `propertyType` against `single_family, condo, townhouse, multi_family, commercial`, while create, update and clone use `single_family, multi_unit, commercial` (`INSPECTION_PROPERTY_TYPES`). The wizard schema now takes that same list, and `inspections.property_type` is typed with it (type-level only, no DDL, so no migration). The old wizard values are refused with no compatibility mapping, as upstream does. The fork's own wizard UI already sent the shared values, and nothing else in the fork reads `condo`, `townhouse` or `multi_family`.
+
+**Not taken.** The report-item half (`toReportItemValue`, the completion count, the documented `value` field in the report-data schema), the regenerated native contract and the e2e seed changes: the fork has no native contract, and the report-item change is a separate behaviour change that is not needed for this one. The file-size baseline of `schema/inspection/core.ts` moves from 427 to 428: the file is the table list of the inspections family, and the one added line is the import the column's enum needs.
+
 ## Upstream take 5, orphan sweep — 2026-11-09
 
 Upstream `de987ea5`, `010287af` and `ed3b8034`, ported together as one change onto a sweep that is older than the one they patch. `sweepOrphanedMedia` (`server/lib/media/sweep-orphans.ts`) now also lists `{tenant}/inspections/{inspection}/photos/` (`r2Keys.inspectionPhotosPrefix`), never its parent folder, which also holds videos, documents, agreement files and Word exports. It keeps `collectFileKeys` and `loadFrozenFileKeys` (new in `report-snapshot.ts`, copied from upstream) in the live set, so the cropped file of a cropped-then-annotated photo and every file a published version shows are kept. A pass counts its storage and database calls and stops before an inspection that would not fit (`callBudget`, default 36, private to the module), returning the cursor of the last inspection examined. Specs: `tests/unit/media/sweep-current-photo-layout.spec.ts`, and the folder count in `sweep-orphans-paging.spec.ts`.
