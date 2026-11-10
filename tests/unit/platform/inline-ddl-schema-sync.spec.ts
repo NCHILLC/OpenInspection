@@ -18,7 +18,7 @@ import {
  * which is slow and easy to skip locally.
  *
  * This fast unit test asserts the shared DDL covers every Drizzle column, so the
- * drift is caught the moment a column is added — see CLAUDE.md "Comment Rules":
+ * drift is caught the moment a column is added — see CODING_STANDARDS.md "Comments":
  * a "must stay in sync" coupling is made executable instead of left as a comment.
  *
  * Extra columns in the DDL (e.g. the legacy `secrets` column) are fine; only

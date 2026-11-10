@@ -3,7 +3,7 @@
  *
  * Tests the exported `findTimestampViolations` function from
  * `scripts/check-timestamps.mjs` using string fixtures. The DBA review
- * (2026-06-04, see CLAUDE.md "Schema Rules") requires new timestamp columns
+ * (2026-06-04, see CODING_STANDARDS.md "Schema") requires new timestamp columns
  * to be `integer(..., { mode: 'timestamp_ms' })` (epoch milliseconds) — this
  * gate flags bare/seconds/text time columns so drift doesn't creep back in.
  */
