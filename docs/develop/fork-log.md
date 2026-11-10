@@ -20,6 +20,12 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream take 6, one property type vocabulary — 2026-11-09
+
+Upstream `64bf2565`, the wizard half only. `POST /api/inspections/wizard` validated `propertyType` against `single_family, condo, townhouse, multi_family, commercial`, while create, update and clone use `single_family, multi_unit, commercial` (`INSPECTION_PROPERTY_TYPES`). The wizard schema now takes that same list, and `inspections.property_type` is typed with it (type-level only, no DDL, so no migration). The old wizard values are refused with no compatibility mapping, as upstream does. The fork's own wizard UI already sent the shared values, and nothing else in the fork reads `condo`, `townhouse` or `multi_family`.
+
+**Not taken.** The report-item half (`toReportItemValue`, the completion count, the documented `value` field in the report-data schema), the regenerated native contract and the e2e seed changes: the fork has no native contract, and the report-item change is a separate behaviour change that is not needed for this one. The file-size baseline of `schema/inspection/core.ts` moves from 427 to 428: the file is the table list of the inspections family, and the one added line is the import the column's enum needs.
+
 ## Upstream take 7, neutral wording for the mobile begin hint — 2026-11-09
 
 Upstream `51783db0`, taken as is. `editor_route_mobile_begin` reads "Open [☰ Sections] below to begin" (was "Tap ...") and es-419 "Abra [☰ Secciones] abajo para comenzar" (was "Toque ..."), so the hint is right where the editor is driven with a mouse. The fork had the same key and the same old text. Only this key changes; the touch-only Speed Mode coaching and the other "Tap" strings are left alone, as upstream did. Client-facing wording, so it waits for the owner's yes to merge.
