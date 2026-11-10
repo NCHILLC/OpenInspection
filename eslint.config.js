@@ -256,14 +256,14 @@ export default tseslint.config(
                 },
                 // Cookie-policy guard (PR 1) — setCookie must take its attributes
                 // from a factory in server/lib/auth-helpers.ts, never an inline object.
-                // CLAUDE.md mandates httpOnly + secure + sameSite + path on EVERY
+                // CODING_STANDARDS.md mandates httpOnly + secure + sameSite + path on EVERY
                 // setCookie; five sites were hand-maintaining identical copies of the
                 // staff-session options and two more the portal's. They were correct
                 // at the time, which is exactly why nobody noticed there were seven
                 // places to update on the next policy change.
                 {
                     selector: "CallExpression[callee.name='setCookie'] > ObjectExpression",
-                    message: 'Pass a cookie-options factory from server/lib/auth-helpers.ts (authCookieOptions / portalSessionCookieOptions), not an inline object — CLAUDE.md requires httpOnly+secure+sameSite+path on every cookie.',
+                    message: 'Pass a cookie-options factory from server/lib/auth-helpers.ts (authCookieOptions / portalSessionCookieOptions), not an inline object — CODING_STANDARDS.md (JWT & auth) requires httpOnly+secure+sameSite+path on every cookie.',
                 },
                 // Admin-tier guard (IA-94 / PR 1) — "is this an owner or a manager"
                 // must go through isAdminRole() in server/lib/auth/roles.ts. It was
@@ -440,14 +440,14 @@ export default tseslint.config(
                 },
                 // Cookie-policy guard (PR 1) — setCookie must take its attributes
                 // from a factory in server/lib/auth-helpers.ts, never an inline object.
-                // CLAUDE.md mandates httpOnly + secure + sameSite + path on EVERY
+                // CODING_STANDARDS.md mandates httpOnly + secure + sameSite + path on EVERY
                 // setCookie; five sites were hand-maintaining identical copies of the
                 // staff-session options and two more the portal's. They were correct
                 // at the time, which is exactly why nobody noticed there were seven
                 // places to update on the next policy change.
                 {
                     selector: "CallExpression[callee.name='setCookie'] > ObjectExpression",
-                    message: 'Pass a cookie-options factory from server/lib/auth-helpers.ts (authCookieOptions / portalSessionCookieOptions), not an inline object — CLAUDE.md requires httpOnly+secure+sameSite+path on every cookie.',
+                    message: 'Pass a cookie-options factory from server/lib/auth-helpers.ts (authCookieOptions / portalSessionCookieOptions), not an inline object — CODING_STANDARDS.md (JWT & auth) requires httpOnly+secure+sameSite+path on every cookie.',
                 },
                 // Admin-tier guard (IA-94 / PR 1) — "is this an owner or a manager"
                 // must go through isAdminRole() in server/lib/auth/roles.ts. It was
@@ -513,14 +513,14 @@ export default tseslint.config(
                 },
                 // Cookie-policy guard (PR 1) — setCookie must take its attributes
                 // from a factory in server/lib/auth-helpers.ts, never an inline object.
-                // CLAUDE.md mandates httpOnly + secure + sameSite + path on EVERY
+                // CODING_STANDARDS.md mandates httpOnly + secure + sameSite + path on EVERY
                 // setCookie; five sites were hand-maintaining identical copies of the
                 // staff-session options and two more the portal's. They were correct
                 // at the time, which is exactly why nobody noticed there were seven
                 // places to update on the next policy change.
                 {
                     selector: "CallExpression[callee.name='setCookie'] > ObjectExpression",
-                    message: 'Pass a cookie-options factory from server/lib/auth-helpers.ts (authCookieOptions / portalSessionCookieOptions), not an inline object — CLAUDE.md requires httpOnly+secure+sameSite+path on every cookie.',
+                    message: 'Pass a cookie-options factory from server/lib/auth-helpers.ts (authCookieOptions / portalSessionCookieOptions), not an inline object — CODING_STANDARDS.md (JWT & auth) requires httpOnly+secure+sameSite+path on every cookie.',
                 },
                 // Admin-tier guard (IA-94 / PR 1) — "is this an owner or a manager"
                 // must go through isAdminRole() in server/lib/auth/roles.ts. It was
@@ -542,7 +542,7 @@ export default tseslint.config(
                     // `/api/public/*` is exempt: those endpoints are unauthenticated
                     // by design, so a browser calling them directly is correct. The
                     // rule exists because a client fetch of a GUARDED route carries
-                    // no session cookie and 401s — see the BFF note in CLAUDE.md.
+                    // no session cookie and 401s — see the BFF note in CODING_STANDARDS.md (JWT & auth).
                     // The embed widget posts a booking from a third-party page and
                     // has no loader to route through.
                     selector: "CallExpression[callee.name='fetch'][arguments.0.type='Literal'][arguments.0.value=/^\\u002Fapi\\u002F(?!public\\u002F)/]",
@@ -655,7 +655,7 @@ export default tseslint.config(
                     {
                         name: 'hono/jwt',
                         importNames: ['sign', 'verify'],
-                        message: 'Use server/lib/jwt-keyring.ts (signJwt/verifyJwt) — direct hono/jwt sign/verify is forbidden (pins ES256 + kid). See CLAUDE.md JWT & Auth Security Rules.',
+                        message: 'Use server/lib/jwt-keyring.ts (signJwt/verifyJwt) — direct hono/jwt sign/verify is forbidden (pins ES256 + kid). See CODING_STANDARDS.md "JWT & auth".',
                     },
                 ],
                 patterns: [

@@ -193,7 +193,7 @@ Verify credentials and set the `__Host-inspector_token` httpOnly cookie.
 
 The JWT is delivered **only** as the `__Host-inspector_token` HttpOnly cookie.
 It is not in the body, and browser JavaScript must never store a token —
-`CLAUDE.md` § JWT & Auth Security Rules makes both of those rules. The one
+`CODING_STANDARDS.md` § JWT & auth makes both of those rules. The one
 exception is the server-side BFF: a caller sending `x-token-relay: 1` also gets
 `token` in `data`, because Workers `fetch()` may strip `Set-Cookie` on a
 server-to-server hop and the BFF has to put the token in its own session cookie.
