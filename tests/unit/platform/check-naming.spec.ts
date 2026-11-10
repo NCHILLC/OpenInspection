@@ -2,8 +2,8 @@
  * Unit tests for the boolean-column naming gate.
  *
  * Tests the exported `findNamingViolations` function from
- * `scripts/check-naming.mjs` using string fixtures. Per CLAUDE.md "Schema
- * Rules" → Naming (#227), every `integer(..., { mode: 'boolean' })` SQL column
+ * `scripts/check-naming.mjs` using string fixtures. Per CODING_STANDARDS.md "Schema"
+ * → Naming (#227), every `integer(..., { mode: 'boolean' })` SQL column
  * name MUST start with `is_`/`has_`. The gate inspects only the SQL-name
  * string, not the camelCase JS property.
  */

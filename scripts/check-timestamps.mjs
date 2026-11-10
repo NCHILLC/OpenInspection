@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Timestamp-normalization gate (DBA review 2026-06-04, see CLAUDE.md "Schema
- * Rules"). New timestamp columns MUST be `integer(..., { mode: 'timestamp_ms' })`
+ * Timestamp-normalization gate (DBA review 2026-06-04, see CODING_STANDARDS.md "Schema").
+ * New timestamp columns MUST be `integer(..., { mode: 'timestamp_ms' })`
  * (epoch milliseconds). This gate flags:
  *   - `integer('*_at')` columns with no `{ mode: 'timestamp_ms' }`
  *   - the banned seconds mode `{ mode: 'timestamp' }`

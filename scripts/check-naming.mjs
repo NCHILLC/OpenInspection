@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Boolean-column naming gate (#227, see CLAUDE.md "Schema Rules" → Naming).
+ * Boolean-column naming gate (#227, see CODING_STANDARDS.md "Schema" → Naming).
  * Every `integer(..., { mode: 'boolean' })` SQL column name MUST start with
  * `is_` or `has_` so booleans read as predicates at the DB layer. This gate
  * only inspects the SQL-name string (the `integer('<sql_name>', …)` argument);

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Epoch-ms range assertion for the timestamp-normalization migration (see
- * CLAUDE.md "Schema Rules" — all timestamps must be integer epoch-ms).
+ * CODING_STANDARDS.md "Schema" — all timestamps must be integer epoch-ms).
  * Samples MIN/MAX per column across a representative set of migrated tables
  * and fails if any non-null value falls outside a sane epoch-ms window
  * (~2015 .. ~2035), which would indicate a column still holding raw seconds

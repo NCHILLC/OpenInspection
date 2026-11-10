@@ -98,3 +98,12 @@ Text removed from rule sections. The rule itself stays in `CLAUDE.md` / `AGENTS.
 ### Docs map line
 
 Directory listing dropped from the `**Docs**` line (it duplicates [`docs/README.md`](../README.md)): `docs/operate/` (deploy, upgrade, JWT-keyring rotation, SMS compliance) · `docs/develop/` (architecture, testing, design system) · `docs/reference/` (API, database, roles, deployment modes) · `docs/concepts/` (how the engine works) · `docs/integrations/` (external services) · `docs/compliance/` (data handling).
+
+### CLAUDE.md second tightening (2026-11-09)
+
+- Dropped from the Check-upstream opening: "Not optional, and not a judgement call about how obvious the symptom looks."
+- Dropped from the `gh` paragraph: "do not repeat the limitation from memory without checking" (the `gh auth status` line is that check); the note that `pull_request_read` exposes a `get_check_runs` method.
+- Dropped from the `--no-verify` paragraph (stale): "The muster crew uses the same GitHub account as the owner, so a bypass would be a bypass for them too." The muster crew was retired 2026-11-05.
+- Dropped from Agent skills (rots): "There is no `GLOSSARY.md` or ADR folder yet; create one only when a skill (`domain-modeling`) is asked to."
+- Dropped from the gates paragraph: the "(say) a file is at its size cap ... an hour into work that now has to be restructured" elaboration; kept as the size-cap example.
+

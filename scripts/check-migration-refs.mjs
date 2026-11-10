@@ -10,7 +10,7 @@
  * longer exists — worse than no comment. The `0000_baseline.sql` consolidation
  * already orphaned every `migration 00NN` reference in the tree once.
  *
- * Annotate the durable artifact instead (see CLAUDE.md "Comment Rules"):
+ * Annotate the durable artifact instead (see CODING_STANDARDS.md "Comments"):
  *   - state the invariant next to the schema column/index it constrains,
  *   - cite a STABLE id for traceability — PR# / issue# (`see #144`),
  *   - the ONLY allowed migration reference is `0000_baseline.sql` (never renumbers).

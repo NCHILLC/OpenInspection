@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * English-only gate for source (CLAUDE.md "Language Rules").
+ * English-only gate for source (CONTRIBUTING.md "Language").
  *
  * OpenInspection is public. Its source, comments and user-facing strings are
  * read by people who do not read Chinese, and a CJK comment is a dead end for
@@ -120,7 +120,7 @@ if (offenders.length > 0) {
     for (const o of offenders) console.error(`  ✘ ${o.rel}:${o.line}  ${o.text}`);
     console.error(`
   OpenInspection is a public repository: source, comments and user-facing
-  strings must be English (CLAUDE.md "Language Rules"). Translate the comment.
+  strings must be English (CONTRIBUTING.md "Language"). Translate the comment.
   If the characters ARE the subject of the code — test data, or a pattern that
   matches them — add the file to ALLOWED in scripts/check-english-only.mjs
   with the reason.`);
