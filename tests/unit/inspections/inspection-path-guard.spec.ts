@@ -41,8 +41,11 @@ describe('inspection path guard (role gate)', () => {
             }
         });
     }
-    it('leaves the published report video reachable without a session', async () => {
-        expect((await buildApp('anonymous').request('/api/inspections/i1/media/video/r2-object/p1')).status).toBe(200);
+    it('video clips and posters need a staff session, like the rest of the family', async () => {
+        const path = '/api/inspections/i1/media/video/r2-object/p1';
+        expect((await buildApp('anonymous').request(path)).status).toBe(401);
+        expect((await buildApp('agent').request(path)).status).toBe(403);
+        expect((await buildApp('inspector').request(path)).status).toBe(200);
     });
     it('does not claim the collection route, which carries its own gate', async () => {
         expect((await buildApp('anonymous').request('/api/inspections')).status).toBe(200);

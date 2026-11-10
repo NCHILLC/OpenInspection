@@ -124,6 +124,8 @@ export interface AppEnv {
     APP_NAME: string;
     PRIMARY_COLOR: string;
     APP_BASE_URL?: string;
+    /** Comma-separated extra origins allowed to call /api/* from a browser with cookies (see server/lib/middleware/api-cors.ts). */
+    CORS_ALLOWED_ORIGINS?: string;
 
     // ISN report-link sync (services/isn). Tenant-owned; all four set = on.
     ISN_DOMAIN?: string;

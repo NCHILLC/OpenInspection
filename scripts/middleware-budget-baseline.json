@@ -399,6 +399,10 @@
       "dollarMethods": 2,
       "apiWorker": 0
     },
+    "app/routes/resources/isn-mappings.tsx": {
+      "dollarMethods": 2,
+      "apiWorker": 0
+    },
     "app/routes/resources/marketplace-install.tsx": {
       "dollarMethods": 2,
       "apiWorker": 0
