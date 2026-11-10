@@ -314,7 +314,7 @@ export const SCRIPT_GATES = [
     // file in the repo, and a bare hosted path is introduced by prose that is
     // usually written across several commits before anyone pushes it.
     { key: 'noportalroutes', label: 'lint:no-portal-routes', script: 'check-no-portal-routes.mjs', fix: 'npm run lint:no-portal-routes', rung: PUSH },
-    { key: 'schemadoc', label: 'lint:schema-doc', script: 'gen-schema-doc.mjs', fix: 'npm run lint:schema-doc', rung: PUSH, args: ['--check'] },
+    { key: 'schemadoc', label: 'lint:schema-doc', script: 'gen-schema-doc.mjs', fix: 'npm run lint:schema-doc', rung: PRECOMMIT, args: ['--check'] }, // PRECOMMIT: a schema edit makes the doc stale and CI fails on it; ~0.2s
     { key: 'verificationcopy', label: 'lint:verification-copy', script: 'check-verification-copy.mjs', fix: 'npm run lint:verification-copy', rung: PUSH },
     // The other copy-policy gate, and it sits beside `verificationcopy` on the
     // same rung for the same reason. What it catches is a claim that an

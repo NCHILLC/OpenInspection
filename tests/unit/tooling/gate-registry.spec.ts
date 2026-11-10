@@ -300,6 +300,11 @@ describe('gate registry', () => {
             // `agenttermsselftest`'s argument. ~0.3 s and ~60 ms, mostly node startup.
             'mutatingrouteguards',
             'mutatingrouteguardsselftest',
+            // Added with the deploy-tooling fixes: CI's lint:gates-full failed on a
+            // stale docs/reference/database-schema.md while this rung passed. A
+            // schema edit is the commit that makes the doc stale, and the check is
+            // ~0.2 s (it reads the schema files and one doc).
+            'schemadoc',
         ].sort();
         const actual = [...SCRIPT_GATES, DUP_GATE].filter((g) => g.rung === PRECOMMIT).map((g) => g.key).sort();
         expect(actual).toEqual(EXPECTED_PRECOMMIT);
