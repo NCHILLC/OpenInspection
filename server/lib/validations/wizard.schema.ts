@@ -10,13 +10,14 @@
 // so existing callers (templates page, agent submissions) keep working
 // unchanged. Created inspection redirects the wizard to /inspections/:id/edit.
 import { z } from '@hono/zod-openapi';
+import { INSPECTION_PROPERTY_TYPES } from '../inspection-property-type';
 
 export const CreateInspectionFromWizardSchema = z.object({
     property: z.object({
         address:      z.string().min(3).max(300).describe('TODO describe address field for the OpenInspection MCP integration'),
         yearBuilt:    z.number().int().min(1700).max(2100).optional().describe('TODO describe yearBuilt field for the OpenInspection MCP integration'),
         sqft:         z.number().int().min(100).max(50_000).optional().describe('TODO describe sqft field for the OpenInspection MCP integration'),
-        propertyType: z.enum(['single_family', 'condo', 'townhouse', 'multi_family', 'commercial']).optional().describe('TODO describe propertyType field for the OpenInspection MCP integration'),
+        propertyType: z.enum(INSPECTION_PROPERTY_TYPES).optional().describe('Kind of property, stored on the inspection when given: single_family, multi_unit or commercial. The same values every other way of creating or editing an inspection accepts.'),
         commercialSubtype: z.enum(['office', 'retail', 'hospitality', 'industrial', 'institutional', 'mixed-use']).optional().describe('TODO describe commercialSubtype field for the OpenInspection MCP integration'),
     }).describe('TODO describe property field for the OpenInspection MCP integration'),
     services: z.array(z.string().min(1).max(64)).min(1).max(20).describe('TODO describe services field for the OpenInspection MCP integration'),

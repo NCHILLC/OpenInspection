@@ -24,7 +24,11 @@ import { logger } from '../../lib/logger';
 import { Errors } from '../../lib/errors';
 import type { HonoConfig } from '../../types/hono';
 import { getDrizzle } from '../../lib/route-helpers';
-import { r2Put, r2Get } from '../../lib/r2/objects';
+import { r2Put } from '../../lib/r2/objects';
+import { serveVideoClip, serveVideoPoster } from '../../lib/media/serve-video';
+
+/** Staff session responses are private to the browser; the report link route states its own policy. */
+const STAFF_VIDEO_CACHE = 'private, max-age=86400';
 
 // ── MIME / extension helpers ─────────────────────────────────────────────────
 
@@ -191,64 +195,15 @@ export function registerR2VideoRoutes(router: OpenAPIHono<HonoConfig>): void {
             return c.json({ error: 'Video not found' }, 404);
         }
 
-        const rangeHeader = c.req.header('Range');
-
-        if (rangeHeader) {
-            const rangeMatch = /^bytes=(\d+)-(\d*)$/.exec(rangeHeader.trim());
-            if (!rangeMatch) {
-                return c.json({ error: 'Invalid Range header' }, 416);
-            }
-            const start = parseInt(rangeMatch[1], 10);
-            const endStr = rangeMatch[2];
-
-            const obj = await r2Get(c.env.PHOTOS, row.r2Key, {
-                range: endStr
-                    ? { offset: start, length: parseInt(endStr, 10) - start + 1 }
-                    : { offset: start },
-            });
-
-            if (!obj) {
-                return c.json({ error: 'Video not found in storage' }, 404);
-            }
-
-            const contentType = obj.httpMetadata?.contentType ?? 'video/mp4';
-            const end = endStr ? parseInt(endStr, 10) : (obj.size - 1);
-            const contentLength = end - start + 1;
-
-            return new Response(obj.body, {
-                status: 206,
-                headers: {
-                    'Content-Type': contentType,
-                    'Content-Range': `bytes ${start}-${end}/${obj.size}`,
-                    'Content-Length': String(contentLength),
-                    'Accept-Ranges': 'bytes',
-                },
-            });
-        }
-
-        // Full-object request.
-        const obj = await r2Get(c.env.PHOTOS, row.r2Key);
-        if (!obj) {
-            return c.json({ error: 'Video not found in storage' }, 404);
-        }
-
-        const contentType = obj.httpMetadata?.contentType ?? 'video/mp4';
-
-        return new Response(obj.body, {
-            status: 200,
-            headers: {
-                'Content-Type': contentType,
-                'Content-Length': String(obj.size),
-                'Accept-Ranges': 'bytes',
-            },
-        });
+        const served = await serveVideoClip(c.env.PHOTOS, row.r2Key, c.req.header('Range'), STAFF_VIDEO_CACHE);
+        return served ?? c.json({ error: 'Video not found in storage' }, 404);
     });
 
     /**
      * GET /:id/media/video/r2-object/:mediaId/poster
      *
      * Serve the poster JPEG for an R2 video. Tenant-guarded via pool row lookup.
-     * Long-lived cache (1 day) — poster images are immutable once finalized.
+     * Cached privately for a day — poster images are immutable once finalized.
      */
     router.get('/:id/media/video/r2-object/:mediaId/poster', async (c) => {
         const tenantId = c.get('tenantId');
@@ -269,20 +224,7 @@ export function registerR2VideoRoutes(router: OpenAPIHono<HonoConfig>): void {
             return c.json({ error: 'Poster not found' }, 404);
         }
 
-        const obj = await r2Get(c.env.PHOTOS, row.posterKey);
-        if (!obj) {
-            return c.json({ error: 'Poster not found in storage' }, 404);
-        }
-
-        const contentType = obj.httpMetadata?.contentType ?? 'image/jpeg';
-
-        return new Response(obj.body, {
-            status: 200,
-            headers: {
-                'Content-Type': contentType,
-                'Content-Length': String(obj.size),
-                'Cache-Control': 'public, max-age=86400',
-            },
-        });
+        const served = await serveVideoPoster(c.env.PHOTOS, row.posterKey, STAFF_VIDEO_CACHE);
+        return served ?? c.json({ error: 'Poster not found in storage' }, 404);
     });
 }

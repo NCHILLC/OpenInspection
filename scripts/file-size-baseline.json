@@ -82,7 +82,7 @@
   "server/services/marketplace.service.ts": 421,
   "app/components/editor/InspectionSettingsSheet.tsx": 421,
   "scripts/check-endorsement-copy.mjs": 419,
-  "server/lib/db/schema/inspection/core.ts": 427,
+  "server/lib/db/schema/inspection/core.ts": 428,
   "app/routes/calendar.tsx": 417,
   "server/services/agreement/signer-state.ts": 413,
   "app/components/portal/sections/ReportView.tsx": 410,

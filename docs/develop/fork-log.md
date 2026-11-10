@@ -20,6 +20,83 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Upstream take 6, one property type vocabulary — 2026-11-09
+
+Upstream `64bf2565`, the wizard half only. `POST /api/inspections/wizard` validated `propertyType` against `single_family, condo, townhouse, multi_family, commercial`, while create, update and clone use `single_family, multi_unit, commercial` (`INSPECTION_PROPERTY_TYPES`). The wizard schema now takes that same list, and `inspections.property_type` is typed with it (type-level only, no DDL, so no migration). The old wizard values are refused with no compatibility mapping, as upstream does. The fork's own wizard UI already sent the shared values, and nothing else in the fork reads `condo`, `townhouse` or `multi_family`.
+
+**Not taken.** The report-item half (`toReportItemValue`, the completion count, the documented `value` field in the report-data schema), the regenerated native contract and the e2e seed changes: the fork has no native contract, and the report-item change is a separate behaviour change that is not needed for this one. The file-size baseline of `schema/inspection/core.ts` moves from 427 to 428: the file is the table list of the inspections family, and the one added line is the import the column's enum needs.
+
+## Upstream take 7, neutral wording for the mobile begin hint — 2026-11-09
+
+Upstream `51783db0`, taken as is. `editor_route_mobile_begin` reads "Open [☰ Sections] below to begin" (was "Tap ...") and es-419 "Abra [☰ Secciones] abajo para comenzar" (was "Toque ..."), so the hint is right where the editor is driven with a mouse. The fork had the same key and the same old text. Only this key changes; the touch-only Speed Mode coaching and the other "Tap" strings are left alone, as upstream did. Client-facing wording, so it waits for the owner's yes to merge.
+
+## Upstream take 6, iOS text fields at 16px — 2026-11-09
+
+Upstream `d43482e3`. `app/styles/tailwind.css` ends with an unlayered `@supports (-webkit-touch-callout: none)` rule that raises textareas, selects and text inputs to `max(16px, 1em)`, so iOS WebKit does not zoom the page when a 13-14px field takes focus. Pinch zoom stays; other browsers keep the denser sizes. Spec: `tests/unit/tooling/ios-text-field-size.spec.ts`, which reads the stylesheet. Deviation: the upstream commit message says the native app has the same rule in its own stylesheet; the fork has no native app, so there is nothing to port there. The cherry-pick conflicted only because the fork's stylesheet ends with the tap-suppression rule; both are kept. Not seen on an iPhone. Not deployed.
+
+## Upstream take 5, orphan sweep — 2026-11-09
+
+Upstream `de987ea5`, `010287af` and `ed3b8034`, ported together as one change onto a sweep that is older than the one they patch. `sweepOrphanedMedia` (`server/lib/media/sweep-orphans.ts`) now also lists `{tenant}/inspections/{inspection}/photos/` (`r2Keys.inspectionPhotosPrefix`), never its parent folder, which also holds videos, documents, agreement files and Word exports. It keeps `collectFileKeys` and `loadFrozenFileKeys` (new in `report-snapshot.ts`, copied from upstream) in the live set, so the cropped file of a cropped-then-annotated photo and every file a published version shows are kept. A pass counts its storage and database calls and stops before an inspection that would not fit (`callBudget`, default 36, private to the module), returning the cursor of the last inspection examined. Specs: `tests/unit/media/sweep-current-photo-layout.spec.ts`, and the folder count in `sweep-orphans-paging.spec.ts`.
+
+**Why the three go together.** Listing the photos folder is what makes a current-layout photo freeable at all. Without the live-set half, a photo that was cropped and then annotated names three files and the working-copy walker returned two, so the cropped file would be freed 7 days after it was last seen unreferenced, and a photo only a published version shows would go the same way. The fork's sweep read neither, so the live-set half is not a small patch here: `loadFrozenFileKeys` is new.
+
+**Deviations from upstream.**
+- Upstream's sweep also lists the message-attachment folder and keeps files sent in a message. The fork has no such listing (its attachments are keyed `{tenant}/messages/...`, outside both prefixes), so that part is not taken.
+- The old `{tenant}/{inspection}/` listing now skips `reports/`. Upstream does this in an earlier commit the fork never took; stored report PDFs sat under that prefix with nothing in the live set naming them, so the sweep would have recorded each one and freed it after the grace window. Found while porting, fixed in the same change because the new listing runs the same code.
+- **Fail safe.** Upstream lets an unreadable published snapshot throw out of the pass. Here any failure collecting an inspection's live keys (unparseable working copy, unreadable snapshot, a database error) logs, skips that inspection whole (nothing recorded, cleared or deleted) and carries on with the next. Specs prove an expired record survives each failure and is freed when the live set is readable.
+- No migration, no new scheduled trigger: the same `orphan-sweep` job runs the same hourly pass.
+
+**Known ceiling.** A reinspection copies its baseline's photo entries (same keys, baseline's folder). If the baseline drops such a photo and only the reinspection shows it, the baseline's sweep does not know the reinspection's results and frees the file after the grace window. Upstream has the same shape; not changed here.
+
+## Upstream take 3, days the clocks change — 2026-11-09
+
+Upstream `7c769ef3`, `f35110cd`, `9fc138e2`, `309a40de`, taken together. The dispatch board turned a dropped wall-clock minute into an instant as midnight plus minutes, an hour off on the two days a year the day is 23 or 25 hours long; the feed now ships `noonMs` and the client counts from noon, and refuses (error toast) an early time on a change day rather than save one an hour off. `wallClockToEpochMs` in `server/lib/tz.ts` also read a time just after a change wrongly west of Greenwich (07:00 and 08:00 in Los Angeles on the fall-back day came out an hour early); it now checks the offset at the corrected instant too, and caches one formatter per zone. No migration: `noonMs` is a response field only. Deviation: the one conflict was in `server/api/calendar-items.ts`, where the fork's route chain is shaped differently, so the `noonMs` lines were applied by hand to the same spot. Picked in the order 7c769ef3, 9fc138e2, 309a40de, f35110cd (the sequencer reordered them; the final files match upstream's for everything but that route file). Specs came with the commits: `dispatch-helpers.dst.test.ts`, `dispatch-noon-anchor.spec.ts` (every quarter hour across eleven zone/date change days), and added cases in `tz.spec.ts` and `dispatch-board.spec.ts`. Not deployed.
+
+## Upstream take 2, CORS headers on raw responses — 2026-11-09
+
+Upstream `11927dd8`, CORS part only. `server/lib/middleware/api-cors.ts` now writes its headers through `c.res` (`putHeader`) instead of `c.header()`, so a route that returns a fresh `Response` (the public report video routes, anything served from R2 or a Durable Object) keeps `Access-Control-Allow-Origin`, credentials and `Vary: Origin`. The widget routes also get `Vary: Origin` now. Deviation from upstream: the fork has no `server/lib/native/cors-origins.ts` and no native-app origins, so the same change lands in `api-cors.ts`, whose helpers were already unexported. Upstream's registry and gate parts of the commit are not taken (the fork has no converted-router list, and the agent photo route and the cron-budget line do not exist here). Covered by the new "raw responses" cases in `tests/unit/platform/api-cors.spec.ts`. Not deployed.
+
+## Upstream take 4, report PDFs — 2026-11-09
+
+Upstream `08369c89`, `7ad22803` and `97c5e7a5`, cherry-picked with no code changes (the fork's `retention-report-pdfs.ts` and `report-pdf.service.ts` matched upstream's earlier state). The retention rule no longer deletes the PDF of a published report (any inspection with a version on record, including later unversioned renders), whatever window the tenant chose; this is the owner's decision of 2026-11-05. The window, default, zero-means-indefinite and manifest row are unchanged, so the retention policy digest is unchanged and no migration is involved. Placeholder rows with an empty key are removed without touching storage, and storage deletes go in groups of 500 and row deletes in groups of 50. The post-publish purge keeps a file a published row shares, and `getOrRender` re-renders when the stored file is missing (one HEAD per request). Deviation from upstream: in `docs/compliance/retention-policy.md` only the new "not expired" section is taken; the fork lacks the neighbouring `verify_export_attempts` section, so the conflict was resolved by keeping just ours. The settings help text changed in English and Spanish. Covered by the added cases in `tests/unit/privacy/retention-report-pdfs.spec.ts`, `tests/unit/reports/report-pdf-current.spec.ts` and `tests/unit/reports/report-pdf.service.spec.ts`. Not deployed.
+
+## Upstream sort, Oct 29 to Nov 7 — 2026-11-09
+
+Checked upstream through `3c577d10`: all 101 non-merge commits after `3647c614`, sorted by reading what each one changes and whether that code exists here. Hashes are upstream's. Nothing in this list is ported by this entry; each "take" becomes its own small change.
+
+**Already here or done:** `4b87b07c` (e2e runner pinned to ubuntu-24.04), `d0352385` (booking spec clock pin; the fork's own `22d081cc`), the parts of `b06422d8` and `76f66331` recorded in the 2026-11-08 entry, and the video part of `61f4c917` (the staff clip and poster routes need a session, #117). The public report video routes of `61f4c917` are a take (below); the rest of it (share-link PDF caching and limits, the agent photo gate, view counting) goes with the public-response change. `b06422d8`'s discount-code list gate and `174a1bec`'s money-field classification are deliberately not taken.
+
+**Take, as separate small changes:**
+- `61f4c917`, public video routes: the published report builds its uploaded-clip and poster URLs under the staff route (`/api/inspections/:id/media/video`), which now needs a session (#117), so a client's clip and poster need the token-gated routes under `/api/public/report/:tenant/:id/video/`, with the range-request helper they share with the staff route. Taken first. Read from the code; not yet seen in a browser.
+- `11927dd8`, CORS part: the middleware writes its headers before the route runs, so a route that returns a fresh `Response` (Durable Object, R2) loses them. The fork's `api-cors.ts` has the same shape. Its registry and gate parts are upstream-only.
+- Clock-change days: `7c769ef3`, `f35110cd`, `9fc138e2`, `309a40de`. The dispatch board counts a dropped time from noon instead of midnight, and `wallClockToEpochMs` takes a second offset so a time just after the change west of Greenwich is not an hour early. The fork's company zone is west of Greenwich.
+- Report PDFs: `08369c89` and `7ad22803` (the retention rule skips the PDF of a published report, tolerates placeholder rows and batches its deletes; the post-publish purge keeps a file a published row shares), `97c5e7a5` (re-render when the stored file is missing).
+- Orphan sweep: `de987ea5`, `010287af` and `ed3b8034`, only together. The first lists the current photo folder, which the fork's sweep does not; the second keeps the cropped file of an annotated photo out of the delete set, and the fork has no `collectFileKeys`, so that part needs its own version.
+- `64bf2565`, wizard half: the wizard route accepts a property-type list that differs from every other writer. `d43482e3`: text fields at 16px on iOS. `51783db0`: "Open [Sections] below to begin" instead of "Tap".
+
+**Held, not decided:**
+- Publish lock, edit-again, read-only published editor, republish notice choice and serving clients the stored published snapshot: `df6f5c8a`, `12e687f3`, `867c8368`, `d27222be`, `50a46ce6`, `b063ec47`, `12727da3`, `056e0370`, `2d097d3e`, `06428c6f` and their test and gate follow-ups (`76012bc6`, `22c8351b`, `a3490bf6`). One feature set that overlaps the fork's phone editor; it needs a decision on the feature, not a port.
+- Public responses built from field lists: `b34f6f4a`, `97415775`, `5c451d5c`, with the company-relative key commits `30c6dc61`, `ef6e352d`, `221ba7b3`. The fork has no `response-projection.ts`; this is a real port, one change.
+- E-sign audit chain and signing claim `633feb03`, `177f852c`, and the signed-record export second factor `8bfae822` (needs migration `0008_verify_export_attempts` and a verify page the fork lacks).
+
+**Skipped, and why:**
+- Everything in `packages/field-ui` and `packages/offline-package` and their release commits: the fork has neither package (the field-ui move is open). The UI commits that rely on field-ui's `--keyboard-height` variable go with them: `db3121ae`, `39e52640`, `de3f19cc`, `45124671`, `c2505431`, `6400b6e8`, `9b1e0e10`, `e93cbf4c`, `a5197949`, `fc4edbda`, `4ca4a3b6`, `2565318b`, `962c590a`, `99e16314`, `96ee76a6`.
+- Native-app contract and its checks (the fork has no native client): `0b407181`, `b52ee649`, `d7244cbf`, `4aa79b5d`, `88ab6334`.
+- Staged-bundle delivery for large migration bundles (`0c318f27`, `7df467b5`, `baf349dd`, `8341f470`, `12cdca07`): no sender for it exists in the fork.
+- Test-suite and CI speed work that would collide with the fork's merge gate or `ci.yml`: `6fb15421`, `8e0da2df`, `7ae5f9ec`, `b95aeadb`, `6e246a34`, `312093c2` (worktrees live outside this checkout), `d54944ac` (the agent sign-in page it budgets is not here).
+- Release bumps (`chore(main): release …`) are upstream's versions.
+
+## Upstream security, CORS and calendar feeds — 2026-11-08
+
+Checked upstream through `3c577d10`. Ported by hand (hashes are upstream's):
+
+- `b06422d8`, CORS part only. `server/lib/middleware/api-cors.ts` no longer reflects the caller's origin. Credentials go to the request's own origin, `APP_BASE_URL`, the new optional `CORS_ALLOWED_ORIGINS` list and (loopback hosts only) the Vite dev origins; the booking widget routes answer `*` without credentials. Upstream's native-app origins are not taken: the fork has no native client.
+- `76f66331`, calendar feeds part only. Event UIDs are a keyed hash (`server/lib/calendar/ics-uid.ts`), feeds cover yesterday through 90 days ahead, and every feed answers 404 when `JWT_SECRET` is empty. The company feed's event link is `/inspections`, with no inspection id. Deviation: the company feed keeps `| Fee: $…` in its description (the fork's own behaviour, pinned by a spec); upstream dropped it.
+- `b06422d8`, same-origin part, with the helper from `76f66331` (`app/lib/same-origin-post.server.ts`). Public actions refuse a cross-site POST before calling the API: staff login and its second step, forgot and reset password, setup, join, concierge confirm, SMS opt-in, unsubscribe and the portal link request. Posts with neither `Sec-Fetch-Site` nor `Origin` still pass. Not taken: the agent-portal routes (the fork has none) and the portal/agent emailed-link Continue pages of `76f66331`.
+- `76f66331`, client portal sign-in link only. `/portal/:tenant/auth` shows a Continue page on GET and redeems the link on the POST, so mail scanners and link previews no longer spend it; the POST also refuses cross-site requests and shows an API rate limit as a limit. Not taken: the single-use KV marker, the agent emailed-link page (the fork has no `/agent/magic-login` page route) and the per-visitor limiter changes. The Continue button uses `disabled` while submitting because the fork's `Button` has no `pending` prop.
+
+The other parts of those commits are sorted in the 2026-11-09 entry above.
+
 ## ISN template mapping — 2026-11-05
 
 Fork-only explicit primary report template defaults per ISN order type. New

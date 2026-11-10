@@ -1,5 +1,6 @@
 import { useLoaderData, useActionData, useNavigation, Form } from "react-router";
 import type { Route } from "./+types/unsubscribe";
+import { isCrossSitePost } from "~/lib/same-origin-post.server";
 import { createApi } from "~/lib/api-client.server";
 import { m } from "~/paraglide/messages";
 
@@ -60,6 +61,8 @@ export async function action({ params, request, context }: Route.ActionArgs) {
     // of the same person's preferences — see server/api/unsubscribe.ts for why
     // the way back matters as much as the way out.
     const enabled = form.get("enabled") === "true";
+    // A form posted from another site changes nothing.
+    if (isCrossSitePost(request)) return { ok: false as const, enabled, error: m.public_unsubscribe_error() };
     try {
         const api = createApi(context);
         const res = (await api.unsubscribe.unsubscribe.$post({

@@ -30,3 +30,7 @@ export async function r2Get(
 export async function r2Delete(bucket: R2Bucket, keys: string | string[]): Promise<void> {
     await bucket.delete(keys);
 }
+
+export async function r2Head(bucket: R2Bucket, key: string): Promise<R2Object | null> {
+    return bucket.head(key);
+}
