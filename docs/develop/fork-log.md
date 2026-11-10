@@ -20,9 +20,13 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
-## Upstream take 6, neutral wording for the mobile begin hint — 2026-11-09
+## Upstream take 7, neutral wording for the mobile begin hint — 2026-11-09
 
 Upstream `51783db0`, taken as is. `editor_route_mobile_begin` reads "Open [☰ Sections] below to begin" (was "Tap ...") and es-419 "Abra [☰ Secciones] abajo para comenzar" (was "Toque ..."), so the hint is right where the editor is driven with a mouse. The fork had the same key and the same old text. Only this key changes; the touch-only Speed Mode coaching and the other "Tap" strings are left alone, as upstream did. Client-facing wording, so it waits for the owner's yes to merge.
+
+## Upstream take 6, iOS text fields at 16px — 2026-11-09
+
+Upstream `d43482e3`. `app/styles/tailwind.css` ends with an unlayered `@supports (-webkit-touch-callout: none)` rule that raises textareas, selects and text inputs to `max(16px, 1em)`, so iOS WebKit does not zoom the page when a 13-14px field takes focus. Pinch zoom stays; other browsers keep the denser sizes. Spec: `tests/unit/tooling/ios-text-field-size.spec.ts`, which reads the stylesheet. Deviation: the upstream commit message says the native app has the same rule in its own stylesheet; the fork has no native app, so there is nothing to port there. The cherry-pick conflicted only because the fork's stylesheet ends with the tap-suppression rule; both are kept. Not seen on an iPhone. Not deployed.
 
 ## Upstream take 5, orphan sweep — 2026-11-09
 
@@ -38,9 +42,17 @@ Upstream `de987ea5`, `010287af` and `ed3b8034`, ported together as one change on
 
 **Known ceiling.** A reinspection copies its baseline's photo entries (same keys, baseline's folder). If the baseline drops such a photo and only the reinspection shows it, the baseline's sweep does not know the reinspection's results and frees the file after the grace window. Upstream has the same shape; not changed here.
 
+## Upstream take 3, days the clocks change — 2026-11-09
+
+Upstream `7c769ef3`, `f35110cd`, `9fc138e2`, `309a40de`, taken together. The dispatch board turned a dropped wall-clock minute into an instant as midnight plus minutes, an hour off on the two days a year the day is 23 or 25 hours long; the feed now ships `noonMs` and the client counts from noon, and refuses (error toast) an early time on a change day rather than save one an hour off. `wallClockToEpochMs` in `server/lib/tz.ts` also read a time just after a change wrongly west of Greenwich (07:00 and 08:00 in Los Angeles on the fall-back day came out an hour early); it now checks the offset at the corrected instant too, and caches one formatter per zone. No migration: `noonMs` is a response field only. Deviation: the one conflict was in `server/api/calendar-items.ts`, where the fork's route chain is shaped differently, so the `noonMs` lines were applied by hand to the same spot. Picked in the order 7c769ef3, 9fc138e2, 309a40de, f35110cd (the sequencer reordered them; the final files match upstream's for everything but that route file). Specs came with the commits: `dispatch-helpers.dst.test.ts`, `dispatch-noon-anchor.spec.ts` (every quarter hour across eleven zone/date change days), and added cases in `tz.spec.ts` and `dispatch-board.spec.ts`. Not deployed.
+
 ## Upstream take 2, CORS headers on raw responses — 2026-11-09
 
 Upstream `11927dd8`, CORS part only. `server/lib/middleware/api-cors.ts` now writes its headers through `c.res` (`putHeader`) instead of `c.header()`, so a route that returns a fresh `Response` (the public report video routes, anything served from R2 or a Durable Object) keeps `Access-Control-Allow-Origin`, credentials and `Vary: Origin`. The widget routes also get `Vary: Origin` now. Deviation from upstream: the fork has no `server/lib/native/cors-origins.ts` and no native-app origins, so the same change lands in `api-cors.ts`, whose helpers were already unexported. Upstream's registry and gate parts of the commit are not taken (the fork has no converted-router list, and the agent photo route and the cron-budget line do not exist here). Covered by the new "raw responses" cases in `tests/unit/platform/api-cors.spec.ts`. Not deployed.
+
+## Upstream take 4, report PDFs — 2026-11-09
+
+Upstream `08369c89`, `7ad22803` and `97c5e7a5`, cherry-picked with no code changes (the fork's `retention-report-pdfs.ts` and `report-pdf.service.ts` matched upstream's earlier state). The retention rule no longer deletes the PDF of a published report (any inspection with a version on record, including later unversioned renders), whatever window the tenant chose; this is the owner's decision of 2026-11-05. The window, default, zero-means-indefinite and manifest row are unchanged, so the retention policy digest is unchanged and no migration is involved. Placeholder rows with an empty key are removed without touching storage, and storage deletes go in groups of 500 and row deletes in groups of 50. The post-publish purge keeps a file a published row shares, and `getOrRender` re-renders when the stored file is missing (one HEAD per request). Deviation from upstream: in `docs/compliance/retention-policy.md` only the new "not expired" section is taken; the fork lacks the neighbouring `verify_export_attempts` section, so the conflict was resolved by keeping just ours. The settings help text changed in English and Spanish. Covered by the added cases in `tests/unit/privacy/retention-report-pdfs.spec.ts`, `tests/unit/reports/report-pdf-current.spec.ts` and `tests/unit/reports/report-pdf.service.spec.ts`. Not deployed.
 
 ## Upstream sort, Oct 29 to Nov 7 — 2026-11-09
 
