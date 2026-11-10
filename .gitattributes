@@ -59,3 +59,11 @@
 # content heuristic is most likely to get wrong.
 .githooks/** text eol=lf
 *.sh text eol=lf
+
+# Append-only logs: every PR adds an entry at the same spot near the top, so a
+# plain three-way merge conflicts on each one after the first lands. `union`
+# keeps both sides' lines instead. It only applies to merges git runs itself
+# (`git merge main` in a branch); GitHub's merge button and `gh pr merge` do
+# not read merge drivers from .gitattributes.
+docs/develop/fork-log.md merge=union
+CHANGELOG.md merge=union

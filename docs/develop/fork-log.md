@@ -20,6 +20,14 @@ behaviour by someone who assumed it was drift.
 made belong here. A commit range taken wholesale with nothing to say about it
 does not need a line.
 
+## Union merge for the append-only logs — 2026-11-09
+
+`.gitattributes` now marks `docs/develop/fork-log.md` and `CHANGELOG.md` `merge=union`. Every PR adds an entry at the same spot near the top of these files, so each merge to `main` made the next open PR conflict there. With `union`, a merge keeps both sides' added lines instead of stopping on them. Checked in a scratch repo: two branches each adding a different entry at the same line of the fork log merged with no conflict and both entries present, while the same merge without the attribute conflicted; `lint:gates` and `lint:eol` still pass. Limit: the driver is read only by merges git runs on the machine doing them (`git merge main` inside a branch, a local rebase). GitHub's merge button, `gh pr merge` and the update-branch button merge on the server, which does not run `.gitattributes` merge drivers (not tested in this repo), so a PR still needs `main` merged into it locally before it is pushed. Union keeps both versions of a line edited on both sides, so after such a merge the file needs a read for duplicates.
+
+## Test flake: unawaited debounced persist — 2026-11-09
+
+`worker-runtime tests` (`tests/workers`) failed now and then with the unhandled rejection `no such table: reports`, raised from `collab-multiclient.spec.ts`. `InspectionDocDO` schedules a debounced save with `setTimeout`; when the timer fired after the test had torn down its storage, `persist()` rejected and nothing handled it. It failed the `main` push run 42655767290 (commit `61082bb0`) and passed on rerun on #121 and #129. Fixed in `6d11ca7b` (PR #115), one change in `server/durable-objects/inspection-doc.ts`: the timer callback was `void this.persist();` and is now `this.persist().catch(...)`, which logs `[inspection-doc] debounced persist failed` with the inspection id through `logger.error`. A comment there notes that the alarm backstop retries a failed persist, so the save is not lost. No test was added.
+
 ## Upstream take 6, one property type vocabulary — 2026-11-09
 
 Upstream `64bf2565`, the wizard half only. `POST /api/inspections/wizard` validated `propertyType` against `single_family, condo, townhouse, multi_family, commercial`, while create, update and clone use `single_family, multi_unit, commercial` (`INSPECTION_PROPERTY_TYPES`). The wizard schema now takes that same list, and `inspections.property_type` is typed with it (type-level only, no DDL, so no migration). The old wizard values are refused with no compatibility mapping, as upstream does. The fork's own wizard UI already sent the shared values, and nothing else in the fork reads `condo`, `townhouse` or `multi_family`.
