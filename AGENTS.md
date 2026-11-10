@@ -52,6 +52,8 @@ timed-out job archives no log, so `--log-failed` returns EMPTY for one; use
 
 Scripts are in `package.json`; commentary on each: [`docs/reference/dev-workflow.md`](docs/reference/dev-workflow.md). Gotchas it does not confess:
 
+- **A new worktree has no setup.** Run `npm ci`, then `npm run worktree:setup`, before any type-check, test, commit or push. A worktree whose `node_modules` is a junction to the main checkout skips `npm ci` but still needs `npm run worktree:setup`. `prepare` writes `server/generated/version.ts` and `app/paraglide/`, and it only runs on `npm ci`/`npm install`; without them the failure reads `Cannot find module './generated/version'` or `~/paraglide/messages`. The hooks and `type-check` scripts now stop early and say which step is missing.
+- **Run the pre-push gates before pushing**: `git push --dry-run -u origin <branch>` runs `.githooks/pre-push` against the real refs (dependency advisories; QuickBooks live contract when `server/services/qbo/` or `tests/contract/qbo/` changed; worker bundle size when bundle paths changed) and sends nothing. Fix what it reports, then push.
 - `npm run dev` builds then runs wrangler dev (real workerd, no HMR). `npm run dev:hmr` is the fast loop, and `workers/app.ts` must keep its top-level import graph tiny.
 - `npm run dev:tunnel` is PUBLIC while running (collab WebSockets need it); stop it when finished.
 - `npm run type-check:api` is the fastest loop for `server/` work. `.types/` is generated and gitignored: never commit it.

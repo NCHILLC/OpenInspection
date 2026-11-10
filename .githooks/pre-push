@@ -30,6 +30,18 @@ step() { printf '\n  →  %b\n' "$1"; }
 
 printf '%b\n' "${BOLD}── OpenInspection (Pre-push Checks) ─────────────────────────────${NC}"
 
+# The QuickBooks lane and the bundle build both need node_modules. A new
+# worktree has none, and without this the push died on a bare "Bundle size gate
+# failed" that named no cause. Called only where a step needs the packages, so
+# a docs-only push from a bare worktree still goes through.
+need_deps() {
+    if ! SETUP_OUT=$(node scripts/check-worktree-setup.mjs --deps-only 2>&1); then
+        fail "$SETUP_OUT"
+        printf '\n%b\n' "${RED}Pre-push checks failed. Fix the errors before pushing.${NC}"
+        exit 1
+    fi
+}
+
 ZERO=0000000000000000000000000000000000000000
 
 # stdin can only be read ONCE, and two steps below need it, so slurp it here.
@@ -120,6 +132,7 @@ if [ "$QBO_CHANGED" = "unknown" ] || printf '%s\n' "$QBO_CHANGED" | grep -qE "$Q
     if [ "${SKIP_QBO_CONTRACT:-0}" = "1" ]; then
         pass "SKIPPED by SKIP_QBO_CONTRACT=1 — the QuickBooks adapter changed and nothing verified it against the real API"
     else
+        need_deps
         QBO_OUT=$(npm run --silent test:contract:live 2>&1)
         if [ $? -eq 0 ]; then
             pass "$(printf '%s' "$QBO_OUT" | grep -E '^\s+Tests ' | tail -1)"
@@ -173,14 +186,17 @@ if [ "$FORCE_CHECK" -eq 0 ] && [ -n "$CHANGED" ] &&    ! printf '%s
 fi
 
 step "Worker bundle size"
+need_deps
 BUNDLE_OUT=$(node scripts/check-bundle-size.mjs 2>&1)
 BUNDLE_RC=$?
-BUNDLE_LINE=$(echo "$BUNDLE_OUT" | grep -E '^\[bundle-size\] (worker upload|eager import closure|FAIL|WARNING)' | tail -3 | tr '\n' ' ')
+BUNDLE_LINE=$(echo "$BUNDLE_OUT" | grep -E '^\[bundle-size\] (worker upload|eager import closure|FAIL|WARNING|gate errored)' | tail -3 | tr '\n' ' ')
 if [ "$BUNDLE_RC" -eq 0 ]; then
     pass "Bundle size OK — ${BUNDLE_LINE:-see node scripts/check-bundle-size.mjs}"
     printf '\n%b\n' "${GREEN}Pre-push checks passed.${NC}"
     exit 0
 else
+    # The summary line alone hid the cause whenever the build itself broke.
+    printf '%s\n' "$BUNDLE_OUT" | tail -15
     fail "Bundle size gate failed — ${BUNDLE_LINE:-run node scripts/check-bundle-size.mjs}"
     printf '\n%b\n' "${RED}Pre-push checks failed. Fix the errors before pushing.${NC}"
     exit 1
