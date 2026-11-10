@@ -26,6 +26,10 @@ Upstream `64bf2565`, the wizard half only. `POST /api/inspections/wizard` valida
 
 **Not taken.** The report-item half (`toReportItemValue`, the completion count, the documented `value` field in the report-data schema), the regenerated native contract and the e2e seed changes: the fork has no native contract, and the report-item change is a separate behaviour change that is not needed for this one. The file-size baseline of `schema/inspection/core.ts` moves from 427 to 428: the file is the table list of the inspections family, and the one added line is the import the column's enum needs.
 
+## Upstream take 7, neutral wording for the mobile begin hint — 2026-11-09
+
+Upstream `51783db0`, taken as is. `editor_route_mobile_begin` reads "Open [☰ Sections] below to begin" (was "Tap ...") and es-419 "Abra [☰ Secciones] abajo para comenzar" (was "Toque ..."), so the hint is right where the editor is driven with a mouse. The fork had the same key and the same old text. Only this key changes; the touch-only Speed Mode coaching and the other "Tap" strings are left alone, as upstream did. Client-facing wording, so it waits for the owner's yes to merge.
+
 ## Upstream take 6, iOS text fields at 16px — 2026-11-09
 
 Upstream `d43482e3`. `app/styles/tailwind.css` ends with an unlayered `@supports (-webkit-touch-callout: none)` rule that raises textareas, selects and text inputs to `max(16px, 1em)`, so iOS WebKit does not zoom the page when a 13-14px field takes focus. Pinch zoom stays; other browsers keep the denser sizes. Spec: `tests/unit/tooling/ios-text-field-size.spec.ts`, which reads the stylesheet. Deviation: the upstream commit message says the native app has the same rule in its own stylesheet; the fork has no native app, so there is nothing to port there. The cherry-pick conflicted only because the fork's stylesheet ends with the tap-suppression rule; both are kept. Not seen on an iPhone. Not deployed.
