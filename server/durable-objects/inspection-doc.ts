@@ -977,7 +977,10 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         if (this.persistTimer !== null) clearTimeout(this.persistTimer);
         this.persistTimer = setTimeout(() => {
             this.persistTimer = null;
-            void this.persist();
+            // The alarm backstop retries a failed persist; a rejection here must not go unhandled.
+            this.persist().catch((err: unknown) => {
+                logger.error('[inspection-doc] debounced persist failed', { inspectionId: this.inspectionId }, err instanceof Error ? err : undefined);
+            });
         }, PERSIST_DEBOUNCE_MS);
 
         // Alarm is overwritten (idempotent) on every update burst — it always
