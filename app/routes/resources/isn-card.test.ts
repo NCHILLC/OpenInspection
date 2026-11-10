@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const post = vi.hoisted(() => vi.fn());
 vi.mock("~/lib/session.server", () => ({ requireToken: vi.fn(async () => "session-token"), getToken: vi.fn(async () => "session-token") }));
-vi.mock("~/lib/api-client.server", () => ({ createApi: () => ({ inspections: { ":id": { isn: { refresh: { $post: post } } } } }) }));
+vi.mock("~/lib/api-client.server", () => ({ createApi: () => ({ inspections: { ":id": { isn: { refresh: { $post: post }, "apply-template": { $post: post } } } } }) }));
 import { action } from "./isn-card";
 
 const run = () => action({ request: new Request("http://localhost/resources/isn-card", {

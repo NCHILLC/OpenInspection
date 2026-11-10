@@ -309,10 +309,12 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         }
     };
 
-    // ── fetch ─────────────────────────────────────────────────────────────────
-
     async fetch(req: Request): Promise<Response> {
         const url = new URL(req.url);
+        if (url.pathname.endsWith('/isn-template') && req.method === 'POST') {
+            return this.ctx.blockConcurrencyWhile(async () =>
+                (await import('../lib/collab/isn-template-request')).handleIsnTemplateRequest(req, this.env.DB, this.ctx, this.doc));
+        }
 
         if (url.pathname.endsWith('/ws')) {
             if (req.headers.get('Upgrade') !== 'websocket') {
@@ -808,8 +810,6 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         return { ok: true };
     }
 
-    // ── D8: Template restructure ──────────────────────────────────────────────
-
     /**
      * Re-read the (already-updated) `templateSnapshot` from D1, diff the current
      * results keys, seed new findingKeys and remove deleted ones, then persist
@@ -977,7 +977,10 @@ export class InspectionDocDO extends DurableObject<AppEnv> {
         if (this.persistTimer !== null) clearTimeout(this.persistTimer);
         this.persistTimer = setTimeout(() => {
             this.persistTimer = null;
-            void this.persist();
+            // The alarm backstop retries a failed persist; a rejection here must not go unhandled.
+            this.persist().catch((err: unknown) => {
+                logger.error('[inspection-doc] debounced persist failed', { inspectionId: this.inspectionId }, err instanceof Error ? err : undefined);
+            });
         }, PERSIST_DEBOUNCE_MS);
 
         // Alarm is overwritten (idempotent) on every update burst — it always

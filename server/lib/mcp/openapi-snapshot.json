@@ -436,6 +436,34 @@
     "description": "Writes every prepared entry to its real table, settling clashes by the chosen policy, and sends any invitations the run created. Resumable: pressing it again finishes a run that stopped part way, without repeating what already landed. Invitation delivery is reported as two numbers rather than folded into success, because a message that did not go out does not take its invitation back."
   },
   {
+    "operationId": "applyInspectionIsnTemplate",
+    "method": "POST",
+    "pathTemplate": "/api/inspections/{id}/isn/apply-template",
+    "scopes": [
+      "write"
+    ],
+    "tag": "inspections",
+    "tier": "extended",
+    "inputSchema": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "description": "Inspection identifier.",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Inspection identifier."
+          }
+        }
+      ],
+      "body": null
+    },
+    "summary": "Apply the mapped primary template to an untouched ISN inspection",
+    "description": "An explicit action separate from refresh. Refuses opened, written, submitted or published reports. Keeps the primary report identity and applies both template pointers and result state atomically."
+  },
+  {
     "operationId": "applyTenantReportLinkExpiry",
     "method": "POST",
     "pathTemplate": "/api/tenant/inspection-prefs/report-link-expiry",

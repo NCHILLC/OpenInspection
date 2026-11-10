@@ -23,8 +23,12 @@ export async function action({ request, context }: Route.ActionArgs) {
     const form = await request.formData();
     const id = String(form.get("inspectionId") ?? "");
     if (!id) return { ok: false as const, error: "Missing inspection id" };
+    const intent = String(form.get("intent") ?? "refresh");
+    if (intent !== "refresh" && intent !== "apply-template") return { ok: false as const, error: "Unknown ISN action" };
     try {
-        const res = await createApi(context, { token }).inspections[":id"].isn.refresh.$post(
+        const isn = createApi(context, { token }).inspections[":id"].isn;
+        const post = intent === "apply-template" ? isn["apply-template"].$post : isn.refresh.$post;
+        const res = await post(
             { param: { id } }, { headers: { "Idempotency-Key": String(form.get("idempotencyKey") ?? "") } },
         );
         if (res.ok) return { ok: true as const };

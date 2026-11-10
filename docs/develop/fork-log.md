@@ -97,6 +97,16 @@ Checked upstream through `3c577d10`. Ported by hand (hashes are upstream's):
 
 The other parts of those commits are sorted in the 2026-11-09 entry above.
 
+## Applying an ISN mapping — 2026-11-05
+
+Fork-only explicit application to an untouched, single-primary linked inspection.
+The existing conservative report-generation definition of untouched is reused:
+stored Yjs state counts as touched even with an empty visible projection. The
+primary document serializes replacement against incoming editor activity;
+transactional SQL guards also recheck narrative, media, publication and mapping
+state against concurrent HTTP writers. No existing writing is reset. Both
+inspection and report template pointers change with the empty result state.
+
 ## ISN template mapping — 2026-11-05
 
 Fork-only explicit primary report template defaults per ISN order type. New
