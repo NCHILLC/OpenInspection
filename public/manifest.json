@@ -1,28 +1,28 @@
 {
-  "name": "OpenInspection",
-  "short_name": "OpenInspection",
+  "name": "NCHI",
+  "short_name": "NCHI",
   "description": "Property inspection management",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#ffffff",
-  "theme_color": "#0f172a",
+  "background_color": "#4c4c4c",
+  "theme_color": "#4c4c4c",
   "icons": [
     {
-      "src": "/icons/android/mipmap-192dpi/ic_launcher_foreground.png",
+      "src": "/icons/nchi/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/android/mipmap-512dpi/ic_launcher_foreground.png",
+      "src": "/icons/nchi/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/android/mipmap-512dpi/ic_launcher_background.png",
+      "src": "/icons/nchi/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
