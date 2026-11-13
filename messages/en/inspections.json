@@ -367,5 +367,12 @@
   "inspections_isn_refresh_success": "Refreshed from ISN.",
   "inspections_isn_apply_template": "Apply mapped template",
   "inspections_isn_apply_help": "Use the current ISN mapping for this report. Only available before the report has been opened or written. Refresh from ISN keeps the existing template.",
-  "inspections_isn_apply_success": "The report uses its mapped template."
+  "inspections_isn_apply_success": "The report uses its mapped template.",
+  "inspections_hub_delete_error": "The inspection could not be deleted. Try again.",
+  "inspections_list_delete_failed": "These inspections could not be deleted and are still in the list:",
+  "inspections_list_delete_failed_item": "{address}: {reason}",
+  "inspections_list_delete_too_many": "Delete at most {max} inspections at a time.",
+  "inspections_list_delete_confirm_title": "Delete selected inspections?",
+  "inspections_list_delete_confirm_message_one": "This permanently deletes 1 inspection and everything stored with it: findings, photos, reports, invoice and agreements. It cannot be undone.",
+  "inspections_list_delete_confirm_message_other": "This permanently deletes {count} inspections and everything stored with them: findings, photos, reports, invoices and agreements. It cannot be undone."
 }

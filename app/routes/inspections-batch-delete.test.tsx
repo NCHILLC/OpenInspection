@@ -43,6 +43,15 @@ const EMPTY_BUCKETS = {
     cancelled: [],
 };
 
+const TWO = {
+    id: "insp-56",
+    date: "2026-09-12",
+    address: "744 Evergreen Terrace",
+    clientName: "Ned Flanders",
+    status: "scheduled",
+    reportStatus: "in_progress",
+};
+
 const ONE = {
     id: "insp-55",
     date: "2026-09-12",
@@ -52,13 +61,16 @@ const ONE = {
     reportStatus: "in_progress",
 };
 
-function renderDashboard(deleteOk: boolean) {
+/** Every action call, as the ids it was asked to delete. */
+const posted: string[][] = [];
+
+function renderDashboard(deleteOk: boolean, rows: Array<typeof ONE> = [ONE]) {
     const Stub = createRoutesStub([
         {
             path: "/inspections",
             Component: InspectionsPage,
             loader: () => ({
-                buckets: { ...EMPTY_BUCKETS, today: [ONE] },
+                buckets: { ...EMPTY_BUCKETS, today: deleteOk && posted.length > 0 ? [] : rows },
                 conciergePending: 0,
                 greeting: "Good morning",
                 tags: [],
@@ -73,26 +85,38 @@ function renderDashboard(deleteOk: boolean) {
                 quotaUsage: null,
                 loadFailed: false,
             }),
-            action: () => ({ ok: deleteOk, intent: "delete" }),
+            action: async ({ request }: { request: Request }) => {
+                const ids = String((await request.formData()).get("ids") ?? "").split(",");
+                posted.push(ids);
+                return deleteOk
+                    ? { ok: true, intent: "delete-many", deleted: ids, failed: [] }
+                    : { ok: false, intent: "delete-many", deleted: [], failed: ids.map((id) => ({ id, error: "Not allowed" })) };
+            },
         },
     ]);
     return render(<Stub initialEntries={["/inspections"]} />);
 }
 
-async function selectAndDelete(view: ReturnType<typeof renderDashboard>) {
+async function selectAndDelete(view: ReturnType<typeof renderDashboard>, rowCount = 1, confirm = true) {
     // All, not one: the phone card and the desktop row both carry the address.
     await view.findAllByText("742 Evergreen Terrace");
-    const checkbox = view.container.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    if (!checkbox) throw new Error("no row selection checkbox");
-    fireEvent.click(checkbox);
+    const boxes = [...view.container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].slice(0, rowCount);
+    if (boxes.length < rowCount) throw new Error("no row selection checkbox");
+    for (const box of boxes) fireEvent.click(box);
     const del = (await view.findAllByRole("button")).find((b) => b.textContent === "Delete");
     if (!del) throw new Error("no batch Delete button");
     fireEvent.click(del);
+    // A permanent delete asks first.
+    const dialog = await view.findByRole("dialog");
+    const choice = [...dialog.querySelectorAll("button")].find((b) => b.textContent === (confirm ? "Delete" : "Cancel"));
+    if (!choice) throw new Error("no confirm dialog button");
+    fireEvent.click(choice);
 }
 
 describe("/inspections — deleting clears the device's copy (F55)", () => {
     beforeEach(() => {
         purgeInspectionOfflineData.mockClear();
+        posted.length = 0;
     });
 
     it("purges the deleted inspection's offline data, by id", async () => {
@@ -112,5 +136,29 @@ describe("/inspections — deleting clears the device's copy (F55)", () => {
         await waitFor(() => expect(view.container.textContent).toContain("742 Evergreen Terrace"));
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(purgeInspectionOfflineData).not.toHaveBeenCalled();
+    });
+
+    it("sends the whole selection as ONE request, and purges each deleted id", async () => {
+        // The old loop submitted once per row through one fetcher; each submit
+        // cancelled the one before it, so only the last answer was ever seen.
+        await selectAndDelete(renderDashboard(true, [ONE, TWO]), 2);
+        await waitFor(() => expect(purgeInspectionOfflineData).toHaveBeenCalledTimes(2));
+        expect(posted).toHaveLength(1);
+        expect([...posted[0]].sort()).toEqual(["insp-55", "insp-56"]);
+    });
+
+    it("deletes nothing when the confirmation is cancelled", async () => {
+        const view = renderDashboard(true);
+        await selectAndDelete(view, 1, false);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(posted).toHaveLength(0);
+        expect(view.container.textContent).toContain("742 Evergreen Terrace");
+    });
+
+    it("puts a refused row back and says why", async () => {
+        const view = renderDashboard(false);
+        await selectAndDelete(view);
+        await view.findByText(/could not be deleted/);
+        expect(view.container.textContent).toContain("Not allowed");
     });
 });
