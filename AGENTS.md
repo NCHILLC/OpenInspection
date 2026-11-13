@@ -1,10 +1,13 @@
 # AGENTS.md — OpenInspection (Open Source Edition)
 
-**Session state: read `.ai/STATE.md` before anything else.** It is the one current-state file
-for this project (what is in flight, what is next, what is blocked). Before ending a session,
-overwrite it (40 lines max, claims checked against git and open PRs), append one line to
-`.ai/LOG.md`, and park any open workstream in `.ai/handoffs/`, where the older handoffs and
-QA plans also live. `.ai/` is untracked on purpose.
+**Session state: read `projects/openinspection/STATE.md` before anything else.** It lives in the
+maintainer's private memory repo `NCHILLC/claude-memory`, checked out at
+`%USERPROFILE%\claude-memory`, not in this repo. It is the one current-state file for this
+project (what is in flight, what is next, what is blocked). Before ending a session, overwrite it
+(40 lines max, claims checked against git and open PRs), append one line to `log.md` beside it,
+and park any open workstream in `handoffs/` beside it, then commit and push that repo. The old
+`.ai/` folder in this checkout is gone; do not recreate it. Contributors without access to the
+memory repo skip this step.
 
 The open-source inspection engine: a single Cloudflare Worker (Hono entry mounting the API in-process, React Router v8 SSR for pages).
 
