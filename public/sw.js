@@ -23,7 +23,7 @@
 //   { type: 'clear-user-cache' }                 purge USER_CACHE and forget the user (sign-out).
 //   { type: 'queue-changed' }                    register the background sync.
 
-const SW_VERSION   = 'v4-a1';
+const SW_VERSION   = 'v4-a2';
 const STATIC_CACHE = `openinspection-static-${SW_VERSION}`;
 const USER_CACHE   = `openinspection-user-${SW_VERSION}`;
 const META_CACHE   = `openinspection-meta-${SW_VERSION}`;
