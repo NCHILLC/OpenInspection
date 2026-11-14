@@ -31,6 +31,9 @@ export interface CustomDefect {
    *  the trade exactly as a canned one does, from the same `DEFECT_TRADES`
    *  vocabulary. The server sanitizer nulls anything outside it. */
   trade?: DefectTrade | null;
+  /** Set on a copy made from a template defect (the row's Copy button): the
+   *  editor lists the copy directly under that defect instead of at the end. */
+  sourceCannedId?: string;
 }
 
 export interface CannedEntryLike {
@@ -66,6 +69,7 @@ export function makeCustomDefect(
     category?: CustomDefectCategory;
     location?: string;
     trade?: DefectTrade | null;
+    sourceCannedId?: string;
   },
   genId: () => string = () => crypto.randomUUID(),
 ): CustomDefect | null {
@@ -82,6 +86,7 @@ export function makeCustomDefect(
     // Absent stays absent: an explicit null here would merge over a value a
     // collaborating peer set on the same defect.
     ...(input.trade ? { trade: input.trade } : {}),
+    ...(input.sourceCannedId ? { sourceCannedId: input.sourceCannedId } : {}),
   };
 }
 

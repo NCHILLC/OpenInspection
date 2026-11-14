@@ -245,6 +245,21 @@ describe("useEditorPhotoUpload — the photo lands where the inspector aimed it"
     });
 
     // ...and closing the camera disarms it, so the next item-level add is clean.
+    /** The defect row's camera button: no chooser, the in-app camera opens aimed at the defect. */
+    it("opens the camera straight from a defect, armed and named, skipping the chooser", async () => {
+        const setCameraItemId = vi.fn();
+        const setCameraOpen = vi.fn();
+        const { result, setAddMediaChooser } = setup(null, { ...makeState(), setCameraItemId, setCameraOpen } as never, true);
+        act(() => result.current.openPickerForDefect({ kind: "custom", id: "c9" }, "Loose gutter", "camera"));
+        expect(setAddMediaChooser).not.toHaveBeenCalled();
+        expect(setCameraItemId).toHaveBeenCalledWith("item-1");
+        expect(setCameraOpen).toHaveBeenCalledWith(true);
+        // The camera's Defect segment reads this name; with it set, the session starts on the defect.
+        expect(result.current.armedDefectName).toBe("Loose gutter");
+        await shootAFrame(result.current.handleCameraFrame);
+        expect(lastTarget()).toEqual({ targetType: "defect", customId: "c9" });
+    });
+
     it("drops the target when the camera closes", async () => {
         const { result, settle } = setup();
         act(() => result.current.openPickerForDefect({ kind: "canned", id: "d1" }));

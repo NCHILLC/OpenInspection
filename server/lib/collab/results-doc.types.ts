@@ -115,6 +115,9 @@ export interface CustomCommentEntry {
      *  `sanitizeDefectStates` is what narrows it. */
     trade?:    string | null;
     photos?:   PhotoEntry[];
+    /** Editor-only: the template defect this entry was copied from, so the
+     *  editor lists the copy under it. The report does not read it. */
+    sourceCannedId?: string;
 }
 
 /**

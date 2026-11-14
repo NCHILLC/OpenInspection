@@ -1,5 +1,5 @@
 import { defectPhotoMoveTargets } from "./defect-photo-move-targets";
-import { type PhotoDestination, type PhotoMoveTarget } from "~/lib/collab/photo-destination";
+import type { PhotoDestination, PhotoMoveTarget } from "~/lib/collab/photo-destination";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@core/shared-ui";
 import { CommentTypeahead } from "./CommentTypeahead";
@@ -78,8 +78,9 @@ interface ItemEditorProps {
   *  (best-effort; failure must not block the defect itself). */
  onSaveDefectToLibrary?: (input: { title: string; comment: string; category: CustomDefectCategory }) => void;
  onToggleCustomDefect?: (customId: string, included: boolean) => void;
- /** FE-3 — open the photo picker targeting a specific defect row. */
- onAddDefectPhoto?: (target: { kind: "canned" | "custom"; id: string }, name?: string) => void;
+ onCustomDefectFields?: (customId: string, patch: { location: string | null }) => void;
+ /** FE-3 — open the photo picker targeting a specific defect row; `"camera"` opens the in-app camera directly. */
+ onAddDefectPhoto?: (target: { kind: "canned" | "custom"; id: string }, name?: string, open?: "camera") => void;
  /** Open the defect-scoped MediaViewer at one of a defect's own photos. */
  onOpenDefectPhoto?: (itemId: string, target: { kind: "canned" | "custom"; id: string }, index: number) => void;
  defectStates?: Map<string, DefectFieldsValue>;
@@ -93,7 +94,7 @@ interface ItemEditorProps {
  onFlagChange?: (tab: CannedTabId, cannedId: string, flagged: boolean) => void;
  /** Seeds a new custom defect pre-filled from an existing canned defect
   *  (defects-tab only — see CannedCommentTabs.tsx for why). */
- onDuplicateCanned?: (entry: CannedDefect) => void;
+ onDuplicateCanned?: (entry: CannedDefect) => string | void;
  missingFields?: Map<string, { location: boolean; trade: boolean }>;
  /** Track H (IA-7) — the EFFECTIVE tenant/inspection policy: which defect
   *  fields are required at publish. Drives the proactive red asterisk on
@@ -174,7 +175,7 @@ export function ItemEditor({
  onAddCustomDefect,
  onAddCustomLimitation,
  onToggleCustomLimitation,
- onToggleCustomDefect,
+ onToggleCustomDefect, onCustomDefectFields,
  defectStates,
  locationSuggestions,
  onDefectFields,
@@ -598,7 +599,7 @@ export function ItemEditor({
  onDuplicateCanned={onDuplicateCanned}
  missingFields={missingFields}
  requiredDefectFields={requiredDefectFields}
- defectPhotoChip={defectPhotoChip}
+ defectPhotoChip={defectPhotoChip} onDefectCamera={onAddDefectPhoto ? (target, name) => onAddDefectPhoto(target, name, "camera") : undefined}
  cannedDefectPhotos={(id) => cannedDefectPhotos(result, id)}
  categoryColor={categoryColor}
  libraryMatches={libraryMatches}
@@ -609,8 +610,7 @@ export function ItemEditor({
   setCustomTrade("");
   setCustomFormOpen(true);
  }}
- customDefects={customDefects}
- onToggleCustomDefect={onToggleCustomDefect}
+ customDefects={customDefects} onToggleCustomDefect={onToggleCustomDefect} onCustomDefectFields={onCustomDefectFields}
  onAddCustomDefect={onAddCustomDefect}
  customFormOpen={customFormOpen}
  onOpenCustomForm={() => {

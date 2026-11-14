@@ -160,62 +160,82 @@ export function DefectFieldsRow({
                 </div>
             )}
 
-            {/* Location: one-tap chips for the common case (field eval P1),
-                the free-text field (with its own datalist autocomplete) for
-                the rest — see lib/defect-locations for why this list is fixed
-                rather than tenant-configured. */}
-            <div className="col-span-12">
-                <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">
-                    {m.editor_defect_location_label()} {locationRequired && <span className={`text-ih-bad-fg${value.location ? '' : ' max-md:hidden'}`}>*</span>}
-                    {/* Phone (canvas X3): the asterisk becomes a pill while the field is empty. */}
-                    {locationRequired && !value.location && (
-                        <span className="md:hidden ml-2 inline-flex h-6.5 items-center rounded-full border border-ih-watch/50 bg-ih-watch-bg px-2 text-[14px] normal-case tracking-normal text-ih-watch-fg">
-                            {m.editor_defect_location_needed()}
-                        </span>
-                    )}
-                </label>
-                <div className="flex gap-1.5 flex-wrap mb-1.5">
-                    {STANDARD_LOCATION_IDS.map((id) => {
-                        const label = locationLabel(id);
-                        const isSelected = (value.location ?? '') === label;
-                        return (
-                            <button
-                                key={id}
-                                type="button"
-                                data-testid={`defect-location-chip-${id}`}
-                                // Same label-forwarding hazard as the severity tiles
-                                // above — this row sits inside CannedCommentRow's
-                                // <label>, so an unguarded click toggles inclusion.
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onChange(cannedId, { location: label });
-                                }}
-                                className={`h-11 px-3 rounded border text-[15px] font-bold transition-colors ${
-                                    isSelected
-                                        ? 'bg-ih-primary-tint border-ih-primary text-ih-primary-text'
-                                        : 'bg-transparent text-ih-fg-3 border-ih-border'
-                                }`}
-                            >
-                                {label}
-                            </button>
-                        );
-                    })}
-                </div>
-                <input
-                    type="text"
-                    list={DATALIST_ID}
-                    value={value.location ?? ''}
-                    onChange={e => onChange(cannedId, { location: e.target.value || null })}
-                    placeholder={m.editor_defect_location_placeholder()}
-                    className={`w-full px-2 h-11 rounded border bg-ih-bg-app text-ih-fg-1 ${
-                        locationRequired && !value.location ? 'border-ih-bad' : 'border-ih-border'
-                    }`}
-                />
-                <datalist id={DATALIST_ID}>
-                    {dedupedSuggestions.map(s => <option key={s} value={s} />)}
-                </datalist>
+            <DefectLocationField
+                location={value.location ?? null}
+                onChange={(location) => onChange(cannedId, { location })}
+                suggestions={dedupedSuggestions}
+                required={locationRequired}
+            />
+        </div>
+    );
+}
+
+/**
+ * The location chips + free-text field. Shared by a template defect's fields
+ * row and a custom defect's row: a copied defect exists to record the same
+ * problem at a second location, so it needs the same control.
+ */
+export function DefectLocationField({ location, onChange, suggestions, required }: {
+    location: string | null;
+    onChange: (location: string | null) => void;
+    suggestions: string[];
+    required?: boolean;
+}) {
+    // One-tap chips for the common case (field eval P1), the free-text field
+    // (with its own datalist autocomplete) for the rest — see
+    // lib/defect-locations for why this list is fixed rather than tenant-configured.
+    return (
+        <div className="col-span-12">
+            <label className="block font-bold uppercase tracking-[0.1em] text-ih-fg-4 mb-0.5">
+                {m.editor_defect_location_label()} {required && <span className={`text-ih-bad-fg${location ? '' : ' max-md:hidden'}`}>*</span>}
+                {/* Phone (canvas X3): the asterisk becomes a pill while the field is empty. */}
+                {required && !location && (
+                    <span className="md:hidden ml-2 inline-flex h-6.5 items-center rounded-full border border-ih-watch/50 bg-ih-watch-bg px-2 text-[14px] normal-case tracking-normal text-ih-watch-fg">
+                        {m.editor_defect_location_needed()}
+                    </span>
+                )}
+            </label>
+            <div className="flex gap-1.5 flex-wrap mb-1.5">
+                {STANDARD_LOCATION_IDS.map((id) => {
+                    const label = locationLabel(id);
+                    const isSelected = (location ?? '') === label;
+                    return (
+                        <button
+                            key={id}
+                            type="button"
+                            data-testid={`defect-location-chip-${id}`}
+                            // Same label-forwarding hazard as the severity tiles:
+                            // this field sits inside CannedCommentRow's <label>,
+                            // so an unguarded click toggles inclusion.
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onChange(label);
+                            }}
+                            className={`h-11 px-3 rounded border text-[15px] font-bold transition-colors ${
+                                isSelected
+                                    ? 'bg-ih-primary-tint border-ih-primary text-ih-primary-text'
+                                    : 'bg-transparent text-ih-fg-3 border-ih-border'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    );
+                })}
             </div>
+            <input
+                type="text"
+                list={DATALIST_ID}
+                value={location ?? ''}
+                onChange={e => onChange(e.target.value || null)}
+                placeholder={m.editor_defect_location_placeholder()}
+                className={`w-full px-2 h-11 rounded border bg-ih-bg-app text-ih-fg-1 ${
+                    required && !location ? 'border-ih-bad' : 'border-ih-border'
+                }`}
+            />
+            <datalist id={DATALIST_ID}>
+                {suggestions.map(s => <option key={s} value={s} />)}
+            </datalist>
         </div>
     );
 }

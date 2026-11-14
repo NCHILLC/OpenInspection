@@ -123,5 +123,8 @@
   "editor_property_type_lossy_tier": "the report tier ({tier})",
   "editor_property_type_lossy_units": "Per-unit findings and the unit list. The report prints those from the inspection mode, not the property type, so they keep appearing — but the unit switcher closes with the rest of the commercial surface.",
   "editor_property_type_lossy_kept": "Nothing is deleted. Every row stays in the database and comes back if you set the property type to Commercial again.",
-  "editor_property_type_lossy_confirm": "Reclassify anyway"
+  "editor_property_type_lossy_confirm": "Reclassify anyway",
+  "editor_canned_copy_label": "Copy",
+  "editor_canned_copy_aria": "Copy {name} to record it at a second location",
+  "editor_defect_camera_aria": "Take photo of {name}"
 }

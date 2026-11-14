@@ -374,7 +374,7 @@ test.describe.serial('Offline photo on a defect row survives to the drain', () =
 
       // The per-defect photo control only renders on the Defects tab, on a row
       // that is included.
-      await a.page.getByRole('button', { name: /Defects/i }).first().click();
+      await a.page.getByRole('tab', { name: /Defects/i }).first().click();
       const addPhoto = a.page.getByRole('button', { name: 'Add photo to this defect' }).first();
       await expect(addPhoto).toBeVisible({ timeout: 15000 });
 
@@ -400,7 +400,7 @@ test.describe.serial('Offline photo on a defect row survives to the drain', () =
       // a photo that only ever lived in memory does not come back.
       await a.page.reload({ timeout: NAV_TIMEOUT, waitUntil: 'domcontentloaded' });
       await awaitEditorInteractive(a.page, 'Roof');
-      await a.page.getByRole('button', { name: /Defects/i }).first().click();
+      await a.page.getByRole('tab', { name: /Defects/i }).first().click();
       await expect(a.page.getByRole('button', { name: 'Photo (1)' })).toBeVisible({ timeout: 30000 });
     } finally {
       await a.context.setOffline(false).catch(() => { /* ignore */ });

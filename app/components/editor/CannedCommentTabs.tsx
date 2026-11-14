@@ -1,9 +1,11 @@
-import { useState, type MouseEvent } from "react";
+import { Fragment, useState, type MouseEvent } from "react";
 import { TabStrip, Button, Icon } from "@core/shared-ui";
 import { CannedCommentRow } from "../editor-shared/CannedCommentRow";
 import { DefectFieldsRow, type DefectFieldsValue } from "./DefectFieldsRow";
 import { RepairItemsPanel } from "./RepairItemsPanel";
 import { CustomDefectForm } from "./CustomDefectForm";
+import { CustomDefectRow } from "./CustomDefectRow";
+import { DefectCameraButton, DefectCopyButton } from "./DefectRowActions";
 import { defectRowButtonClass } from "./DefectPhotoChip";
 import type { AttachedRepairItem } from "../../hooks/useFindings";
 import { renderTemplate } from "../../lib/mustache";
@@ -70,10 +72,15 @@ export interface CannedCommentTabsProps {
    *  three tabs. No report meaning yet — visible and persisted only. */
   flaggedByCannedId?: Map<string, boolean>;
   onFlagChange?: (tab: CannedTabId, cannedId: string, flagged: boolean) => void;
-  /** Seeds a new custom defect pre-filled from this canned defect. Defects-tab
-   *  only — the custom-comment system it reuses doesn't exist for
-   *  information/limitations. Absent → no duplicate icon. */
-  onDuplicateCanned?: (entry: CannedDefect) => void;
+  /** Copies this canned defect into a custom one listed under it (same problem,
+   *  second location). Returns the copy's id so the row can scroll to it.
+   *  Defects-tab only — the custom-comment system it reuses doesn't exist for
+   *  information/limitations. Absent → no Copy button. */
+  onDuplicateCanned?: (entry: CannedDefect) => string | void;
+  /** Opens the in-app camera aimed at one defect, skipping the add-media chooser. */
+  onDefectCamera?: (target: { kind: "canned" | "custom"; id: string }, name: string) => void;
+  /** Writes a custom defect's location (a copy needs its own). */
+  onCustomDefectFields?: (customId: string, patch: { location: string | null }) => void;
   missingFields?: Map<string, { location: boolean; trade: boolean }>;
   requiredDefectFields?: { location: boolean; trade: boolean };
 
@@ -151,7 +158,7 @@ export function CannedCommentTabs(props: CannedCommentTabsProps) {
   onCommentChange,
   flaggedByCannedId,
   onFlagChange,
-  onDuplicateCanned,
+  onDuplicateCanned, onDefectCamera, onCustomDefectFields,
   missingFields,
   requiredDefectFields,
   defectPhotoChip,
@@ -184,11 +191,21 @@ export function CannedCommentTabs(props: CannedCommentTabsProps) {
   } = props;
   // Which row's inline text-edit textarea is open — one at a time, tab-agnostic.
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  // The copy the inspector just made, scrolled into view when its row mounts.
+  const [newCopyId, setNewCopyId] = useState<string | null>(null);
+  // A copy sits under its original while that original is listed; otherwise with the other custom defects.
+  const copiesOf = (cannedId: string) => activeTab === "defects" ? customDefects.filter((cd) => cd.sourceCannedId === cannedId) : [];
+  const listedUnderOriginal = new Set(currentTabEntries.flatMap((e) => copiesOf(e.id).map((cd) => cd.id)));
+  const customRow = (cd: (typeof customDefects)[number]) => (
+    <CustomDefectRow key={cd.id} defect={cd} categoryColor={categoryColor} onToggle={onToggleCustomDefect} defectPhotoChip={defectPhotoChip}
+      onCamera={onDefectCamera} locationSuggestions={locationSuggestions ?? []} focusOnMount={cd.id === newCopyId}
+      onLocation={onCustomDefectFields ? (id, location) => onCustomDefectFields(id, { location }) : undefined} />
+  );
 
   return (
     <div>
       <div className="mb-3">
-        <TabStrip tabs={extraTab ? [...visibleTabs, extraTab] : visibleTabs} activeId={extraTab?.active ? extraTab.id : activeTab}
+        <TabStrip variant="segmented" tabs={extraTab ? [...visibleTabs, extraTab] : visibleTabs} activeId={extraTab?.active ? extraTab.id : activeTab}
           onChange={(id) => (id === extraTab?.id ? extraTab.onSelect() : onChangeTab(id as CannedTabId))} />
       </div>
       {extraTab?.active ? extraTab.panel : (<>
@@ -238,8 +255,8 @@ export function CannedCommentTabs(props: CannedCommentTabsProps) {
             const isEditing = editingCommentId === entry.id;
             const stop = (fn: () => void) => (e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); fn(); };
             return (
+              <Fragment key={entry.id}>
               <CannedCommentRow
-                key={entry.id}
                 as="label"
                 selected={isIncluded}
                 titleSlot={
@@ -254,6 +271,12 @@ export function CannedCommentTabs(props: CannedCommentTabsProps) {
                         <button type="button" onClick={stop(() => onFlagChange?.(activeTab, entry.id, !isFlagged))} aria-label={isFlagged ? m.editor_canned_unflag_aria() : m.editor_canned_flag_aria()} className={`inline-flex items-center gap-1 px-2 h-11 rounded-md border ${isFlagged ? "border-ih-bad-fg text-ih-bad-fg" : "border-ih-border-strong text-ih-fg-3 hover:border-ih-primary hover:text-ih-primary-text"}`}>
                           <Icon name="flag" size={13} /><span className="text-[12px] font-medium">{m.editor_canned_flag_label()}</span>
                         </button>
+                        {isDefectIncluded && onDefectCamera && <DefectCameraButton name={entry.title} onCamera={() => onDefectCamera({ kind: "canned", id: entry.id }, entry.title)} />}
+                        {/* Copy sits last in this row, not beside the title: as a trailing
+                            column it took the width the camera needs to stay right of Flag at 375px. */}
+                        {isDefectIncluded && onDuplicateCanned && (
+                          <DefectCopyButton name={entry.title} onCopy={() => { const id = onDuplicateCanned(entry as CannedDefect); if (id) setNewCopyId(id); }} />
+                        )}
                       </span>
                     )}
                   </span>
@@ -265,16 +288,6 @@ export function CannedCommentTabs(props: CannedCommentTabsProps) {
                     onChange={() => onToggleCanned?.(activeTab, entry.id, !isIncluded)}
                     className="mt-0.5 w-4 h-4 rounded border-ih-border-strong text-ih-primary focus:ring-ih-primary/30"
                   />
-                }
-                trailing={
-                  isDefectIncluded && onDuplicateCanned ? (
-                    <button
-                      type="button"
-                      onClick={stop(() => onDuplicateCanned(entry as CannedDefect))}
-                      aria-label={m.editor_canned_duplicate_aria()}
-                      className="text-ih-fg-3 hover:text-ih-primary-text mt-0.5"
-                    ><Icon name="copy" size={14} /></button>
-                  ) : undefined
                 }
                 bodySlot={
                   isEditing ? (
@@ -326,6 +339,8 @@ export function CannedCommentTabs(props: CannedCommentTabsProps) {
                   />
                 )}
               </CannedCommentRow>
+              {copiesOf(entry.id).map(customRow)}
+              </Fragment>
             );
           })
         )}
@@ -361,58 +376,7 @@ export function CannedCommentTabs(props: CannedCommentTabsProps) {
         {/* B-20 — field-authored custom defects + inline add form */}
         {activeTab === "defects" && (
           <>
-            {customDefects.map((cd) => (
-              <CannedCommentRow
-                key={cd.id}
-                as="label"
-                selected={cd.included !== false}
-                title={cd.title}
-                category={cd.category}
-                categoryColor={categoryColor?.get(cd.category)}
-                extraBadge={
-                  <span className="ml-1.5 text-[12px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-ih-primary-tint text-ih-primary-text">
-                    {m.editor_canned_custom_badge()}
-                  </span>
-                }
-                leading={
-                  <input
-                    type="checkbox"
-                    checked={cd.included !== false}
-                    onChange={() => onToggleCustomDefect?.(cd.id, !(cd.included !== false))}
-                    className="mt-0.5 w-4 h-4 rounded border-ih-border-strong text-ih-primary focus:ring-ih-primary/30"
-                  />
-                }
-                bodySlot={
-                  // IA-85 — the comment AND the trade. A canned defect shows its
-                  // trade in a labelled control on the row; a custom one showed
-                  // nothing, so an inspector who had just picked one could not
-                  // see what they picked, let alone notice a wrong one.
-                  // Read-only here: there is no edit surface for a saved custom
-                  // defect yet, and showing the value is the prerequisite for it.
-                  (cd.comment || cd.trade) ? (
-                    <>
-                      {cd.comment && (
-                        <p className="text-[15px] mt-0.5 leading-relaxed text-ih-fg-3">{cd.comment}</p>
-                      )}
-                      {/* fg-3, not fg-4: fg-4 measured 2.64:1 against the selected
-                          row's tinted background at 11px, under the 4.5:1 AA floor
-                          for small text, while the comment line above measures 4.9.
-                          `lint:contrast` cannot see this — it reads the stylesheet,
-                          not a background composited from a row tint at runtime. */}
-                      {cd.trade && DEFECT_TRADE_LABELS[cd.trade] && (
-                        <p className="text-[14px] mt-0.5 text-ih-fg-3">
-                          {m.editor_customdefect_trade_summary({ trade: DEFECT_TRADE_LABELS[cd.trade] })}
-                        </p>
-                      )}
-                    </>
-                  ) : null
-                }
-              >
-                {/* FE-3 — photo pinned to this custom defect */}
-                {cd.included !== false &&
-                  defectPhotoChip({ kind: "custom", id: cd.id }, Array.isArray(cd.photos) ? cd.photos : [], cd.title)}
-              </CannedCommentRow>
-            ))}
+            {customDefects.filter((cd) => !listedUnderOriginal.has(cd.id)).map(customRow)}
 
             {onAddCustomDefect && (
               customFormOpen ? (
