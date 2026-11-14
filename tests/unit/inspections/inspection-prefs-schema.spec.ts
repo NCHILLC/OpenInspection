@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { InspectionPrefsSchema, InspectionPrefsPatchSchema, DEFAULT_INSPECTION_PREFS } from '../../../server/lib/validations/inspection-prefs.schema';
+import { InspectionPrefsSchema, InspectionPrefsPatchSchema, DEFAULT_INSPECTION_PREFS, withDefaults } from '../../../server/lib/validations/inspection-prefs.schema';
 
 describe('InspectionPrefsSchema', () => {
     it('accepts a valid prefs object and defaults autoAdvance to keyboard (B-18)', () => {
@@ -53,8 +53,12 @@ describe('InspectionPrefsSchema', () => {
 
 describe('InspectionPrefsPatchSchema', () => {
     it('accepts a partial patch', () => {
-        const r = InspectionPrefsPatchSchema.safeParse({ cloneDefault: 'all' });
+        const r = InspectionPrefsPatchSchema.safeParse({ cloneDefault: 'rating' });
         expect(r.success).toBe(true);
+    });
+
+    it('no longer accepts the retired "all" clone scope', () => {
+        expect(InspectionPrefsPatchSchema.safeParse({ cloneDefault: 'all' }).success).toBe(false);
     });
 
     it('accepts empty object', () => {
@@ -66,6 +70,16 @@ describe('InspectionPrefsPatchSchema', () => {
 describe('DEFAULT_INSPECTION_PREFS', () => {
     it('passes the full schema', () => {
         expect(InspectionPrefsSchema.safeParse(DEFAULT_INSPECTION_PREFS).success).toBe(true);
+    });
+});
+
+describe('withDefaults', () => {
+    it('reads a stored "all" clone scope as rating_notes', () => {
+        expect(withDefaults({ cloneDefault: 'all' }).cloneDefault).toBe('rating_notes');
+    });
+
+    it('leaves the other scopes alone', () => {
+        expect(withDefaults({ cloneDefault: 'rating' }).cloneDefault).toBe('rating');
     });
 });
 

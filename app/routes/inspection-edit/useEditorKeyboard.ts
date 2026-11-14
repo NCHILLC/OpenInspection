@@ -35,9 +35,9 @@ export interface EditorKeyboardDeps {
     findings: Findings;
     comments: CannedComments;
     handleRating: (rating: string, source?: "pointer" | "keyboard") => void;
-    handleCloneLast: (scope: "rating" | "rating_notes" | "all") => void;
+    handleCloneLast: (scope: "rating" | "rating_notes") => void;
     /** `inspectionPrefs.cloneDefault` — the tenant's configured clone scope. */
-    cloneDefault: "rating" | "rating_notes" | "all";
+    cloneDefault: "rating" | "rating_notes";
     toggleSpeedMode: () => void;
     speedRate: (levelIdx: number) => void;
     openSnippets: () => void;

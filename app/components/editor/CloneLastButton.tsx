@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button, MenuItem } from '@core/shared-ui';
 import { m } from '~/paraglide/messages';
 
-export type CloneScope = 'rating' | 'rating_notes' | 'all';
+export type CloneScope = 'rating' | 'rating_notes';
 
 export interface CloneLastButtonProps {
     defaultScope: CloneScope;
@@ -26,7 +26,6 @@ export function CloneLastButton({ defaultScope, onClone, disabled }: CloneLastBu
     const SCOPE_LABELS: Record<CloneScope, string> = {
         rating:       m.editor_clone_scope_rating(),
         rating_notes: m.editor_clone_scope_rating_notes(),
-        all:          m.editor_clone_scope_all(),
     };
 
     useEffect(() => { setSessionScope(defaultScope); }, [defaultScope]);
@@ -61,7 +60,7 @@ export function CloneLastButton({ defaultScope, onClone, disabled }: CloneLastBu
             </Button>
             {open && (
                 <div role="menu" className="absolute z-10 mt-1 min-w-[160px] bg-ih-bg-card border border-ih-border rounded shadow-ih-popover py-1">
-                    {(['rating', 'rating_notes', 'all'] as const).map(s => (
+                    {(['rating', 'rating_notes'] as const).map(s => (
                         <MenuItem
                             key={s}
                             onClick={() => pick(s)}
