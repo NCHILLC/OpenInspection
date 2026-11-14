@@ -56,7 +56,7 @@
   "editor_canned_flag_label": "Flag",
   "editor_clone_scope_rating": "Rating only",
   "editor_clone_scope_rating_notes": "Rating + Notes",
-  "editor_clone_scope_all": "Everything",
+  "editor_clone_last_none": "No earlier rated item in this section to copy.",
   "editor_clone_last": "Clone last",
   "editor_comment_library_title": "Comment Library",
   "editor_comment_library_filter_label": "Filter",

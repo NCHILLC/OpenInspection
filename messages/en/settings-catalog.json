@@ -20,7 +20,6 @@
   "settings_inspection_clone_heading": "Clone last (R key) default",
   "settings_inspection_clone_rating": "Rating only",
   "settings_inspection_clone_rating_notes": "Rating + Notes",
-  "settings_inspection_clone_all": "Everything (rating + notes + photos + tags)",
   "settings_inspection_autoadvance_heading": "Auto-advance after rating",
   "settings_inspection_autoadvance_keyboard": "Keyboard rating only (1-5 speed-scans; clicks stay on the item)",
   "settings_inspection_autoadvance_always": "Always (clicks and keyboard both advance)",

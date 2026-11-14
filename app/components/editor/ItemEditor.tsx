@@ -107,8 +107,8 @@ interface ItemEditorProps {
  /** IA-59 — tenant defect categories offered in the custom-defect dropdown. */
  defectCategories?: Array<{ id: string; name: string }>;
  onItemAttribute?: (itemId: string, attributeId: string, value: ItemAttributeValue) => void;
- onCloneLast?: (scope: 'rating' | 'rating_notes' | 'all') => void;
- cloneDefaultScope?: 'rating' | 'rating_notes' | 'all';
+ onCloneLast?: (scope: 'rating' | 'rating_notes') => void;
+ cloneDefaultScope?: 'rating' | 'rating_notes';
  tagChipRow?: React.ReactNode;
  /** B-19b — called when "/" is typed at a line/word start in the notes field. */
  onOpenSnippets?: () => void;

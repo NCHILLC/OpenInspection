@@ -136,7 +136,7 @@ export interface CollabFindingsApi {
         sectionId: string,
         itemId: string,
         sectionItems: Array<{ id: string }>,
-        scope: 'rating' | 'rating_notes' | 'all',
+        scope: 'rating' | 'rating_notes',
     ) => boolean;
     batchSetRating: (
         sectionId: string,
@@ -271,7 +271,7 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
         sectionId: string,
         itemId: string,
         sectionItems: Array<{ id: string }>,
-        scope: 'rating' | 'rating_notes' | 'all',
+        scope: 'rating' | 'rating_notes',
     ): boolean => {
         const activeIdx = sectionItems.findIndex((it) => it.id === itemId);
         let priorResult: Record<string, unknown> | null = null;

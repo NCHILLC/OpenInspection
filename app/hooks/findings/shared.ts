@@ -53,9 +53,8 @@ export interface AttachedRepairItem {
 
 export function cloneByScope(
     src: Record<string, unknown>,
-    scope: 'rating' | 'rating_notes' | 'all',
+    scope: 'rating' | 'rating_notes',
 ): Record<string, unknown> {
-    if (scope === 'all') return { ...src };
     if (scope === 'rating_notes') {
         const next: Record<string, unknown> = {};
         if ('rating' in src) next.rating = src.rating;

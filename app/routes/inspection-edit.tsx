@@ -16,6 +16,7 @@ import { useScopeLoader } from "~/hooks/useScopeLoader";
 import { useInspectionPrefs } from "~/hooks/useInspectionPrefs";
 import { pushToast } from "~/hooks/useToast";
 import { useEditorKeyboard } from "./inspection-edit/useEditorKeyboard";
+import { useCloneLast } from "./inspection-edit/useCloneLast";
 import { useEditorPhotoUpload } from "./inspection-edit/useEditorPhotoUpload";
 import { useCannedComments } from "~/hooks/useCannedComments";
 import { useUnsavedChanges, unsavedChangesAtRisk } from "~/hooks/useUnsavedChanges";
@@ -841,15 +842,7 @@ export default function InspectionEditPage() {
   />
  ) : null;
 
- const handleCloneLast = useCallback((scope: 'rating' | 'rating_notes' | 'all') => {
-  if (!state.activeItemId || !state.currentSection) return;
-  findings.cloneLast(
-   state.currentSection.id,
-   state.activeItemId,
-   state.currentSectionItems as Array<{ id: string }>,
-   scope,
-  );
- }, [findings, state.activeItemId, state.currentSection, state.currentSectionItems]);
+ const handleCloneLast = useCloneLast({ state, findings });
 
  useEffect(() => {
   if (!tagPickerOpen) return;
