@@ -20,7 +20,6 @@
   "settings_inspection_clone_heading": "Valor predeterminado de Clonar último (tecla R)",
   "settings_inspection_clone_rating": "Solo calificación",
   "settings_inspection_clone_rating_notes": "Calificación + notas",
-  "settings_inspection_clone_all": "Todo (calificación + notas + fotos + etiquetas)",
   "settings_inspection_autoadvance_heading": "Avance automático después de calificar",
   "settings_inspection_autoadvance_keyboard": "Solo al calificar con el teclado (1-5 para recorrer rápido; los clics permanecen en el elemento)",
   "settings_inspection_autoadvance_always": "Siempre (los clics y el teclado avanzan)",

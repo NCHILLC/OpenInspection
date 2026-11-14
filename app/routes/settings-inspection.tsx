@@ -133,11 +133,10 @@ export default function SettingsInspectionPage() {
                 <RadioGroup
                     name="cloneDefault"
                     value={prefs.cloneDefault}
-                    onChange={v => patch({ cloneDefault: v as 'rating' | 'rating_notes' | 'all' })}
+                    onChange={v => patch({ cloneDefault: v as 'rating' | 'rating_notes' })}
                     options={[
                         { value: 'rating', label: m.settings_inspection_clone_rating() },
                         { value: 'rating_notes', label: m.settings_inspection_clone_rating_notes() },
-                        { value: 'all', label: m.settings_inspection_clone_all() },
                     ]}
                 />
             </section>

@@ -6,7 +6,7 @@ import type { ReportLinkTtl } from '../../server/lib/report-link-ttl';
 type RequireDefectFields = 'none' | 'location' | 'trade' | 'both';
 
 export interface InspectionPrefs {
-    cloneDefault:       'rating' | 'rating_notes' | 'all';
+    cloneDefault:       'rating' | 'rating_notes';
     /** B-18 — when rating an item advances to the next unrated one.
      *  'always' (default): satisfactory/non-pausing ratings advance on click or key; defect/monitor pause to write notes.
      *  'keyboard': only keyboard 1-5 speed-scanning advances; pointer clicks stay put.

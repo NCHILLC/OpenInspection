@@ -9,7 +9,9 @@ import { z } from '@hono/zod-openapi';
 import { REPORT_LINK_TTL_MAX_COUNT } from '../report-link-ttl';
 
 export const InspectionPrefsSchema = z.object({
-    cloneDefault:       z.enum(['rating', 'rating_notes', 'all']),
+    /** The old 'all' scope copied no more than 'rating_notes' did, so it was removed; rows that still
+     *  hold it are read as 'rating_notes' by `withDefaults` (no migration). */
+    cloneDefault:       z.enum(['rating', 'rating_notes']),
     /** B-18 — 'keyboard' (default) advances only on keyboard rating; pointer
      *  clicks stay put. Defaulted so pre-existing rows / full-object payloads
      *  without the field stay valid. */
@@ -66,6 +68,9 @@ export const DEFAULT_INSPECTION_PREFS: InspectionPrefs = {
 };
 
 /** Merge a possibly-partial DB row with the defaults. */
-export function withDefaults(row: Partial<InspectionPrefs> | null | undefined): InspectionPrefs {
-    return { ...DEFAULT_INSPECTION_PREFS, ...(row ?? {}) };
+export function withDefaults(
+    row: (Omit<Partial<InspectionPrefs>, 'cloneDefault'> & { cloneDefault?: InspectionPrefs['cloneDefault'] | 'all' }) | null | undefined,
+): InspectionPrefs {
+    const merged = { ...DEFAULT_INSPECTION_PREFS, ...(row ?? {}) };
+    return { ...merged, cloneDefault: merged.cloneDefault === 'all' ? 'rating_notes' : merged.cloneDefault };
 }
