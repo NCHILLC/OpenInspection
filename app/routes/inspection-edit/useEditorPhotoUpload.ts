@@ -59,8 +59,8 @@ export interface EditorPhotoUpload {
     /** Opening an item picker also clears an abandoned defect target. */
     openPickerForItem: () => void;
     openPickerForChecklistItem: (itemId: string) => void;
-    /** Open the picker for one defect row's photos (FE-3). */
-    openPickerForDefect: (target: NonNullable<PendingPhotoTarget>, name?: string) => void;
+    /** Open the picker for one defect row's photos (FE-3); `"camera"` skips the chooser and opens the in-app camera aimed at the defect. */
+    openPickerForDefect: (target: NonNullable<PendingPhotoTarget>, name?: string, open?: "camera") => void;
     /** The inspector backed out of the chooser — drop any armed target. */
     clearPhotoTarget: () => void;
     /** The armed defect's name while its camera session lasts, for the camera's Defect segment. */
@@ -348,9 +348,10 @@ export function useEditorPhotoUpload({
         }
     }, [uploadFetcher.state, uploadFetcher.data, findings]);
 
+    const { setCameraItemId, setCameraOpen } = state;
     /** Arms the target, then opens whichever picker this device wants. */
     const openPicker = useCallback(
-        (target: PendingPhotoTarget, name?: string, itemId = state.activeItemId) => {
+        (target: PendingPhotoTarget, name?: string, itemId = state.activeItemId, open?: "camera") => {
             // The fetcher is now reached ONLY before the collab doc is live, so
             // that is the only state where a second submit could abort the one in
             // flight. With a doc, a defect add rides the queue like an item add
@@ -372,16 +373,18 @@ export function useEditorPhotoUpload({
             // Task 16 — desktop file pickers already offer camera-vs-library
             // natively, so go straight to the multi-select library input; mobile
             // needs the explicit chooser (camera capture has no multi-select).
-            if (isMobile && itemId) setAddMediaChooser({ itemId });
+            // The defect row's camera button: the same arming, then the camera the chooser's "Take photo" opens.
+            if (open === "camera") { setCameraItemId(itemId); setCameraOpen(true); }
+            else if (isMobile && itemId) setAddMediaChooser({ itemId });
             else libraryInputRef.current?.click();
         },
-        [uploadFetcher.state, collabDoc, state.activeItemId, isMobile, setAddMediaChooser, libraryInputRef],
+        [uploadFetcher.state, collabDoc, state.activeItemId, setCameraItemId, setCameraOpen, isMobile, setAddMediaChooser, libraryInputRef],
     );
 
     const openPickerForItem = useCallback(() => openPicker(null), [openPicker]);
     const openPickerForChecklistItem = useCallback((id: string) => openPicker(null, undefined, id), [openPicker]);
     const openPickerForDefect = useCallback(
-        (target: NonNullable<PendingPhotoTarget>, name?: string) => openPicker(target, name),
+        (target: NonNullable<PendingPhotoTarget>, name?: string, open?: "camera") => openPicker(target, name, undefined, open),
         [openPicker],
     );
     const clearPhotoTarget = useCallback(() => {

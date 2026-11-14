@@ -123,5 +123,8 @@
   "editor_property_type_lossy_tier": "el nivel del informe ({tier})",
   "editor_property_type_lossy_units": "Los hallazgos por unidad y la lista de unidades. El informe los imprime según el modo de inspección, no el tipo de propiedad, por lo que seguirán apareciendo — pero el selector de unidades se cierra junto con el resto de la superficie comercial.",
   "editor_property_type_lossy_kept": "No se elimina nada. Cada registro permanece en la base de datos y reaparece si vuelves a elegir Comercial como tipo de propiedad.",
-  "editor_property_type_lossy_confirm": "Reclasificar de todos modos"
+  "editor_property_type_lossy_confirm": "Reclasificar de todos modos",
+  "editor_canned_copy_label": "Copiar",
+  "editor_canned_copy_aria": "Copiar {name} para registrarlo en una segunda ubicación",
+  "editor_defect_camera_aria": "Tomar foto de {name}"
 }

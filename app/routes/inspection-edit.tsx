@@ -1,4 +1,5 @@
 import { buildDefectStates } from "./inspection-edit/defect-states";
+import { customDefectHandlers } from "./inspection-edit/custom-defect-handlers";
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useLoaderData, useFetcher, useRevalidator } from "react-router";
 import { INSPECTION_STATUS } from "~/lib/status";
@@ -1337,21 +1338,7 @@ export default function InspectionEditPage() {
  );
  }
  }}
- onDuplicateCanned={(entry) => {
- if (state.activeItemId && state.currentSection) {
- const d = makeCustomDefect({
- title: entry.title,
- comment: entry.comment,
- category: entry.category,
- });
- if (d) {
- findings.addCustomDefect(state.currentSection.id, state.activeItemId, {
- ...d,
- comment: d.comment ?? "",
- });
- }
- }
- }}
+ {...customDefectHandlers(findings, () => (state.activeItemId && state.currentSection ? { sectionId: state.currentSection.id, itemId: state.activeItemId } : null))}
  onItemAttribute={handleItemAttribute}
  onCloneLast={handleCloneLast}
  cloneDefaultScope={inspectionPrefs.cloneDefault}

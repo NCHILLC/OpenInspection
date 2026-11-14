@@ -23,6 +23,8 @@ export interface CustomCommentEntry {
   category?: string;
   location?: string;
   photos?: Array<{ key: string }>;
+  /** A copy of a template defect names it, so the editor lists the copy under it. */
+  sourceCannedId?: string;
 }
 
 /**

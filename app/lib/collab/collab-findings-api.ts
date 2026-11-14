@@ -151,7 +151,7 @@ export interface CollabFindingsApi {
         photoKey: string,
     ) => void;
     getPhotoCount: (itemId: string) => number;
-    addCustomDefect: (sectionId: string, itemId: string, defect: CustomCommentEntry) => void;
+    addCustomDefect: (sectionId: string, itemId: string, defect: Partial<CustomCommentEntry> & { id: string }) => void;
     toggleCustomDefect: (sectionId: string, itemId: string, customId: string, included: boolean) => void;
     addCustomLimitation: (sectionId: string, itemId: string, limitation: CustomCommentEntry) => void;
     toggleCustomLimitation: (sectionId: string, itemId: string, customId: string, included: boolean) => void;
@@ -340,9 +340,9 @@ export function buildCollabFindingsApi(doc: Y.Doc, deps: CollabFindingsDeps): Co
         return Array.isArray(photos) ? photos.length : 0;
     };
 
-    const addCustomDefect = (sectionId: string, itemId: string, defect: CustomCommentEntry): void => {
-        // CustomCommentEntry has no index signature; the binding only needs `id`
-        // plus arbitrary fields. Widen via unknown (structurally compatible).
+    const addCustomDefect = (sectionId: string, itemId: string, defect: Partial<CustomCommentEntry> & { id: string }): void => {
+        // Upsert by id: a partial entry (id + changed fields) merges onto the existing
+        // one. CustomCommentEntry has no index signature; widen via unknown.
         bindingAddCustomDefect(doc, sectionId, itemId, defect as unknown as { id: string } & Record<string, unknown>, unit);
         setDirty(true);
     };
