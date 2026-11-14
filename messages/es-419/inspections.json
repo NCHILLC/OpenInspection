@@ -367,5 +367,12 @@
   "inspections_isn_refresh_success": "Actualizado desde ISN.",
   "inspections_isn_apply_template": "Aplicar plantilla asignada",
   "inspections_isn_apply_help": "Usa la asignación actual de ISN para este informe. Solo está disponible antes de abrir o redactar el informe. Actualizar desde ISN conserva la plantilla existente.",
-  "inspections_isn_apply_success": "El informe usa su plantilla asignada."
+  "inspections_isn_apply_success": "El informe usa su plantilla asignada.",
+  "inspections_hub_delete_error": "No se pudo eliminar la inspección. Inténtelo de nuevo.",
+  "inspections_list_delete_failed": "Estas inspecciones no se pudieron eliminar y siguen en la lista:",
+  "inspections_list_delete_failed_item": "{address}: {reason}",
+  "inspections_list_delete_too_many": "Elimine como máximo {max} inspecciones a la vez.",
+  "inspections_list_delete_confirm_title": "¿Eliminar las inspecciones seleccionadas?",
+  "inspections_list_delete_confirm_message_one": "Esto elimina para siempre 1 inspección y todo lo guardado con ella: hallazgos, fotos, informes, factura y acuerdos. No se puede deshacer.",
+  "inspections_list_delete_confirm_message_other": "Esto elimina para siempre {count} inspecciones y todo lo guardado con ellas: hallazgos, fotos, informes, facturas y acuerdos. No se puede deshacer."
 }
